@@ -1,211 +1,304 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MapView, { Polyline } from 'react-native-maps';
+import Geolocation from 'react-native-geolocation-service';
 import { useTheme } from '../context/ThemeContext';
 
-const ExerciseCard = ({ title, sets, reps, isCompleted, onToggle }) => {
+const TrainingScreen = ({ navigation, route }) => {
   const theme = useTheme();
+  const [isTracking, setIsTracking] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [coordinates, setCoordinates] = useState([]);
+  const [distance, setDistance] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  
+  const activityType = route.params?.activity || 'General Training';
+
+  useEffect(() => {
+    let interval;
+    if (isTracking && !isPaused) {
+      interval = setInterval(() => {
+        setTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTracking, isPaused]);
+
+  useEffect(() => {
+    if (isTracking && !isPaused) {
+      const watchId = Geolocation.watchPosition(
+        position => {
+          const newCoordinate = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setCoordinates(prev => [...prev, newCoordinate]);
+          updateDistance(newCoordinate);
+        },
+        error => Alert.alert('GPS Error', error.message),
+        { enableHighAccuracy: true, distanceFilter: 10 }
+      );
+      return () => Geolocation.clearWatch(watchId);
+    }
+  }, [isTracking, isPaused]);
+
+  const updateDistance = newCoordinate => {
+    if (coordinates.length > 0) {
+      const lastCoordinate = coordinates[coordinates.length - 1];
+      const newDistance = calculateDistance(lastCoordinate, newCoordinate);
+      setDistance(prev => prev + newDistance);
+    }
+  };
+
+  const calculateDistance = (coord1, coord2) => {
+    const R = 6371;
+    const dLat = (coord2.latitude - coord1.latitude) * (Math.PI / 180);
+    const dLon = (coord2.longitude - coord1.longitude) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(coord1.latitude * (Math.PI / 180)) *
+      Math.cos(coord2.latitude * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const formatTime = seconds => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartPause = () => {
+    if (!isTracking) {
+      setIsTracking(true);
+    } else {
+      setIsPaused(!isPaused);
+    }
+  };
+
+  const handleFinish = () => {
+    setIsTracking(false);
+    navigation.navigate('Home', {
+      newWorkout: {
+        type: activityType,
+        duration: timer,
+        distance: distance.toFixed(2),
+        calories: Math.floor(timer * 5),
+        route: coordinates
+      }
+    });
+  };
+
   return (
-    <TouchableOpacity 
-      style={[
-        styles.exerciseCard, 
-        { backgroundColor: theme.colors.surface },
-        isCompleted && { backgroundColor: theme.colors.border }
-      ]} 
-      onPress={onToggle}
-    >
-      <View style={styles.exerciseInfo}>
-        <Text style={[styles.exerciseTitle, { color: theme.colors.text }]}>{title}</Text>
-        <Text style={[styles.exerciseDetails, { color: theme.colors.textSecondary }]}>
-          {sets} sets × {reps} reps
-        </Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header Section */}
+      <View style={[styles.header, { 
+        backgroundColor: theme.colors.surface,
+        borderBottomColor: theme.colors.primary + '50'
+      }]}>
+        <Text style={[styles.activityType, { 
+          color: theme.colors.primary,
+          textShadowColor: theme.colors.primary + '50',
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 10
+        }]}>{activityType}</Text>
+        <Text style={[styles.timer, { 
+          color: theme.colors.text,
+          textShadowColor: theme.colors.primary + '30',
+          textShadowOffset: { width: 0, height: 0 },
+          textShadowRadius: 10
+        }]}>{formatTime(timer)}</Text>
       </View>
-      <View style={[
-        styles.checkbox, 
-        { borderColor: theme.colors.primary },
-        isCompleted && { backgroundColor: theme.colors.primary }
-      ]}>
-        {isCompleted && <Ionicons name="checkmark" size={20} color="#fff" />}
+
+      {/* Map View */}
+      <MapView
+        style={[styles.map, { borderColor: theme.colors.primary + '30' }]}
+        initialRegion={{
+          latitude: coordinates[0]?.latitude || 37.78825,
+          longitude: coordinates[0]?.longitude || -122.4324,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
+        customMapStyle={mapStyle}
+      >
+        <Polyline
+          coordinates={coordinates}
+          strokeColor={theme.colors.primary}
+          strokeWidth={4}
+        />
+      </MapView>
+
+      {/* Stats Container */}
+      <View style={[styles.statsContainer, { 
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.primary + '20'
+      }]}>
+        <View style={styles.stat}>
+          <Text style={[styles.statValue, { color: theme.colors.primary }]}>
+            {distance.toFixed(2)} km
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+            DISTANCE
+          </Text>
+        </View>
+        <View style={styles.stat}>
+          <Text style={[styles.statValue, { color: theme.colors.primary }]}>
+            {(distance * 1000 / timer).toFixed(2) || 0} m/s
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+            PACE
+          </Text>
+        </View>
+        <View style={styles.stat}>
+          <Text style={[styles.statValue, { color: theme.colors.primary }]}>
+            {Math.floor(timer * 5)}
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+            CALORIES
+          </Text>
+        </View>
       </View>
-    </TouchableOpacity>
+
+      {/* Control Buttons */}
+      <View style={styles.controls}>
+        <TouchableOpacity 
+          style={[styles.controlButton, { 
+            backgroundColor: theme.colors.primary,
+            shadowColor: theme.colors.primary,
+          }]}
+          onPress={handleStartPause}
+        >
+          <Ionicons 
+            name={isTracking ? (isPaused ? 'play' : 'pause') : 'play'} 
+            size={32} 
+            color={theme.colors.text} 
+          />
+        </TouchableOpacity>
+        
+        {isTracking && (
+          <TouchableOpacity 
+            style={[styles.controlButton, { 
+              backgroundColor: theme.colors.primary,
+              shadowColor: theme.colors.primary,
+            }]}
+            onPress={handleFinish}
+          >
+            <Ionicons name="stop" size={32} color={theme.colors.text} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
   );
 };
 
-export default function TrainingScreen({ navigation }) {
-  const theme = useTheme();
-  const [exercises, setExercises] = useState([
-    { id: 1, title: 'Barbell Squats', sets: 4, reps: 12, completed: false },
-    { id: 2, title: 'Deadlifts', sets: 3, reps: 10, completed: false },
-    { id: 3, title: 'Bench Press', sets: 4, reps: 8, completed: false },
-    { id: 4, title: 'Shoulder Press', sets: 3, reps: 12, completed: false },
-    { id: 5, title: 'Pull-ups', sets: 3, reps: 10, completed: false },
-  ]);
+// Custom Map Styling
+const mapStyle = [
+  {
+    "elementType": "geometry",
+    "stylers": [{ "color": "#120B42" }]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#E57C0B" }]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{ "color": "#120B42" }]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#1A144B" }]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#E57C0B" }]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#1A144B" }]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#120B42" }]
+  }
+];
 
-  const [timer, setTimer] = useState(45 * 60);
-  const [isActive, setIsActive] = useState(false);
-
-  const toggleExercise = (id) => {
-    setExercises(exercises.map(ex => 
-      ex.id === id ? { ...ex, completed: !ex.completed } : ex
-    ));
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Full Body Workout</Text>
-        <View style={[styles.timerContainer, { backgroundColor: theme.colors.border }]}>
-          <Text style={[styles.timer, { color: theme.colors.text }]}>{formatTime(timer)}</Text>
-          <TouchableOpacity 
-            style={[styles.timerButton, { backgroundColor: theme.colors.primary }]}
-            onPress={() => setIsActive(!isActive)}
-          >
-            <Ionicons name={isActive ? "pause" : "play"} size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={[styles.progress, { backgroundColor: theme.colors.surface }]}>
-        <View style={[styles.progressBar, { backgroundColor: theme.colors.border }]}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { 
-                backgroundColor: theme.colors.primary,
-                width: `${(exercises.filter(e => e.completed).length / exercises.length) * 100}%` 
-              }
-            ]} 
-          />
-        </View>
-        <Text style={[styles.progressText, { color: theme.colors.textSecondary }]}>
-          {exercises.filter(e => e.completed).length}/{exercises.length} completed
-        </Text>
-      </View>
-
-      <ScrollView style={styles.exerciseList}>
-        {exercises.map((exercise) => (
-          <ExerciseCard
-            key={exercise.id}
-            title={exercise.title}
-            sets={exercise.sets}
-            reps={exercise.reps}
-            isCompleted={exercise.completed}
-            onToggle={() => toggleExercise(exercise.id)}
-          />
-        ))}
-      </ScrollView>
-
-      <TouchableOpacity 
-        style={[styles.finishButton, { backgroundColor: theme.colors.primary }]}
-      >
-        <Text style={styles.finishButtonText}>Finish Workout</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
-}
-
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   header: {
     padding: 20,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 4,
   },
-  title: {
+  activityType: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 15,
-    borderRadius: 12,
+    letterSpacing: 0.5,
   },
   timer: {
     fontSize: 32,
-    fontWeight: 'bold',
-  },
-  timerButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progress: {
-    padding: 20,
+    fontWeight: '300',
     marginTop: 10,
   },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    marginBottom: 10,
+  map: {
+    flex: 1,
+    margin: 16,
+    borderRadius: 16,
+    borderWidth: 1,
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-  },
-  exerciseList: {
-    padding: 20,
-  },
-  exerciseCard: {
+  statsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-around',
     padding: 20,
-    borderRadius: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    margin: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    elevation: 4,
   },
-  exerciseInfo: {
+  stat: {
+    alignItems: 'center',
     flex: 1,
   },
-  exerciseTitle: {
-    fontSize: 16,
+  statValue: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 4,
   },
-  exerciseDetails: {
-    fontSize: 14,
+  statLabel: {
+    fontSize: 12,
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+  controls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 20,
+  },
+  controlButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  finishButton: {
-    margin: 20,
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  finishButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });
+
+export default TrainingScreen;

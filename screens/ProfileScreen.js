@@ -115,6 +115,8 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     padding: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   profileImageContainer: {
     position: 'relative',
@@ -124,6 +126,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+    borderWidth: 2,
+    borderColor: '#E57C0B',
   },
   editButton: {
     position: 'absolute',
@@ -134,23 +138,32 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#120B42',
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
+    marginTop: 10,
   },
   bio: {
     fontSize: 16,
     marginTop: 5,
+    fontStyle: 'italic',
   },
   statsRow: {
     flexDirection: 'row',
-    paddingVertical: 15,
-    marginTop: 10,
+    justifyContent: 'space-around',
+    paddingVertical: 20,
+    margin: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E57C0B20',
   },
   stat: {
     flex: 1,
     alignItems: 'center',
+    paddingVertical: 10,
   },
   statBorder: {
     borderLeftWidth: 1,
@@ -162,16 +175,21 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 4,
+    textTransform: 'uppercase',
   },
   section: {
-    padding: 20,
-    marginTop: 10,
+    padding: 16,
+    margin: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E57C0B20',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
+    letterSpacing: 0.5,
   },
   achievement: {
     width: 60,
@@ -180,6 +198,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
+    borderWidth: 2,
+    borderColor: '#E57C0B',
   },
   achievementEmoji: {
     fontSize: 24,
@@ -189,6 +209,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     borderBottomWidth: 1,
+    paddingHorizontal: 8,
   },
   optionText: {
     flex: 1,
@@ -196,9 +217,11 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     fontSize: 16,
+    fontWeight: '500',
   },
   optionSubtitle: {
     fontSize: 14,
     marginTop: 2,
+    opacity: 0.8,
   },
 });
