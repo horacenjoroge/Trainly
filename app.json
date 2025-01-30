@@ -1,10 +1,32 @@
 {
-  "expo": {
-    "name": "Trainly",
-    "slug": "Trainly",
-    "version": "1.0.0",
-    "assetBundlePatterns": [
-      "**/*"
-    ]
-  }
+ "expo": {
+   "name": "Trainly",
+   "slug": "Trainly",
+   "version": "1.0.0",
+   "assetBundlePatterns": [
+     "**/*"
+   ],
+   "plugins": [
+     [
+       "expo-image-picker",
+       {
+         "photosPermission": "Allow Trainly to access your photos",
+         "cameraPermission": "Allow Trainly to access your camera"
+       }
+     ]
+   ],
+   "android": {
+     "permissions": [
+       "CAMERA",
+       "READ_EXTERNAL_STORAGE",
+       "WRITE_EXTERNAL_STORAGE"
+     ]
+   },
+   "ios": {
+     "infoPlist": {
+       "NSCameraUsageDescription": "This app uses the camera to let you take profile photos",
+       "NSPhotoLibraryUsageDescription": "This app accesses your photos to let you select profile images"
+     }
+   }
+ }
 }
