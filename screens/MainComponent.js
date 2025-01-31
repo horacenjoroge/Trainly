@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -7,12 +6,16 @@ import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TrainingScreen from '../screens/TrainingScreen';
 import TrainingSelectionScreen from '../screens/TrainingSelectionScreen';
+import EmergencyServicesScreen from '../screens/EmergencyServicesScreen';
+import ContactsScreen from '../screens/contactScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AuthScreen from '../screens/AuthScreen';
 import { theme } from '../theme';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
+// Stack navigators configuration
 const HomeStack = () => (
   <Stack.Navigator
     screenOptions={{
@@ -68,10 +71,43 @@ const ProfileStack = () => (
   </Stack.Navigator>
 );
 
+const EmergencyStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: theme.colors.surface,
+      },
+      headerTintColor: theme.colors.text,
+      cardStyle: { backgroundColor: theme.colors.background }
+    }}
+  >
+    <Stack.Screen 
+      name="EmergencyServices" 
+      component={EmergencyServicesScreen}
+      options={{ title: 'Emergency Services' }}
+    />
+    <Stack.Screen 
+      name="EmergencyContacts" 
+      component={ContactsScreen}
+      options={{
+        title: 'Emergency Contacts',
+        headerRight: () => (
+          <Ionicons 
+            name="person-add-outline" 
+            size={24} 
+            color={theme.colors.text}
+            style={{ marginRight: 16 }}
+          />
+        ),
+      }}
+    />
+  </Stack.Navigator>
+);
+
 const MainComponent = () => {
   return (
     <Drawer.Navigator
-      initialRouteName="HomeStack"
+      initialRouteName="Auth"
       screenOptions={{
         headerStyle: {
           backgroundColor: theme.colors.surface,
@@ -97,6 +133,17 @@ const MainComponent = () => {
         }
       }}
     >
+      <Drawer.Screen
+        name="Auth"
+        component={AuthScreen}
+        options={{
+          headerTitle: 'Login',
+          title: 'Login',
+          drawerIcon: ({ color }) => (
+            <Ionicons name="log-in-outline" size={20} color={color} />
+          ),
+        }}
+      />
       <Drawer.Screen
         name="HomeStack"
         component={HomeStack}
@@ -127,6 +174,17 @@ const MainComponent = () => {
           title: 'Profile',
           drawerIcon: ({ color }) => (
             <Ionicons name="person-outline" size={20} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="EmergencyStack"
+        component={EmergencyStack}
+        options={{
+          headerTitle: 'Emergency Services',
+          title: 'Emergency Services',
+          drawerIcon: ({ color }) => (
+            <Ionicons name="alert-circle-outline" size={20} color={color} />
           ),
         }}
       />

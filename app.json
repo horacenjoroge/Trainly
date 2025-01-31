@@ -1,32 +1,83 @@
 {
- "expo": {
-   "name": "Trainly",
-   "slug": "Trainly",
-   "version": "1.0.0",
-   "assetBundlePatterns": [
-     "**/*"
-   ],
-   "plugins": [
-     [
-       "expo-image-picker",
-       {
-         "photosPermission": "Allow Trainly to access your photos",
-         "cameraPermission": "Allow Trainly to access your camera"
-       }
-     ]
-   ],
-   "android": {
-     "permissions": [
-       "CAMERA",
-       "READ_EXTERNAL_STORAGE",
-       "WRITE_EXTERNAL_STORAGE"
-     ]
-   },
-   "ios": {
-     "infoPlist": {
-       "NSCameraUsageDescription": "This app uses the camera to let you take profile photos",
-       "NSPhotoLibraryUsageDescription": "This app accesses your photos to let you select profile images"
-     }
-   }
- }
+  "expo": {
+    "name": "Trainly",
+    "slug": "Trainly",
+    "version": "1.0.0",
+    "assetBundlePatterns": ["**/*"],
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Trainly to access your photos",
+          "cameraPermission": "Allow Trainly to access your camera"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Trainly to use your location for tracking and emergency services",
+          "locationWhenInUsePermission": "Allow Trainly to use your location while using the app"
+        }
+      ],
+      [
+        "expo-file-system",
+        {
+          "filePermission": "Allow Trainly to access files"
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow Trainly to access device motion for fall detection"
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.trainly.app",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_COARSE_LOCATION", 
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "SEND_SMS",
+        "VIBRATE",
+        "READ_CONTACTS",
+        "WRITE_CONTACTS"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_ANDROID_MAPS_API_KEY"
+        }
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.trainly.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera for profile photos",
+        "NSPhotoLibraryUsageDescription": "This app accesses photos for profile images",
+        "NSLocationWhenInUseUsageDescription": "Location is used for tracking routes and emergency services",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Background location is used for route tracking and emergency monitoring",
+        "NSLocationAlwaysUsageDescription": "Background location enables emergency monitoring when inactive",
+        "NSContactsUsageDescription": "Contacts access is needed for emergency contacts",
+        "NSMotionUsageDescription": "Motion detection is used for fall detection feature",
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
+      },
+      "config": {
+        "googleMapsApiKey": "YOUR_IOS_MAPS_API_KEY"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
 }
