@@ -1,244 +1,354 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
- StyleSheet,
- View,
- Text,
- ScrollView,
- TouchableOpacity,
- Image,
- SafeAreaView,
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+  StatusBar,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+// Color Palette
 const colors = {
- background: '#120B42',
- primary: '#E57C0B',
- surface: '#1A144B',
- text: '#FFFFFF',
- textSecondary: '#A0A0A0',
+  background: '#120B42',
+  primary: '#E57C0B',
+  surface: '#1A144B',
+  text: '#FFFFFF',
+  textSecondary: '#A0A0A0',
+  accent: '#4A90E2',
 };
 
-const TrainingCard = ({ title, duration, level, image, onPress }) => {
- return (
-   <TouchableOpacity 
-     style={[styles.card, { 
-       backgroundColor: colors.surface,
-       borderColor: colors.primary,
-     }]} 
-     onPress={onPress}
-   >
-     <Image
-       source={image}
-       style={styles.cardImage}
-       resizeMode="cover"
-     />
-     <View style={styles.cardContent}>
-       <Text style={[styles.cardTitle, { color: colors.primary }]}>{title}</Text>
-       <View style={styles.cardMeta}>
-         <Ionicons name="time-outline" size={16} color={colors.primary} />
-         <Text style={[styles.cardMetaText, { color: colors.primary }]}>{duration}</Text>
-         <Ionicons name="fitness-outline" size={16} color={colors.primary} />
-         <Text style={[styles.cardMetaText, { color: colors.primary }]}>{level}</Text>
-       </View>
-       <View style={[styles.progressBar, { backgroundColor: `${colors.primary}20` }]}>
-         <View style={[styles.progressFill, { 
-           width: '70%',
-           backgroundColor: colors.primary 
-         }]} />
-       </View>
-     </View>
-   </TouchableOpacity>
- );
+// Post Component
+const PostCard = ({ user, content, image, likes, comments }) => {
+  const [liked, setLiked] = useState(false);
+
+  return (
+    <View style={styles.postCard}>
+      <View style={styles.postHeader}>
+        <Image 
+          source={user.avatar} 
+          style={styles.userAvatar} 
+        />
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.postTime}>2 hours ago</Text>
+        </View>
+      </View>
+      
+      {content && <Text style={styles.postContent}>{content}</Text>}
+      
+      {image && (
+        <Image 
+          source={image} 
+          style={styles.postImage} 
+          resizeMode="cover" 
+        />
+      )}
+      
+      <View style={styles.postActions}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => setLiked(!liked)}
+        >
+          <Ionicons 
+            name={liked ? "heart" : "heart-outline"} 
+            size={20} 
+            color={liked ? colors.primary : colors.textSecondary} 
+          />
+          <Text style={styles.actionText}>{likes} Likes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton}>
+          <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.actionText}>{comments} Comments</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 };
 
-const StatCard = ({ icon, value, label }) => {
- return (
-   <View style={styles.statCard}>
-     <Ionicons name={icon} size={24} color={colors.primary} />
-     <Text style={[styles.statNumber, { color: colors.primary }]}>{value}</Text>
-     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
-   </View>
- );
+// Personal Progress Card
+const ProgressCard = ({ workouts, hours, calories }) => {
+  return (
+    <View style={styles.progressContainer}>
+      <View style={styles.progressHeader}>
+        <Text style={styles.progressTitle}>My Progress</Text>
+        <TouchableOpacity>
+          <Text style={styles.progressEdit}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.progressStats}>
+        <View style={styles.progressStatItem}>
+          <Ionicons name="trophy-outline" size={24} color={colors.primary} />
+          <Text style={styles.progressStatValue}>{workouts}</Text>
+          <Text style={styles.progressStatLabel}>Workouts</Text>
+        </View>
+        <View style={styles.progressStatItem}>
+          <Ionicons name="time-outline" size={24} color={colors.primary} />
+          <Text style={styles.progressStatValue}>{hours}</Text>
+          <Text style={styles.progressStatLabel}>Hours</Text>
+        </View>
+        <View style={styles.progressStatItem}>
+          <Ionicons name="flame-outline" size={24} color={colors.primary} />
+          <Text style={styles.progressStatValue}>{calories}</Text>
+          <Text style={styles.progressStatLabel}>Calories</Text>
+        </View>
+      </View>
+    </View>
+  );
 };
 
-const HomeScreen = ({ navigation }) => {  
- const handleTrainingPress = () => {
-   navigation.navigate('Training');
- };
+const HomeScreen = ({ navigation }) => {
+  const [posts, setPosts] = useState([
+    {
+      id: '1',
+      user: {
+        name: 'Horace',
+        avatar: require('../assets/images/run.jpg')
+      },
+      content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
+      image: require('../assets/images/run.jpg'),
+      likes: 156,
+      comments: 24
+    },
+    {
+      id: '2',
+      user: {
+        name: 'Mishael',
+        avatar: require('../assets/images/bike.jpg')
+      },
+      content: 'Daily workout done! 💪 Pushing my limits every day.',
+      image: require('../assets/images/bike.jpg'),
+      likes: 87,
+      comments: 12
+    }
+  ]);
 
- return (
-   <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-     <ScrollView>
-       <View style={[styles.header, { backgroundColor: colors.primary }]}>
-         <Text style={[styles.greeting, { color: colors.text }]}>Welcome back, Horace!</Text>
-         <Text style={[styles.subtitle, { color: colors.background }]}>Ready for today's training?</Text>
-         <TouchableOpacity 
-           style={[styles.orangeButton, { backgroundColor: colors.surface }]}
-           onPress={() => navigation.navigate('TrainingSelection')}
-         >
-           <Text style={[styles.buttonText, { color: colors.primary }]}>Start New Training</Text>
-         </TouchableOpacity>
-       </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar 
+        backgroundColor={colors.background} 
+        barStyle="light-content" 
+      />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Text style={styles.greeting}>Welcome back, Horace!</Text>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity 
+              style={styles.headerIconButton}
+              onPress={() => navigation.navigate('CreatePost')}
+            >
+              <Ionicons name="add-circle-outline" size={28} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.headerIconButton}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Ionicons name="notifications-outline" size={28} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
-       <View style={[styles.statsContainer, { backgroundColor: colors.surface }]}>
-         <StatCard icon="trophy-outline" value="12" label="Workouts" />
-         <StatCard icon="time-outline" value="5.2" label="Hours" />
-         <StatCard icon="flame-outline" value="324" label="Calories" />
-       </View>
+      <ScrollView>
+        {/* Progress Card */}
+        <ProgressCard 
+          workouts={12} 
+          hours={5.2} 
+          calories={324} 
+        />
 
-       <View style={[styles.section, { backgroundColor: colors.surface }]}>
-         <Text style={[styles.sectionTitle, { color: colors.primary }]}>Featured Workouts</Text>
-         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-           <TrainingCard
-             title="Full Body Strength"
-             duration="45 min"
-             level="Intermediate"
-             image={require('../assets/images/gym1.jpg')}
-             onPress={handleTrainingPress}
-           />
-           <TrainingCard
-             title="HIIT Cardio"
-             duration="30 min"
-             level="Advanced"
-             image={require('../assets/images/bike.jpg')}
-             onPress={handleTrainingPress}
-           />
-           <TrainingCard
-             title="Swimming Drills"
-             duration="60 min"
-             level="Beginner"
-             image={require('../assets/images/pool.jpg')}
-             onPress={handleTrainingPress}
-           />
-         </ScrollView>
-       </View>
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity 
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate('TrainingSelection')}
+          >
+            <Ionicons name="fitness-outline" size={24} color={colors.primary} />
+            <Text style={styles.quickActionText}>Start Training</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.quickActionButton}
+            onPress={() => navigation.navigate('CreatePost')}
+          >
+            <Ionicons name="share-social-outline" size={24} color={colors.primary} />
+            <Text style={styles.quickActionText}>Share Progress</Text>
+          </TouchableOpacity>
+        </View>
 
-       <View style={[styles.section, { backgroundColor: colors.surface }]}>
-         <Text style={[styles.sectionTitle, { color: colors.primary }]}>Recent Activities</Text>
-         <TrainingCard
-           title="Morning Run"
-           duration="35 min"
-           level="5 km"
-           image={require('../assets/images/run.jpg')}
-           onPress={handleTrainingPress}
-         />
-         <TrainingCard
-           title="Cycling Session"
-           duration="90 min"
-           level="20 km"
-           image={require('../assets/images/bike.jpg')}
-           onPress={handleTrainingPress}
-         />
-       </View>
-     </ScrollView>
-   </SafeAreaView>
- );
+        {/* Community Posts */}
+        <View style={styles.communitySection}>
+          <Text style={styles.communitySectionTitle}>Community Feed</Text>
+          <FlatList 
+            data={posts}
+            renderItem={({ item }) => (
+              <PostCard 
+                user={item.user}
+                content={item.content}
+                image={item.image}
+                likes={item.likes}
+                comments={item.comments}
+              />
+            )}
+            keyExtractor={item => item.id}
+            horizontal={false}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 };
 
 const styles = StyleSheet.create({
- container: {
-   flex: 1,
- },
- header: {
-   padding: 20,
-   borderBottomLeftRadius: 20,
-   borderBottomRightRadius: 20,
- },
- greeting: {
-   fontSize: 24,
-   fontWeight: 'bold',
- },
- subtitle: {
-   fontSize: 16,
-   marginTop: 5,
-   fontWeight: '500',
- },
- statsContainer: {
-   flexDirection: 'row',
-   justifyContent: 'space-around',
-   padding: 20,
-   margin: 16,
-   borderRadius: 16,
-   borderWidth: 1,
-   borderColor: `${colors.primary}20`,
- },
- statCard: {
-   alignItems: 'center',
- },
- statNumber: {
-   fontSize: 20,
-   fontWeight: 'bold',
-   marginTop: 5,
- },
- statLabel: {
-   fontSize: 12,
-   marginTop: 2,
- },
- section: {
-   padding: 16,
-   margin: 16,
-   borderRadius: 16,
- },
- sectionTitle: {
-   fontSize: 18,
-   fontWeight: 'bold',
-   marginBottom: 15,
- },
- card: {
-   width: 280,
-   borderRadius: 15,
-   marginRight: 15,
-   borderWidth: 1,
-   elevation: 3,
-   shadowColor: colors.primary,
-   shadowOffset: { width: 0, height: 4 },
-   shadowOpacity: 0.2,
-   shadowRadius: 6,
- },
- cardImage: {
-   width: '100%',
-   height: 150,
-   borderTopLeftRadius: 15,
-   borderTopRightRadius: 15,
- },
- cardContent: {
-   padding: 15,
- },
- cardTitle: {
-   fontSize: 16,
-   fontWeight: 'bold',
- },
- cardMeta: {
-   flexDirection: 'row',
-   alignItems: 'center',
-   marginTop: 8,
- },
- cardMetaText: {
-   fontSize: 14,
-   marginLeft: 4,
-   marginRight: 12,
- },
- orangeButton: {
-   padding: 14,
-   borderRadius: 12,
-   alignItems: 'center',
-   marginTop: 15,
-   borderWidth: 1,
-   borderColor: colors.primary,
- },
- buttonText: {
-   fontWeight: 'bold',
-   fontSize: 16,
- },
- progressBar: {
-   height: 4,
-   borderRadius: 2,
-   marginTop: 12,
- },
- progressFill: {
-   height: '100%',
-   borderRadius: 2,
- },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    backgroundColor: colors.primary,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerIcons: {
+    flexDirection: 'row',
+  },
+  headerIconButton: {
+    marginLeft: 15,
+  },
+  greeting: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  progressContainer: {
+    backgroundColor: colors.surface,
+    margin: 16,
+    borderRadius: 16,
+    padding: 15,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  progressTitle: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  progressEdit: {
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  progressStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressStatItem: {
+    alignItems: 'center',
+  },
+  progressStatValue: {
+    color: colors.primary,
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 5,
+  },
+  progressStatLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: 16,
+    marginVertical: 10,
+  },
+  quickActionButton: {
+    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    width: '45%',
+    justifyContent: 'center',
+  },
+  quickActionText: {
+    color: colors.primary,
+    marginLeft: 10,
+    fontWeight: '600',
+  },
+  communitySection: {
+    backgroundColor: colors.surface,
+    margin: 16,
+    borderRadius: 16,
+    padding: 15,
+  },
+  communitySectionTitle: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  postCard: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    marginBottom: 15,
+    padding: 15,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  userAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  userName: {
+    color: colors.text,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  postTime: {
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  postContent: {
+    color: colors.text,
+    marginBottom: 10,
+  },
+  postImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  postActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionText: {
+    color: colors.textSecondary,
+    marginLeft: 5,
+  },
 });
 
 export default HomeScreen;

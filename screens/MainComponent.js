@@ -9,7 +9,10 @@ import TrainingSelectionScreen from '../screens/TrainingSelectionScreen';
 import EmergencyServicesScreen from '../screens/EmergencyServicesScreen';
 import ContactsScreen from '../screens/contactScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import PersonalInfoScreen from '../screens/PersonalInfoScreen';
 import AuthScreen from '../screens/AuthScreen';
+import CreateProgressPostScreen from '../screens/CreatePostScreen';
+import CommunityFeedScreen from '../screens/CommunityFeedScreen';
 import { theme } from '../theme';
 
 const Drawer = createDrawerNavigator();
@@ -30,6 +33,47 @@ const HomeStack = () => (
       name="Home" 
       component={HomeScreen}
       options={{ title: 'Home' }}  
+    />
+    <Stack.Screen 
+      name="TrainingSelection" 
+      component={TrainingSelectionScreen}
+      options={{ 
+        title: 'Select Training',
+      }}
+    />
+    <Stack.Screen 
+      name="CreatePost" 
+      component={CreateProgressPostScreen}
+      options={{ 
+        title: 'Share Progress',
+        presentation: 'modal'
+      }}
+    />
+  </Stack.Navigator>
+);
+
+const CommunityStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerStyle: {
+        backgroundColor: theme.colors.surface,
+      },
+      headerTintColor: theme.colors.text,
+      cardStyle: { backgroundColor: theme.colors.background }
+    }}
+  >
+    <Stack.Screen 
+      name="CommunityFeed" 
+      component={CommunityFeedScreen}
+      options={{ title: 'Community' }}
+    />
+    <Stack.Screen 
+      name="CreatePost" 
+      component={CreateProgressPostScreen}
+      options={{ 
+        title: 'Share Progress',
+        presentation: 'modal'
+      }}
     />
   </Stack.Navigator>
 );
@@ -68,6 +112,11 @@ const ProfileStack = () => (
     }}
   >
     <Stack.Screen name="Profile" component={ProfileScreen} />
+    <Stack.Screen 
+      name="PersonalInfo" 
+      component={PersonalInfoScreen}
+      options={{ title: 'Personal Information' }}
+    />
   </Stack.Navigator>
 );
 
@@ -152,6 +201,17 @@ const MainComponent = () => {
           title: 'Home',
           drawerIcon: ({ color }) => (
             <Ionicons name="home-outline" size={20} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="CommunityStack"
+        component={CommunityStack}
+        options={{
+          headerTitle: 'Community',
+          title: 'Community',
+          drawerIcon: ({ color }) => (
+            <Ionicons name="people-outline" size={20} color={color} />
           ),
         }}
       />
