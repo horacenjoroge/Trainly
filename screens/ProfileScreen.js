@@ -147,6 +147,12 @@ export default function ProfileScreen({ navigation }) {
            title="Preferences"
            subtitle="App settings and more"
          />
+         <ProfileOption
+    icon="alert-circle-outline"
+    title="Emergency Services"
+    subtitle="Set up emergency contacts and alerts"
+    onPress={() => navigation.navigate('EmergencyServices')}
+  />
        </View>
      </ScrollView>
 
