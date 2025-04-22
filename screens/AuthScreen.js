@@ -9,27 +9,81 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../services/api';
 
-export default function AuthScreen({ navigation }) {
+export default function AuthScreen({ navigation, onAuthSuccess }) {
   const theme = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const validateInputs = () => {
+    setError('');
+    
+    if (!email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+    
+    if (!password.trim()) {
+      setError('Password is required');
+      return false;
+    }
+    
+    if (!isLogin && !name.trim()) {
+      setError('Name is required');
+      return false;
+    }
+    
+    // Simple email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+    
+    // Password validation
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return false;
+    }
+    
+    return true;
+  };
 
   const handleAuth = async () => {
+    if (!validateInputs()) return;
+    
+    setLoading(true);
+    
     try {
-      const userData = { name, email };
-      await AsyncStorage.setItem('userData', JSON.stringify(userData));
-      navigation.replace('Main');
+      if (isLogin) {
+        // Login
+        await authService.login({ email, password });
+      } else {
+        // Register
+        await authService.register({ name, email, password });
+      }
+      
+      // Call the callback to notify App.js that auth state changed
+      if (onAuthSuccess) {
+        onAuthSuccess();
+      }
     } catch (error) {
-      console.error('Storage error:', error);
+      console.error('Auth error:', error.response?.data?.message || error.message);
+      setError(error.response?.data?.message || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,6 +117,12 @@ export default function AuthScreen({ navigation }) {
               : 'Join us to start your fitness journey'}
           </Text>
         </View>
+
+        {error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.formContainer}>
           {!isLogin && (
@@ -131,10 +191,15 @@ export default function AuthScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.authButton, { backgroundColor: theme.colors.primary }]}
             onPress={handleAuth}
+            disabled={loading}
           >
-            <Text style={styles.authButtonText}>
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.authButtonText}>
+                {isLogin ? 'Sign In' : 'Create Account'}
+              </Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.dividerContainer}>
@@ -193,6 +258,16 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#d32f2f',
     textAlign: 'center',
   },
   formContainer: {

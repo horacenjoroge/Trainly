@@ -106,7 +106,7 @@ const HomeScreen = ({ navigation }) => {
     {
       id: '1',
       user: {
-        name: 'Horace',
+        name: 'Marion',
         avatar: require('../assets/images/run.jpg')
       },
       content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
