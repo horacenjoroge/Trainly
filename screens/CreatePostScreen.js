@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+
+// Replace with your actual backend URL
+const API_URL = 'http://192.168.100.54:3000';
 
 const theme = {
   colors: {
@@ -26,8 +30,16 @@ const CreateProgressPostScreen = ({ navigation }) => {
 
   const pickImage = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsMultipleSelection: true, quality: 0.7, base64: false });
-      if (!result.canceled) setSelectedImages(result.assets.slice(0, 4));
+      const result = await ImagePicker.launchImageLibraryAsync({ 
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+        allowsMultipleSelection: true, 
+        quality: 0.7, 
+        base64: false 
+      });
+      
+      if (!result.canceled) {
+        setSelectedImages(result.assets.slice(0, 4));
+      }
     } catch (error) {
       console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
@@ -35,37 +47,70 @@ const CreateProgressPostScreen = ({ navigation }) => {
   };
 
   const handleSubmitPost = async () => {
-    if (!postText.trim() && selectedImages.length === 0) return Alert.alert('Validation Error', 'Please add content.');
+    // Validate post content
+    if (!postText.trim() && selectedImages.length === 0) {
+      Alert.alert('Validation Error', 'Please add content to your post.');
+      return;
+    }
+
     setIsSubmitting(true);
+    
     try {
-      const postData = { id: Math.random().toString(36).substr(2, 9), userId: 'user123', text: postText.trim(), workoutDetails, images: selectedImages, timestamp: new Date().toISOString(), likes: 0, comments: 0 };
-      await savePost(postData);
+      // Get the token
+      const token = await AsyncStorage.getItem('token');
+      
+      if (!token) {
+        Alert.alert('Authentication Required', 'Please log in to create a post.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Configure headers with token
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        }
+      };
+      
+      // In a real app, you'd upload the images first and get URLs back
+      // For now, we'll just use the first image if available
+      const imageUri = selectedImages.length > 0 ? selectedImages[0].uri : null;
+      
+      // Create post data
+      const postData = {
+        content: postText.trim(),
+        image: imageUri, // In a real app, this would be the uploaded image URL
+        workoutDetails: workoutDetails.type ? {
+          type: workoutDetails.type,
+          duration: parseInt(workoutDetails.duration) || 0,
+          calories: parseInt(workoutDetails.calories) || 0
+        } : null
+      };
+      
+      console.log("Sending post data:", postData);
+      
+      // Submit post to API
+      const response = await axios.post(`${API_URL}/api/posts`, postData, config);
+      
+      console.log("Post creation response:", response.data);
+      
+      // Navigate back
       navigation.goBack();
-      Alert.alert('Success', 'Posted!');
+      
+      // Show success message
+      Alert.alert('Success', 'Your progress has been shared!');
     } catch (error) {
-      console.error('Post submission error:', error);
-      Alert.alert('Error', 'Failed to submit post.');
+      console.error('Error creating post:', error.response?.data || error.message);
+      
+      // Handle specific errors
+      if (error.response?.status === 401) {
+        Alert.alert('Session Expired', 'Please log in again.');
+      } else {
+        Alert.alert('Error', 'Failed to submit post. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const savePost = async (postData) => {
-    try {
-      const posts = await getPosts();
-      await AsyncStorage.setItem('posts', JSON.stringify([...posts, postData]));
-    } catch (error) {
-      console.error('Error saving post:', error);
-    }
-  };
-
-  const getPosts = async () => {
-    try {
-      const postsString = await AsyncStorage.getItem('posts');
-      return postsString ? JSON.parse(postsString) : [];
-    } catch (error) {
-      console.error('Error getting posts:', error);
-      return [];
     }
   };
 
@@ -77,9 +122,13 @@ const CreateProgressPostScreen = ({ navigation }) => {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Share Progress</Text>
         <TouchableOpacity onPress={handleSubmitPost} disabled={isSubmitting}>
-          <Text style={[styles.postButton, { color: isSubmitting ? theme.colors.textSecondary : theme.colors.primary }]}>
-            {isSubmitting ? 'Posting...' : 'Post'}
-          </Text>
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            <Text style={[styles.postButton, { color: theme.colors.primary }]}>
+              Post
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
       <View style={[styles.workoutDetailsContainer, { backgroundColor: theme.colors.surface }]}>
@@ -130,6 +179,9 @@ const CreateProgressPostScreen = ({ navigation }) => {
             {selectedImages.map((image, index) => (
               <TouchableOpacity key={index} onPress={() => setSelectedImages(selectedImages.filter((_, i) => i !== index))}>
                 <Image source={{ uri: image.uri }} style={styles.previewImage} />
+                <View style={styles.removeImageButton}>
+                  <Ionicons name="close-circle" size={22} color={theme.colors.primary} />
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -216,6 +268,13 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     marginRight: 10,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -5,
+    right: 5,
+    backgroundColor: 'white',
+    borderRadius: 12,
   },
 });
 
