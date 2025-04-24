@@ -15,6 +15,7 @@ import PersonalInfoScreen from '../screens/PersonalInfoScreen';
 import CreateProgressPostScreen from '../screens/CreatePostScreen';
 import CommunityFeedScreen from '../screens/CommunityFeedScreen';
 import EditStatsScreen from '../screens/EditStatsScreen';
+import CommentScreen from '../screens/CommentScreen';
 import { theme } from '../theme';
 
 const Drawer = createDrawerNavigator();
@@ -57,6 +58,17 @@ const HomeStack = () => (
       options={{ 
         title: 'Edit Progress',
         presentation: 'modal'
+      }}
+    />
+    <Stack.Screen 
+      name="Comments" 
+      component={CommentScreen}
+      options={{
+        title: 'Comments',
+        presentation: 'modal',
+        cardStyle: { backgroundColor: 'transparent' },
+        animationEnabled: true,
+        headerShown: false
       }}
     />
   </Stack.Navigator>
