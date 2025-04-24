@@ -14,6 +14,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import PersonalInfoScreen from '../screens/PersonalInfoScreen';
 import CreateProgressPostScreen from '../screens/CreatePostScreen';
 import CommunityFeedScreen from '../screens/CommunityFeedScreen';
+import EditStatsScreen from '../screens/EditStatsScreen';
 import { theme } from '../theme';
 
 const Drawer = createDrawerNavigator();
@@ -47,6 +48,14 @@ const HomeStack = () => (
       component={CreateProgressPostScreen}
       options={{ 
         title: 'Share Progress',
+        presentation: 'modal'
+      }}
+    />
+    <Stack.Screen 
+      name="EditStats" 
+      component={EditStatsScreen}
+      options={{ 
+        title: 'Edit Progress',
         presentation: 'modal'
       }}
     />
