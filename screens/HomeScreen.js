@@ -31,12 +31,20 @@ const colors = {
   accent: '#4A90E2',
 };
 
-// Post Component
-const PostCard = ({ post, onLike }) => {
+// PostCard component for your HomeScreen
+const PostCard = ({ post, onLike, navigation }) => {
   const handleLike = async () => {
     if (onLike) {
       onLike(post.id);
     }
+  };
+
+  const handleComment = () => {
+    navigation.navigate('Comments', {
+      postId: post.id,
+      postContent: post.content,
+      postUser: post.user
+    });
   };
 
   // Format the date for display
@@ -61,7 +69,7 @@ const PostCard = ({ post, onLike }) => {
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
         <Image 
-          source={post.user.avatar ? { uri: post.user.avatar } : require('../assets/images/run.jpg')} 
+          source={post.user.avatar ? { uri: post.user.avatar } : require('../assets/images/bike.jpg')} 
           style={styles.userAvatar} 
         />
         <View style={styles.userInfo}>
@@ -73,6 +81,32 @@ const PostCard = ({ post, onLike }) => {
       </View>
       
       {post.content && <Text style={styles.postContent}>{post.content}</Text>}
+      
+      {/* Workout details section (if available) */}
+      {post.workoutDetails && post.workoutDetails.type && (
+        <View style={styles.workoutDetailsContainer}>
+          <View style={styles.workoutTypeContainer}>
+            <Ionicons name="fitness-outline" size={16} color={colors.primary} />
+            <Text style={styles.workoutType}>{post.workoutDetails.type}</Text>
+          </View>
+          
+          <View style={styles.workoutStatsContainer}>
+            {post.workoutDetails.duration > 0 && (
+              <View style={styles.workoutStat}>
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.workoutStatText}>{post.workoutDetails.duration} min</Text>
+              </View>
+            )}
+            
+            {post.workoutDetails.calories > 0 && (
+              <View style={styles.workoutStat}>
+                <Ionicons name="flame-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.workoutStatText}>{post.workoutDetails.calories} cal</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
       
       {post.image && (
         <Image 
@@ -94,7 +128,10 @@ const PostCard = ({ post, onLike }) => {
           />
           <Text style={styles.actionText}>{post.likes} Likes</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={handleComment}
+        >
           <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
           <Text style={styles.actionText}>{post.comments} Comments</Text>
         </TouchableOpacity>
@@ -102,7 +139,6 @@ const PostCard = ({ post, onLike }) => {
     </View>
   );
 };
-
 // Personal Progress Card
 const ProgressCard = ({ stats, onEdit }) => {
   return (
@@ -403,28 +439,29 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.communitySection}>
           <Text style={styles.communitySectionTitle}>Community Feed</Text>
           {posts.length > 0 ? (
-            <FlatList 
-              data={posts}
-              renderItem={({ item }) => (
-                <PostCard 
-                  post={item}
-                  onLike={handleLikePost}
-                />
-              )}
-              keyExtractor={item => item.id}
-              scrollEnabled={false}
-            />
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No posts yet. Be the first to share!</Text>
-              <TouchableOpacity 
-                style={styles.emptyStateButton}
-                onPress={() => navigation.navigate('CreatePost')}
-              >
-                <Text style={styles.emptyStateButtonText}>Create Post</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+  <FlatList 
+    data={posts}
+    renderItem={({ item }) => (
+      <PostCard 
+        post={item}
+        onLike={handleLikePost}
+        navigation={navigation}  // Pass navigation prop
+      />
+    )}
+    keyExtractor={item => item.id}
+    scrollEnabled={false}
+  />
+) : (
+  <View style={styles.emptyState}>
+    <Text style={styles.emptyStateText}>No posts yet. Be the first to share!</Text>
+    <TouchableOpacity 
+      style={styles.emptyStateButton}
+      onPress={() => navigation.navigate('CreatePost')}
+    >
+      <Text style={styles.emptyStateButtonText}>Create Post</Text>
+    </TouchableOpacity>
+  </View>
+)}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -600,6 +637,38 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: 'bold',
   },
+  // Additional styles to add to your HomeScreen styles
+workoutDetailsContainer: {
+  backgroundColor: 'rgba(33, 150, 243, 0.1)',
+  padding: 12,
+  borderRadius: 8,
+  marginVertical: 8,
+},
+workoutTypeContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 6,
+},
+workoutType: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: colors.primary,
+  marginLeft: 6,
+},
+workoutStatsContainer: {
+  flexDirection: 'row',
+  justifyContent: 'flex-start',
+},
+workoutStat: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginRight: 16,
+},
+workoutStatText: {
+  fontSize: 12,
+  color: colors.textSecondary,
+  marginLeft: 4,
+},
 });
 
 export default HomeScreen;
