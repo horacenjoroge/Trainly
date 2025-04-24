@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// HomeScreen.js
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,8 +10,16 @@ import {
   SafeAreaView,
   StatusBar,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Replace with your actual backend URL
+const API_URL = 'http://192.168.100.54:3000';
 
 // Color Palette
 const colors = {
@@ -23,27 +32,51 @@ const colors = {
 };
 
 // Post Component
-const PostCard = ({ user, content, image, likes, comments }) => {
-  const [liked, setLiked] = useState(false);
+const PostCard = ({ post, onLike }) => {
+  const handleLike = async () => {
+    if (onLike) {
+      onLike(post.id);
+    }
+  };
+
+  // Format the date for display
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else {
+      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    }
+  };
 
   return (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
         <Image 
-          source={user.avatar} 
+          source={post.user.avatar ? { uri: post.user.avatar } : require('../assets/images/run.jpg')} 
           style={styles.userAvatar} 
         />
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.postTime}>2 hours ago</Text>
+          <Text style={styles.userName}>{post.user.name}</Text>
+          <Text style={styles.postTime}>
+            {post.createdAt ? formatDate(post.createdAt) : '2 hours ago'}
+          </Text>
         </View>
       </View>
       
-      {content && <Text style={styles.postContent}>{content}</Text>}
+      {post.content && <Text style={styles.postContent}>{post.content}</Text>}
       
-      {image && (
+      {post.image && (
         <Image 
-          source={image} 
+          source={typeof post.image === 'string' ? { uri: post.image } : post.image} 
           style={styles.postImage} 
           resizeMode="cover" 
         />
@@ -52,18 +85,18 @@ const PostCard = ({ user, content, image, likes, comments }) => {
       <View style={styles.postActions}>
         <TouchableOpacity 
           style={styles.actionButton}
-          onPress={() => setLiked(!liked)}
+          onPress={handleLike}
         >
           <Ionicons 
-            name={liked ? "heart" : "heart-outline"} 
+            name={post.isLiked ? "heart" : "heart-outline"} 
             size={20} 
-            color={liked ? colors.primary : colors.textSecondary} 
+            color={post.isLiked ? colors.primary : colors.textSecondary} 
           />
-          <Text style={styles.actionText}>{likes} Likes</Text>
+          <Text style={styles.actionText}>{post.likes} Likes</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
-          <Text style={styles.actionText}>{comments} Comments</Text>
+          <Text style={styles.actionText}>{post.comments} Comments</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -71,29 +104,29 @@ const PostCard = ({ user, content, image, likes, comments }) => {
 };
 
 // Personal Progress Card
-const ProgressCard = ({ workouts, hours, calories }) => {
+const ProgressCard = ({ stats, onEdit }) => {
   return (
     <View style={styles.progressContainer}>
       <View style={styles.progressHeader}>
         <Text style={styles.progressTitle}>My Progress</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={onEdit}>
           <Text style={styles.progressEdit}>Edit</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.progressStats}>
         <View style={styles.progressStatItem}>
           <Ionicons name="trophy-outline" size={24} color={colors.primary} />
-          <Text style={styles.progressStatValue}>{workouts}</Text>
+          <Text style={styles.progressStatValue}>{stats.workouts}</Text>
           <Text style={styles.progressStatLabel}>Workouts</Text>
         </View>
         <View style={styles.progressStatItem}>
           <Ionicons name="time-outline" size={24} color={colors.primary} />
-          <Text style={styles.progressStatValue}>{hours}</Text>
+          <Text style={styles.progressStatValue}>{stats.hours}</Text>
           <Text style={styles.progressStatLabel}>Hours</Text>
         </View>
         <View style={styles.progressStatItem}>
           <Ionicons name="flame-outline" size={24} color={colors.primary} />
-          <Text style={styles.progressStatValue}>{calories}</Text>
+          <Text style={styles.progressStatValue}>{stats.calories}</Text>
           <Text style={styles.progressStatLabel}>Calories</Text>
         </View>
       </View>
@@ -102,30 +135,207 @@ const ProgressCard = ({ workouts, hours, calories }) => {
 };
 
 const HomeScreen = ({ navigation }) => {
-  const [posts, setPosts] = useState([
-    {
-      id: '1',
-      user: {
-        name: 'Marion',
-        avatar: require('../assets/images/run.jpg')
-      },
-      content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
-      image: require('../assets/images/run.jpg'),
-      likes: 156,
-      comments: 24
-    },
-    {
-      id: '2',
-      user: {
-        name: 'Mishael',
-        avatar: require('../assets/images/bike.jpg')
-      },
-      content: 'Daily workout done! 💪 Pushing my limits every day.',
-      image: require('../assets/images/bike.jpg'),
-      likes: 87,
-      comments: 12
+  const [posts, setPosts] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch user profile and posts
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Get JWT token from storage
+      const token = await AsyncStorage.getItem('token');
+      
+      if (!token) {
+        // If no data from API yet, use sample data
+        setUserProfile({
+          name: 'Horace',
+          stats: { workouts: 12, hours: 5.2, calories: 324 }
+        });
+        
+        // Use your existing sample data
+        setPosts([
+          {
+            id: '1',
+            user: {
+              name: 'Marion',
+              avatar: require('../assets/images/run.jpg')
+            },
+            content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
+            image: require('../assets/images/run.jpg'),
+            likes: 156,
+            comments: 24,
+            isLiked: false
+          },
+          {
+            id: '2',
+            user: {
+              name: 'Mishael',
+              avatar: require('../assets/images/bike.jpg')
+            },
+            content: 'Daily workout done! 💪 Pushing my limits every day.',
+            image: require('../assets/images/bike.jpg'),
+            likes: 87,
+            comments: 12,
+            isLiked: false
+          }
+        ]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Configure headers with token
+      const config = {
+        headers: {
+          'x-auth-token': token
+        }
+      };
+
+      // Fetch user profile from API
+      try {
+        const profileRes = await axios.get(`${API_URL}/api/users/profile`, config);
+        setUserProfile(profileRes.data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        // Fallback to sample data
+        setUserProfile({
+          name: 'Horace',
+          stats: { workouts: 12, hours: 5.2, calories: 324 }
+        });
+      }
+
+      // Fetch posts from API
+      try {
+        const postsRes = await axios.get(`${API_URL}/api/posts`, config);
+        setPosts(postsRes.data);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        // Fallback to sample data
+        setPosts([
+          {
+            id: '1',
+            user: {
+              name: 'Marion',
+              avatar: require('../assets/images/run.jpg')
+            },
+            content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
+            image: require('../assets/images/run.jpg'),
+            likes: 156,
+            comments: 24,
+            isLiked: false
+          },
+          {
+            id: '2',
+            user: {
+              name: 'Mishael',
+              avatar: require('../assets/images/bike.jpg')
+            },
+            content: 'Daily workout done! 💪 Pushing my limits every day.',
+            image: require('../assets/images/bike.jpg'),
+            likes: 87,
+            comments: 12,
+            isLiked: false
+          }
+        ]);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  ]);
+  };
+
+  // Handle pull-to-refresh
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
+  // Handle like/unlike post
+  const handleLikePost = async (postId) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      
+      if (!token) {
+        // Just update UI locally if we don't have a token yet
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post.id === postId 
+              ? { ...post, likes: post.isLiked ? post.likes - 1 : post.likes + 1, isLiked: !post.isLiked }
+              : post
+          )
+        );
+        return;
+      }
+
+      const config = {
+        headers: {
+          'x-auth-token': token
+        }
+      };
+
+      // Call API to like/unlike post
+      try {
+        const res = await axios.put(`${API_URL}/api/posts/${postId}/like`, {}, config);
+        
+        // Update posts state
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post.id === postId 
+              ? { ...post, likes: res.data.likes, isLiked: res.data.isLiked }
+              : post
+          )
+        );
+      } catch (error) {
+        console.error('Error liking post:', error);
+        // Fall back to local update
+        setPosts(prevPosts => 
+          prevPosts.map(post => 
+            post.id === postId 
+              ? { ...post, likes: post.isLiked ? post.likes - 1 : post.likes + 1, isLiked: !post.isLiked }
+              : post
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error handling like:', error);
+    }
+  };
+
+  // Handle edit profile stats
+  const handleEditStats = () => {
+    // Navigate to EditStatsScreen with current stats
+    navigation.navigate('EditStats', {
+      stats: userProfile?.stats || { workouts: 12, hours: 5.2, calories: 324 },
+      onUpdate: fetchData // Pass callback to refresh data when updated
+    });
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Add a listener for when the screen comes into focus to refresh data
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchData();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  if (loading && !refreshing) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -137,7 +347,7 @@ const HomeScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.greeting}>Welcome back, Horace!</Text>
+          <Text style={styles.greeting}>Welcome back, {userProfile?.name || 'Horace'}!</Text>
           <View style={styles.headerIcons}>
             <TouchableOpacity 
               style={styles.headerIconButton}
@@ -155,12 +365,20 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView>
+      <ScrollView
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={[colors.primary]} 
+            tintColor={colors.primary}
+          />
+        }
+      >
         {/* Progress Card */}
         <ProgressCard 
-          workouts={12} 
-          hours={5.2} 
-          calories={324} 
+          stats={userProfile?.stats || { workouts: 12, hours: 5.2, calories: 324 }}
+          onEdit={handleEditStats}
         />
 
         {/* Quick Actions */}
@@ -184,20 +402,29 @@ const HomeScreen = ({ navigation }) => {
         {/* Community Posts */}
         <View style={styles.communitySection}>
           <Text style={styles.communitySectionTitle}>Community Feed</Text>
-          <FlatList 
-            data={posts}
-            renderItem={({ item }) => (
-              <PostCard 
-                user={item.user}
-                content={item.content}
-                image={item.image}
-                likes={item.likes}
-                comments={item.comments}
-              />
-            )}
-            keyExtractor={item => item.id}
-            horizontal={false}
-          />
+          {posts.length > 0 ? (
+            <FlatList 
+              data={posts}
+              renderItem={({ item }) => (
+                <PostCard 
+                  post={item}
+                  onLike={handleLikePost}
+                />
+              )}
+              keyExtractor={item => item.id}
+              scrollEnabled={false}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No posts yet. Be the first to share!</Text>
+              <TouchableOpacity 
+                style={styles.emptyStateButton}
+                onPress={() => navigation.navigate('CreatePost')}
+              >
+                <Text style={styles.emptyStateButtonText}>Create Post</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -208,6 +435,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     backgroundColor: colors.primary,
@@ -348,6 +579,26 @@ const styles = StyleSheet.create({
   actionText: {
     color: colors.textSecondary,
     marginLeft: 5,
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  emptyStateButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
+    color: colors.text,
+    fontWeight: 'bold',
   },
 });
 
