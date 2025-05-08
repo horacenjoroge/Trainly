@@ -23,7 +23,7 @@ function SafeImage(props) {
     // Handle null URIs
     if (safeProps.source.uri === 'null' || safeProps.source.uri === 'undefined') {
       console.warn('Fixing null/undefined URI');
-      safeProps.source = require('./assets/placeholder.png'); // Add a placeholder image to your assets folder
+      safeProps.source = require('./assets/images/trail.jpg'); // Add a placeholder image to your assets folder
     }
   }
   
