@@ -16,7 +16,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Replace with your actual backend URL
-const API_URL = 'http://192.168.100.54:3000';
+const API_URL = 'http://192.168.100.88:3000';
 
 // Color Palette
 const colors = {
