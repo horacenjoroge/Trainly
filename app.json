@@ -2,8 +2,11 @@
   "expo": {
     "name": "Trainly",
     "slug": "Trainly",
+    "sdkVersion": "53.0.0",
     "version": "1.0.0",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "plugins": [
       [
         "expo-image-picker",
@@ -30,7 +33,9 @@
         {
           "motionPermission": "Allow Trainly to access device motion for fall detection"
         }
-      ]
+      ],
+      "expo-mail-composer",
+      "expo-secure-store"
     ],
     "android": {
       "package": "com.trainly.app",
@@ -39,7 +44,7 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "ACCESS_COARSE_LOCATION", 
+        "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "SEND_SMS",
