@@ -1,4 +1,5 @@
 // App.js
+import './global.js'; // This must be the first import
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -9,6 +10,12 @@ import MainComponent from './screens/MainComponent';
 import AuthScreen from './screens/AuthScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from './theme.js';
+
+// Add a safer image helper for your whole app
+global.getSafeImageUri = (uri) => {
+  if (uri === null || uri === undefined) return '';
+  return String(uri);
+};
 
 const RootStack = createStackNavigator();
 
