@@ -8,13 +8,17 @@ import {
   Image,
   SafeAreaView,
   Modal,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userService } from '../services/api';
 
-const PROFILE_DATA_KEY = '@profile_data';
+const PROFILE_IMAGE_KEY = '@profile_image';
+const API_URL = 'http://192.168.100.88:3000/api'; // Same as in your api.js
 
 const ProfileOption = ({ icon, title, subtitle, onPress }) => {
   const theme = useTheme();
@@ -41,26 +45,106 @@ export default function ProfileScreen({ navigation }) {
   const theme = useTheme();
   const [profileImage, setProfileImage] = useState('https://via.placeholder.com/150');
   const [modalVisible, setModalVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState({
-    name: 'Horace',
+    name: '',
     bio: 'Fitness enthusiast | Runner',
-    workouts: '156',
-    following: '32',
-    followers: '48'
+    stats: {
+      workouts: 0,
+      hours: 0,
+      calories: 0
+    }
   });
+  
+  // Default achievements (we'll replace with API data if available)
+  const [achievements] = useState(['🏃‍♂️', '🏋️‍♂️', '🎯', '🔥', '⚡️']);
 
   useEffect(() => {
     loadProfileData();
+    loadCachedImage();
   }, []);
+
+  const loadCachedImage = async () => {
+    try {
+      const cachedImage = await AsyncStorage.getItem(PROFILE_IMAGE_KEY);
+      if (cachedImage) {
+        setProfileImage(cachedImage);
+      }
+    } catch (error) {
+      console.error('Error loading cached image:', error);
+    }
+  };
 
   const loadProfileData = async () => {
     try {
-      const savedData = await AsyncStorage.getItem(PROFILE_DATA_KEY);
-      if (savedData) {
-        setUserData(JSON.parse(savedData));
+      setLoading(true);
+      
+      // Get profile data from backend using your existing service
+      const profileData = await userService.getUserProfile();
+      
+      // Get user data from AsyncStorage as fallback
+      const cachedUserData = await AsyncStorage.getItem('userData');
+      const userData = cachedUserData ? JSON.parse(cachedUserData) : {};
+      
+      // Set user data combining API response and cached data
+      setUserData({
+        name: profileData.name || userData.name || 'User',
+        bio: profileData.bio || 'Fitness enthusiast | Runner',
+        stats: {
+          workouts: profileData.stats?.workouts || 0,
+          hours: profileData.stats?.hours || 0,
+          calories: profileData.stats?.calories || 0
+        }
+      });
+      
+      // Set profile image if available from backend
+      if (profileData.avatar) {
+        const imageUrl = profileData.avatar.startsWith('http') 
+          ? profileData.avatar 
+          : `${API_URL}${profileData.avatar}`;
+        
+        setProfileImage(imageUrl);
+        await AsyncStorage.setItem(PROFILE_IMAGE_KEY, imageUrl);
       }
+      
     } catch (error) {
-      console.error('Error loading profile data:', error);
+      console.error('Error loading profile:', error);
+      
+      // Try to load cached data as fallback
+      try {
+        const cachedUserData = await AsyncStorage.getItem('userData');
+        if (cachedUserData) {
+          const userData = JSON.parse(cachedUserData);
+          setUserData({
+            name: userData.name || 'User',
+            bio: userData.bio || 'Fitness enthusiast | Runner',
+            stats: userData.stats || { workouts: 0, hours: 0, calories: 0 }
+          });
+        }
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+      }
+      
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProfileStats = async (workouts) => {
+    try {
+      // Example: Update workout count after completing a workout
+      await userService.updateUserStats({ workouts });
+      
+      // Update local state
+      setUserData(prevData => ({
+        ...prevData,
+        stats: {
+          ...prevData.stats,
+          workouts
+        }
+      }));
+    } catch (error) {
+      console.error('Error updating stats:', error);
     }
   };
 
@@ -74,7 +158,11 @@ export default function ProfileScreen({ navigation }) {
       }
 
       if (permissionResult.status !== 'granted') {
-        alert(`Please grant ${sourceType} permissions to continue`);
+        Alert.alert(
+          'Permission Required',
+          `Please grant ${sourceType} permissions to continue`,
+          [{ text: 'OK' }]
+        );
         return;
       }
 
@@ -92,17 +180,47 @@ export default function ProfileScreen({ navigation }) {
           });
 
       if (!result.canceled) {
-        setProfileImage(result.assets[0].uri);
-        // Save profile image URI to AsyncStorage
-        await AsyncStorage.setItem('@profile_image', result.assets[0].uri);
+        const selectedImageUri = result.assets[0].uri;
+        
+        // Show loading state
+        setLoading(true);
+        
+        try {
+          // Update profile with new avatar
+          await userService.updateUserProfile({ avatar: selectedImageUri });
+          
+          // Update UI
+          setProfileImage(selectedImageUri);
+          await AsyncStorage.setItem(PROFILE_IMAGE_KEY, selectedImageUri);
+          
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          
+          // Use local image as fallback even if server update fails
+          setProfileImage(selectedImageUri);
+          await AsyncStorage.setItem(PROFILE_IMAGE_KEY, selectedImageUri);
+        } finally {
+          setLoading(false);
+        }
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      alert('Error selecting image');
+      Alert.alert('Error', 'Error selecting or processing image');
     } finally {
       setModalVisible(false);
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={{ marginTop: 10, color: theme.colors.text }}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -110,8 +228,12 @@ export default function ProfileScreen({ navigation }) {
         <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.profileImageContainer}>
             <Image
-              source={{ uri: profileImage }}
+              source={{ uri: global.getSafeImageUri(profileImage) }}
               style={styles.profileImage}
+              onError={() => {
+                // Fallback to placeholder on error
+                setProfileImage('https://via.placeholder.com/150');
+              }}
             />
             <TouchableOpacity 
               style={[styles.editButton, { backgroundColor: theme.colors.primary }]}
@@ -128,23 +250,29 @@ export default function ProfileScreen({ navigation }) {
 
         <View style={[styles.statsRow, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.stat}>
-            <Text style={[styles.statNumber, { color: theme.colors.text }]}>{userData.workouts}</Text>
+            <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+              {userData.stats.workouts}
+            </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Workouts</Text>
           </View>
           <View style={[styles.stat, styles.statBorder, { borderColor: theme.colors.border }]}>
-            <Text style={[styles.statNumber, { color: theme.colors.text }]}>{userData.following}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Following</Text>
+            <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+              {userData.stats.hours || 0}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Hours</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={[styles.statNumber, { color: theme.colors.text }]}>{userData.followers}</Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Followers</Text>
+            <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+              {userData.stats.calories || 0}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Calories</Text>
           </View>
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Achievements</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {['🏃‍♂️', '🏋️‍♂️', '🎯', '🔥', '⚡️'].map((emoji, index) => (
+            {achievements.map((emoji, index) => (
               <View key={index} style={[styles.achievement, { backgroundColor: theme.colors.border }]}>
                 <Text style={styles.achievementEmoji}>{emoji}</Text>
               </View>
@@ -225,6 +353,7 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -234,6 +363,11 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileImageContainer: {
     position: 'relative',

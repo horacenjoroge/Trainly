@@ -67,6 +67,7 @@ export const authService = {
     return !!token;
   }
 };
+
 // Posts services
 export const postService = {
   // Get all posts
@@ -117,6 +118,65 @@ export const userService = {
   // Update user profile
   updateUserProfile: async (profileData) => {
     const response = await apiClient.put('/api/users/profile', profileData);
+    return response.data;
+  },
+  
+  // Upload profile image
+  uploadProfileImage: async (imageUri) => {
+    // Create form data for image upload
+    const formData = new FormData();
+    const filename = imageUri.split('/').pop();
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    
+    formData.append('image', {
+      uri: imageUri,
+      name: filename,
+      type
+    });
+    
+    const response = await apiClient.post('/api/users/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    return response.data;
+  },
+  
+  // Get user achievements
+  getUserAchievements: async () => {
+    const response = await apiClient.get('/api/users/achievements');
+    return response.data;
+  },
+  
+  // Add new achievement
+  addAchievement: async (achievementData) => {
+    const response = await apiClient.post('/api/users/achievements', achievementData);
+    return response.data;
+  },
+  
+  // Get user followers
+  getFollowers: async () => {
+    const response = await apiClient.get('/api/users/followers');
+    return response.data;
+  },
+  
+  // Get user following
+  getFollowing: async () => {
+    const response = await apiClient.get('/api/users/following');
+    return response.data;
+  },
+  
+  // Follow a user
+  followUser: async (userId) => {
+    const response = await apiClient.post(`/api/users/follow/${userId}`);
+    return response.data;
+  },
+  
+  // Unfollow a user
+  unfollowUser: async (userId) => {
+    const response = await apiClient.delete(`/api/users/follow/${userId}`);
     return response.data;
   }
 };
