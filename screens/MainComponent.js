@@ -16,6 +16,10 @@ import CreateProgressPostScreen from '../screens/CreatePostScreen';
 import CommunityFeedScreen from '../screens/CommunityFeedScreen';
 import EditStatsScreen from '../screens/EditStatsScreen';
 import CommentScreen from '../screens/CommentScreen';
+import FollowersList from '../screens/followersListScreen';
+import FollowingList from '../screens/followingListScreen';
+import UserProfile from '../screens/userProfileScreen';
+import FindFriends from '../screens/FindFriendsScreen';
 import { theme } from '../theme';
 
 const Drawer = createDrawerNavigator();
@@ -71,6 +75,14 @@ const HomeStack = () => (
         headerShown: false
       }}
     />
+    <Stack.Screen 
+      name="UserProfile" 
+      component={UserProfile}
+      options={({ route }) => ({ 
+        title: 'User Profile',
+        headerShown: false,
+      })}
+    />
   </Stack.Navigator>
 );
 
@@ -95,6 +107,25 @@ const CommunityStack = () => (
       options={{ 
         title: 'Share Progress',
         presentation: 'modal'
+      }}
+    />
+    <Stack.Screen 
+      name="UserProfile" 
+      component={UserProfile}
+      options={({ route }) => ({ 
+        title: 'User Profile',
+        headerShown: false,
+      })}
+    />
+    <Stack.Screen 
+      name="Comments" 
+      component={CommentScreen}
+      options={{
+        title: 'Comments',
+        presentation: 'modal',
+        cardStyle: { backgroundColor: 'transparent' },
+        animationEnabled: true,
+        headerShown: false
       }}
     />
   </Stack.Navigator>
@@ -130,14 +161,57 @@ const ProfileStack = () => (
         backgroundColor: theme.colors.surface,
       },
       headerTintColor: theme.colors.text,
-      cardStyle: { backgroundColor: theme.colors.background }
+      cardStyle: { backgroundColor: theme.colors.background },
+      headerShown: false,
     }}
   >
-    <Stack.Screen name="Profile" component={ProfileScreen} />
+    <Stack.Screen name="ProfileMain" component={ProfileScreen} />
     <Stack.Screen 
       name="PersonalInfo" 
       component={PersonalInfoScreen}
-      options={{ title: 'Personal Information' }}
+      options={{ 
+        title: 'Personal Information',
+        headerShown: true
+      }}
+    />
+    <Stack.Screen 
+      name="FollowersList" 
+      component={FollowersList}
+    />
+    <Stack.Screen 
+      name="FollowingList" 
+      component={FollowingList}
+    />
+    <Stack.Screen 
+      name="UserProfile" 
+      component={UserProfile}
+      options={({ route }) => ({ 
+        title: 'User Profile'
+      })}
+    />
+    <Stack.Screen 
+      name="FindFriends" 
+      component={FindFriends}
+      options={{ 
+        title: 'Find Friends',
+        headerShown: true
+      }}
+    />
+    <Stack.Screen 
+      name="UserFollowers" 
+      component={FollowersList}
+      options={({ route }) => ({ 
+        title: 'Followers',
+        headerShown: true
+      })}
+    />
+    <Stack.Screen 
+      name="UserFollowing" 
+      component={FollowingList}
+      options={({ route }) => ({ 
+        title: 'Following',
+        headerShown: true
+      })}
     />
   </Stack.Navigator>
 );

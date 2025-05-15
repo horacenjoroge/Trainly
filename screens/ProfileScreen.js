@@ -53,7 +53,9 @@ export default function ProfileScreen({ navigation }) {
       workouts: 0,
       hours: 0,
       calories: 0
-    }
+    },
+    followers: 0,
+    following: 0
   });
   
   // Default achievements (we'll replace with API data if available)
@@ -82,6 +84,20 @@ export default function ProfileScreen({ navigation }) {
       // Get profile data from backend using your existing service
       const profileData = await userService.getUserProfile();
       
+      // Get followers and following counts
+      let followersCount = 0;
+      let followingCount = 0;
+      
+      try {
+        const followersData = await userService.getFollowers();
+        const followingData = await userService.getFollowing();
+        
+        followersCount = followersData?.length || 0;
+        followingCount = followingData?.length || 0;
+      } catch (error) {
+        console.error('Error fetching followers/following:', error);
+      }
+      
       // Get user data from AsyncStorage as fallback
       const cachedUserData = await AsyncStorage.getItem('userData');
       const userData = cachedUserData ? JSON.parse(cachedUserData) : {};
@@ -94,7 +110,9 @@ export default function ProfileScreen({ navigation }) {
           workouts: profileData.stats?.workouts || 0,
           hours: profileData.stats?.hours || 0,
           calories: profileData.stats?.calories || 0
-        }
+        },
+        followers: followersCount,
+        following: followingCount
       });
       
       // Set profile image if available from backend
@@ -118,7 +136,9 @@ export default function ProfileScreen({ navigation }) {
           setUserData({
             name: userData.name || 'User',
             bio: userData.bio || 'Fitness enthusiast | Runner',
-            stats: userData.stats || { workouts: 0, hours: 0, calories: 0 }
+            stats: userData.stats || { workouts: 0, hours: 0, calories: 0 },
+            followers: userData.followers || 0,
+            following: userData.following || 0
           });
         }
       } catch (fallbackError) {
@@ -249,24 +269,44 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         <View style={[styles.statsRow, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.stat}>
+          <TouchableOpacity 
+            style={styles.stat}
+            onPress={() => {/* Navigate to workouts history */}}
+          >
             <Text style={[styles.statNumber, { color: theme.colors.text }]}>
               {userData.stats.workouts}
             </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Workouts</Text>
-          </View>
-          <View style={[styles.stat, styles.statBorder, { borderColor: theme.colors.border }]}>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.stat, styles.statBorder, { borderColor: theme.colors.border }]}
+            onPress={() => navigation.navigate('FollowersList')}
+          >
             <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-              {userData.stats.hours || 0}
+              {userData.followers}
             </Text>
-            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Hours</Text>
-          </View>
-          <View style={styles.stat}>
+            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Followers</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.stat, styles.statBorder, { borderColor: theme.colors.border }]}
+            onPress={() => navigation.navigate('FollowingList')}
+          >
+            <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+              {userData.following}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Following</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.stat}
+          >
             <Text style={[styles.statNumber, { color: theme.colors.text }]}>
               {userData.stats.calories || 0}
             </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Calories</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
@@ -310,6 +350,21 @@ export default function ProfileScreen({ navigation }) {
             onPress={() => navigation.navigate('EmergencyStack', { 
               screen: 'EmergencyServices' 
             })}
+          />
+        </View>
+
+        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Social</Text>
+          <ProfileOption
+            icon="people-outline"
+            title="Find Friends"
+            subtitle="Connect with other fitness enthusiasts"
+            onPress={() => navigation.navigate('FindFriends')}
+          />
+          <ProfileOption
+            icon="share-social-outline"
+            title="Share Profile"
+            subtitle="Let others see your progress"
           />
         </View>
       </ScrollView>
