@@ -1,5 +1,5 @@
-// AuthScreen.js
-import React, { useState } from 'react';
+// AuthScreen.js - simplified version that doesn't attempt token validation
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,27 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Check for existing token on component mount
+  useEffect(() => {
+    const checkExistingToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (token) {
+          console.log('Found existing token, proceeding to main app');
+          if (onAuthSuccess) {
+            onAuthSuccess();
+          }
+        } else {
+          console.log('No token found, user needs to log in');
+        }
+      } catch (error) {
+        console.error('Error checking token:', error);
+      }
+    };
+    
+    checkExistingToken();
+  }, []);
 
   const validateInputs = () => {
     setError('');
@@ -70,15 +91,19 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
       if (isLogin) {
         // Login
         await authService.login({ email, password });
+        console.log('Login successful');
       } else {
         // Register
         await authService.register({ name, email, password });
+        console.log('Registration successful');
       }
       
-      // Call the callback to notify App.js that auth state changed
-      if (onAuthSuccess) {
-        onAuthSuccess();
-      }
+      // Add a small delay to ensure AsyncStorage operations complete
+      setTimeout(() => {
+        if (onAuthSuccess) {
+          onAuthSuccess();
+        }
+      }, 500);
     } catch (error) {
       console.error('Auth error:', error.response?.data?.message || error.message);
       setError(error.response?.data?.message || 'Authentication failed. Please try again.');
