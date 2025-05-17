@@ -21,6 +21,8 @@ import FollowingList from '../screens/followingListScreen';
 import UserProfile from '../screens/userProfileScreen';
 import FindFriends from '../screens/FindFriendsScreen';
 import { theme } from '../theme';
+// Import authService
+import { authService } from '../services/api';
 
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
@@ -86,6 +88,7 @@ const HomeStack = () => (
   </Stack.Navigator>
 );
 
+// Rest of the stack definitions...
 const CommunityStack = () => (
   <Stack.Navigator
     screenOptions={{
@@ -252,15 +255,19 @@ const EmergencyStack = () => (
 // Empty component for logout menu item
 const EmptyComponent = () => null;
 
-const MainComponent = () => {
+const MainComponent = (props) => { // Added props parameter
   // Add logout handler
   const handleLogout = async () => {
     try {
-      // Just clear the authentication token - App.js will handle the rest
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('userData');
+      // Call the auth service logout
+      await authService.logout();
       
-      // No navigation needed here - App.js will detect token removal
+      // Call the onLogout prop passed from App.js
+      if (props && props.onLogout) {
+        props.onLogout();
+      }
+      
+      // No navigation needed here - App.js will handle the switch to Auth screen
       console.log('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
