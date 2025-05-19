@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// ProfileScreen with improvements to sync user data
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
 
 const PROFILE_IMAGE_KEY = '@profile_image';
+const USER_DATA_KEY = '@user_data';
 const API_URL = 'http://192.168.100.88:3000/api'; // Same as in your api.js
 
 const ProfileOption = ({ icon, title, subtitle, onPress }) => {
@@ -41,7 +43,7 @@ const ProfileOption = ({ icon, title, subtitle, onPress }) => {
   );
 };
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen({ navigation, route }) {
   const theme = useTheme();
   const [profileImage, setProfileImage] = useState('https://via.placeholder.com/150');
   const [modalVisible, setModalVisible] = useState(false);
@@ -61,10 +63,43 @@ export default function ProfileScreen({ navigation }) {
   // Default achievements (we'll replace with API data if available)
   const [achievements] = useState(['🏃‍♂️', '🏋️‍♂️', '🎯', '🔥', '⚡️']);
 
+  // Add a listener for focus events to refresh data
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadProfileData();
+      loadCachedImage();
+      
+      // Also check if we need to update from local storage (for name changes)
+      checkUserDataUpdates();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   useEffect(() => {
     loadProfileData();
     loadCachedImage();
   }, []);
+  
+  // Function to check if userData has been updated in AsyncStorage
+  const checkUserDataUpdates = async () => {
+    try {
+      const savedData = await AsyncStorage.getItem(USER_DATA_KEY);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        
+        // Update the user data if name has changed in local storage
+        if (parsedData.fullName && parsedData.fullName !== userData.name) {
+          setUserData(prevData => ({
+            ...prevData,
+            name: parsedData.fullName
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user data updates:', error);
+    }
+  };
 
   const loadCachedImage = async () => {
     try {
@@ -98,22 +133,53 @@ export default function ProfileScreen({ navigation }) {
         console.error('Error fetching followers/following:', error);
       }
       
-      // Get user data from AsyncStorage as fallback
-      const cachedUserData = await AsyncStorage.getItem('userData');
-      const userData = cachedUserData ? JSON.parse(cachedUserData) : {};
-      
-      // Set user data combining API response and cached data
-      setUserData({
-        name: profileData.name || userData.name || 'User',
-        bio: profileData.bio || 'Fitness enthusiast | Runner',
-        stats: {
-          workouts: profileData.stats?.workouts || 0,
-          hours: profileData.stats?.hours || 0,
-          calories: profileData.stats?.calories || 0
-        },
-        followers: followersCount,
-        following: followingCount
-      });
+      // Get user data from AsyncStorage for any fields not in API
+      try {
+        const cachedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
+        if (cachedUserData) {
+          const parsedData = JSON.parse(cachedUserData);
+          
+          // Set user data combining API response and cached data
+          // Use cached fullName if available (from PersonalInfoScreen)
+          setUserData({
+            name: parsedData.fullName || profileData.name || 'User',
+            bio: profileData.bio || 'Fitness enthusiast | Runner',
+            stats: {
+              workouts: profileData.stats?.workouts || 0,
+              hours: profileData.stats?.hours || 0,
+              calories: profileData.stats?.calories || 0
+            },
+            followers: followersCount,
+            following: followingCount
+          });
+        } else {
+          // No cached data, use API data only
+          setUserData({
+            name: profileData.name || 'User',
+            bio: profileData.bio || 'Fitness enthusiast | Runner',
+            stats: {
+              workouts: profileData.stats?.workouts || 0,
+              hours: profileData.stats?.hours || 0,
+              calories: profileData.stats?.calories || 0
+            },
+            followers: followersCount,
+            following: followingCount
+          });
+        }
+      } catch (error) {
+        // Fallback to API data only
+        setUserData({
+          name: profileData.name || 'User',
+          bio: profileData.bio || 'Fitness enthusiast | Runner',
+          stats: {
+            workouts: profileData.stats?.workouts || 0,
+            hours: profileData.stats?.hours || 0,
+            calories: profileData.stats?.calories || 0
+          },
+          followers: followersCount,
+          following: followingCount
+        });
+      }
       
       // Set profile image if available from backend
       if (profileData.avatar) {
@@ -130,11 +196,11 @@ export default function ProfileScreen({ navigation }) {
       
       // Try to load cached data as fallback
       try {
-        const cachedUserData = await AsyncStorage.getItem('userData');
+        const cachedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
         if (cachedUserData) {
           const userData = JSON.parse(cachedUserData);
           setUserData({
-            name: userData.name || 'User',
+            name: userData.fullName || 'User',
             bio: userData.bio || 'Fitness enthusiast | Runner',
             stats: userData.stats || { workouts: 0, hours: 0, calories: 0 },
             followers: userData.followers || 0,
@@ -407,7 +473,6 @@ export default function ProfileScreen({ navigation }) {
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {

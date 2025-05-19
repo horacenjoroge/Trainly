@@ -1,4 +1,4 @@
-// HomeScreen.js
+// HomeScreen.js with username syncing and corrected service imports
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -17,9 +17,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userService, postService } from '../services/api'; // Updated to import both services
 
 // Replace with your actual backend URL
 const API_URL = 'http://192.168.100.88:3000';
+const USER_DATA_KEY = '@user_data';
 
 // Color Palette
 const colors = {
@@ -139,6 +141,7 @@ const PostCard = ({ post, onLike, navigation }) => {
     </View>
   );
 };
+
 // Personal Progress Card
 const ProgressCard = ({ stats, onEdit }) => {
   return (
@@ -175,6 +178,7 @@ const HomeScreen = ({ navigation }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState('User');
 
   // Fetch user profile and posts
   const fetchData = async () => {
@@ -183,10 +187,23 @@ const HomeScreen = ({ navigation }) => {
       // Get JWT token from storage
       const token = await AsyncStorage.getItem('token');
       
+      // Check for updated user name in local storage
+      try {
+        const localUserData = await AsyncStorage.getItem(USER_DATA_KEY);
+        if (localUserData) {
+          const parsedData = JSON.parse(localUserData);
+          if (parsedData.fullName) {
+            setUserName(parsedData.fullName);
+          }
+        }
+      } catch (localError) {
+        console.error('Error reading local user data:', localError);
+      }
+      
       if (!token) {
         // If no data from API yet, use sample data
         setUserProfile({
-          name: 'Horace',
+          name: userName,
           stats: { workouts: 12, hours: 5.2, calories: 324 }
         });
         
@@ -222,59 +239,104 @@ const HomeScreen = ({ navigation }) => {
         return;
       }
 
-      // Configure headers with token
-      const config = {
-        headers: {
-          'x-auth-token': token
-        }
-      };
-
-      // Fetch user profile from API
+      // Try to get user profile from API using our service
       try {
-        const profileRes = await axios.get(`${API_URL}/api/users/profile`, config);
-        setUserProfile(profileRes.data);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        // Fallback to sample data
+        const profileData = await userService.getUserProfile();
+        
+        // If we have data from API, update userName variable
+        if (profileData && profileData.name) {
+          setUserName(profileData.name);
+        }
+        
         setUserProfile({
-          name: 'Horace',
-          stats: { workouts: 12, hours: 5.2, calories: 324 }
+          name: profileData.name || userName,
+          stats: profileData.stats || { workouts: 12, hours: 5.2, calories: 324 }
         });
+      } catch (error) {
+        console.error('Error fetching profile from service:', error);
+        
+        // Try with axios as fallback
+        try {
+          // Configure headers with token
+          const config = {
+            headers: {
+              'x-auth-token': token
+            }
+          };
+
+          // Fetch user profile from API
+          const profileRes = await axios.get(`${API_URL}/api/users/profile`, config);
+          
+          if (profileRes.data && profileRes.data.name) {
+            setUserName(profileRes.data.name);
+          }
+          
+          setUserProfile({
+            name: profileRes.data.name || userName,
+            stats: profileRes.data.stats || { workouts: 12, hours: 5.2, calories: 324 }
+          });
+        } catch (axiosError) {
+          console.error('Error fetching profile with axios:', axiosError);
+          // Fallback to sample data with current userName
+          setUserProfile({
+            name: userName,
+            stats: { workouts: 12, hours: 5.2, calories: 324 }
+          });
+        }
       }
 
       // Fetch posts from API
       try {
-        const postsRes = await axios.get(`${API_URL}/api/posts`, config);
-        setPosts(postsRes.data);
+        // Try to use our service first - UPDATED: using postService instead of userService
+        const postsData = await postService.getPosts();
+        if (postsData && postsData.length > 0) {
+          setPosts(postsData);
+        } else {
+          throw new Error('No posts returned from service');
+        }
       } catch (error) {
-        console.error('Error fetching posts:', error);
-        // Fallback to sample data
-        setPosts([
-          {
-            id: '1',
-            user: {
-              name: 'Marion',
-              avatar: require('../assets/images/run.jpg')
+        console.error('Error fetching posts from service:', error);
+        
+        // Try with axios as fallback
+        try {
+          const config = {
+            headers: {
+              'x-auth-token': token
+            }
+          };
+          
+          const postsRes = await axios.get(`${API_URL}/api/posts`, config);
+          setPosts(postsRes.data);
+        } catch (axiosError) {
+          console.error('Error fetching posts with axios:', axiosError);
+          // Fallback to sample data
+          setPosts([
+            {
+              id: '1',
+              user: {
+                name: 'Marion',
+                avatar: require('../assets/images/run.jpg')
+              },
+              content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
+              image: require('../assets/images/run.jpg'),
+              likes: 156,
+              comments: 24,
+              isLiked: false
             },
-            content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
-            image: require('../assets/images/run.jpg'),
-            likes: 156,
-            comments: 24,
-            isLiked: false
-          },
-          {
-            id: '2',
-            user: {
-              name: 'Mishael',
-              avatar: require('../assets/images/bike.jpg')
-            },
-            content: 'Daily workout done! 💪 Pushing my limits every day.',
-            image: require('../assets/images/bike.jpg'),
-            likes: 87,
-            comments: 12,
-            isLiked: false
-          }
-        ]);
+            {
+              id: '2',
+              user: {
+                name: 'Mishael',
+                avatar: require('../assets/images/bike.jpg')
+              },
+              content: 'Daily workout done! 💪 Pushing my limits every day.',
+              image: require('../assets/images/bike.jpg'),
+              likes: 87,
+              comments: 12,
+              isLiked: false
+            }
+          ]);
+        }
       }
       
     } catch (error) {
@@ -284,6 +346,15 @@ const HomeScreen = ({ navigation }) => {
       setRefreshing(false);
     }
   };
+
+  // Add a listener for focus events to refresh data
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchData();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   // Handle pull-to-refresh
   const onRefresh = () => {
@@ -308,34 +379,51 @@ const HomeScreen = ({ navigation }) => {
         return;
       }
 
-      const config = {
-        headers: {
-          'x-auth-token': token
-        }
-      };
-
-      // Call API to like/unlike post
+      // Try to use our service first - UPDATED: using postService instead of userService
       try {
-        const res = await axios.put(`${API_URL}/api/posts/${postId}/like`, {}, config);
+        const updatedPost = await postService.likePost(postId);
         
         // Update posts state
         setPosts(prevPosts => 
           prevPosts.map(post => 
             post.id === postId 
-              ? { ...post, likes: res.data.likes, isLiked: res.data.isLiked }
+              ? { ...post, likes: updatedPost.likes, isLiked: updatedPost.isLiked }
               : post
           )
         );
       } catch (error) {
-        console.error('Error liking post:', error);
-        // Fall back to local update
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post.id === postId 
-              ? { ...post, likes: post.isLiked ? post.likes - 1 : post.likes + 1, isLiked: !post.isLiked }
-              : post
-          )
-        );
+        console.error('Error liking post with service:', error);
+        
+        // Try with axios as fallback
+        try {
+          const config = {
+            headers: {
+              'x-auth-token': token
+            }
+          };
+
+          // Call API to like/unlike post
+          const res = await axios.put(`${API_URL}/api/posts/${postId}/like`, {}, config);
+          
+          // Update posts state
+          setPosts(prevPosts => 
+            prevPosts.map(post => 
+              post.id === postId 
+                ? { ...post, likes: res.data.likes, isLiked: res.data.isLiked }
+                : post
+            )
+          );
+        } catch (axiosError) {
+          console.error('Error liking post with axios:', axiosError);
+          // Fall back to local update
+          setPosts(prevPosts => 
+            prevPosts.map(post => 
+              post.id === postId 
+                ? { ...post, likes: post.isLiked ? post.likes - 1 : post.likes + 1, isLiked: !post.isLiked }
+                : post
+            )
+          );
+        }
       }
     } catch (error) {
       console.error('Error handling like:', error);
@@ -356,15 +444,6 @@ const HomeScreen = ({ navigation }) => {
     fetchData();
   }, []);
 
-  // Add a listener for when the screen comes into focus to refresh data
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchData();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
-
   if (loading && !refreshing) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -383,7 +462,7 @@ const HomeScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.greeting}>Welcome back, {userProfile?.name || 'Horace'}!</Text>
+          <Text style={styles.greeting}>Welcome back, {userProfile?.name || userName}!</Text>
           <View style={styles.headerIcons}>
             <TouchableOpacity 
               style={styles.headerIconButton}
@@ -439,35 +518,36 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.communitySection}>
           <Text style={styles.communitySectionTitle}>Community Feed</Text>
           {posts.length > 0 ? (
-  <FlatList 
-    data={posts}
-    renderItem={({ item }) => (
-      <PostCard 
-        post={item}
-        onLike={handleLikePost}
-        navigation={navigation}  // Pass navigation prop
-      />
-    )}
-    keyExtractor={item => item.id}
-    scrollEnabled={false}
-  />
-) : (
-  <View style={styles.emptyState}>
-    <Text style={styles.emptyStateText}>No posts yet. Be the first to share!</Text>
-    <TouchableOpacity 
-      style={styles.emptyStateButton}
-      onPress={() => navigation.navigate('CreatePost')}
-    >
-      <Text style={styles.emptyStateButtonText}>Create Post</Text>
-    </TouchableOpacity>
-  </View>
-)}
+            <FlatList 
+              data={posts}
+              renderItem={({ item }) => (
+                <PostCard 
+                  post={item}
+                  onLike={handleLikePost}
+                  navigation={navigation}  // Pass navigation prop
+                />
+              )}
+              keyExtractor={item => item.id}
+              scrollEnabled={false}
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No posts yet. Be the first to share!</Text>
+              <TouchableOpacity 
+                style={styles.emptyStateButton}
+                onPress={() => navigation.navigate('CreatePost')}
+              >
+                <Text style={styles.emptyStateButtonText}>Create Post</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// Keeping the styles the same as your original component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -638,37 +718,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   // Additional styles to add to your HomeScreen styles
-workoutDetailsContainer: {
-  backgroundColor: 'rgba(33, 150, 243, 0.1)',
-  padding: 12,
-  borderRadius: 8,
-  marginVertical: 8,
-},
-workoutTypeContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 6,
-},
-workoutType: {
-  fontSize: 14,
-  fontWeight: '600',
-  color: colors.primary,
-  marginLeft: 6,
-},
-workoutStatsContainer: {
-  flexDirection: 'row',
-  justifyContent: 'flex-start',
-},
-workoutStat: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginRight: 16,
-},
-workoutStatText: {
-  fontSize: 12,
-  color: colors.textSecondary,
-  marginLeft: 4,
-},
+  workoutDetailsContainer: {
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  workoutTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  workoutType: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 6,
+  },
+  workoutStatsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  workoutStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  workoutStatText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 4,
+  },
 });
 
 export default HomeScreen;
