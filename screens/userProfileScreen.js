@@ -18,17 +18,100 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const API_URL = 'http://192.168.100.88:3000/api'; // Same as in your api.js
 
 export default function UserProfile({ route, navigation }) {
-  const { userId } = route.params;
+  // Add a safety check for route.params
+  const { userId } = route?.params || {};
   const theme = useTheme();
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState({
+    name: '',
+    bio: '',
+    avatar: 'https://via.placeholder.com/150',
+    stats: {
+      workouts: 0,
+      hours: 0,
+      calories: 0
+    },
+    followers: 0,
+    following: 0
+  });
   const [isFollowing, setIsFollowing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [error, setError] = useState(null);
+  
+  // Sample MongoDB ObjectId format users for testing
+  const mockUsers = {
+    // MongoDB-compatible ObjectIds (24-char hex strings)
+    '507f1f77bcf86cd799439011': {
+      _id: '507f1f77bcf86cd799439011',
+      name: 'John Doe',
+      bio: 'Fitness enthusiast and trail runner',
+      avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+      stats: {
+        workouts: 45,
+        hours: 78,
+        calories: 12500
+      },
+      followers: 24,
+      following: 36
+    },
+    '507f1f77bcf86cd799439012': {
+      _id: '507f1f77bcf86cd799439012',
+      name: 'Jane Smith',
+      bio: 'Yoga instructor and meditation practitioner',
+      avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
+      stats: {
+        workouts: 67,
+        hours: 112,
+        calories: 8900
+      },
+      followers: 152,
+      following: 89
+    },
+    '507f1f77bcf86cd799439013': {
+      _id: '507f1f77bcf86cd799439013',
+      name: 'Mike Johnson',
+      bio: 'Weightlifting champion, personal trainer',
+      avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
+      stats: {
+        workouts: 124,
+        hours: 230,
+        calories: 28600
+      },
+      followers: 87,
+      following: 53
+    }
+  };
+
+  // Helper to create a mock user if none exists
+  const createMockUser = (id) => {
+    // Create a deterministic number from the userId string
+    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const userNumber = hash % 10;
+    
+    return {
+      _id: id,
+      name: `User ${userNumber}`,
+      bio: userNumber % 2 === 0 ? 'Fitness enthusiast' : 'Health and wellness advocate',
+      avatar: `https://randomuser.me/api/portraits/${userNumber % 2 === 0 ? 'men' : 'women'}/${userNumber + 1}.jpg`,
+      stats: {
+        workouts: Math.floor(20 + (hash % 80)),
+        hours: Math.floor(40 + (hash % 100)),
+        calories: Math.floor(5000 + (hash % 25000))
+      },
+      followers: Math.floor(10 + (hash % 100)),
+      following: Math.floor(10 + (hash % 50))
+    };
+  };
 
   useEffect(() => {
-    loadCurrentUser();
-    loadUserProfile();
-  }, []);
+    if (userId) {
+      loadCurrentUser();
+      loadUserProfile();
+    } else {
+      setLoading(false);
+      setError('No user ID provided');
+    }
+  }, [userId]);
 
   const loadCurrentUser = async () => {
     try {
@@ -46,36 +129,83 @@ export default function UserProfile({ route, navigation }) {
     try {
       setLoading(true);
       
-      // This would need a new API endpoint to get another user's profile
-      // For now, we'll simulate it with the sample data
-      const response = await fetch(`${API_URL}/users/${userId}`);
-      const profileData = await response.json();
+      // First check if we have this user in our mock data
+      if (mockUsers[userId]) {
+        console.log('Using mock user from predefined list');
+        setUserData(mockUsers[userId]);
+        
+        // Check if current user is following this user
+        try {
+          const followingData = await userService.getFollowing();
+          const isFollowingUser = Array.isArray(followingData) && 
+            followingData.some(user => user._id === userId);
+          setIsFollowing(isFollowingUser);
+        } catch (followError) {
+          console.error('Error checking following status:', followError);
+          setIsFollowing(false);
+        }
+        
+        setLoading(false);
+        return;
+      }
+      
+      // Try to get user profile from API
+      try {
+        console.log(`Fetching user profile for: ${userId}`);
+        const response = await fetch(`${API_URL}/users/${userId}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch user with status: ${response.status}`);
+        }
+        const profileData = await response.json();
+        
+        // Make sure stats object exists
+        profileData.stats = profileData.stats || {
+          workouts: 0,
+          hours: 0,
+          calories: 0
+        };
+        
+        setUserData(profileData);
+      } catch (apiError) {
+        console.error('Error from API:', apiError);
+        
+        // Fallback to userService if fetch fails
+        try {
+          console.log('Trying userService as fallback');
+          const profileData = await userService.getUserById(userId);
+          
+          // Ensure stats object exists
+          profileData.stats = profileData.stats || {
+            workouts: 0,
+            hours: 0,
+            calories: 0
+          };
+          
+          setUserData(profileData);
+        } catch (serviceError) {
+          console.error('Error from user service:', serviceError);
+          
+          // Generate a mock user as last resort
+          console.log('Generating mock user as last resort');
+          const mockUser = createMockUser(userId);
+          setUserData(mockUser);
+        }
+      }
       
       // Check if current user is following this user
-      const followingData = await userService.getFollowing();
-      const isFollowingUser = followingData.some(user => user._id === userId);
-      
-      setUserData(profileData);
-      setIsFollowing(isFollowingUser);
+      try {
+        const followingData = await userService.getFollowing();
+        const isFollowingUser = Array.isArray(followingData) && 
+          followingData.some(user => user._id === userId);
+        setIsFollowing(isFollowingUser);
+      } catch (followError) {
+        console.error('Error checking following status:', followError);
+        setIsFollowing(false);
+      }
       
     } catch (error) {
       console.error('Error loading user profile:', error);
-      
-      // Fallback to mock data for demonstration
-      setUserData({
-        _id: userId,
-        name: 'Other User',
-        bio: 'Fitness enthusiast',
-        avatar: 'https://via.placeholder.com/150',
-        stats: {
-          workouts: 45,
-          hours: 78,
-          calories: 12500
-        },
-        followers: 24,
-        following: 36
-      });
-      
+      setError('Failed to load user profile');
     } finally {
       setLoading(false);
     }
@@ -83,16 +213,43 @@ export default function UserProfile({ route, navigation }) {
 
   const handleFollowToggle = async () => {
     try {
+      // Update UI immediately for better user experience
       if (isFollowing) {
-        await userService.unfollowUser(userId);
         setIsFollowing(false);
+        // Decrease followers count locally for immediate UI feedback
+        setUserData(prev => ({
+          ...prev,
+          followers: Math.max(0, (prev.followers || 0) - 1)
+        }));
+        
+        // Then make the API call
+        await userService.unfollowUser(userId);
+        console.log(`Successfully unfollowed user: ${userId}`);
       } else {
-        await userService.followUser(userId);
         setIsFollowing(true);
+        // Increase followers count locally for immediate UI feedback
+        setUserData(prev => ({
+          ...prev,
+          followers: (prev.followers || 0) + 1
+        }));
+        
+        // Then make the API call
+        await userService.followUser(userId);
+        console.log(`Successfully followed user: ${userId}`);
       }
     } catch (error) {
       console.error('Error toggling follow:', error);
-      Alert.alert('Error', 'Could not perform this action');
+      
+      // Revert the UI changes if the API call failed
+      setIsFollowing(!isFollowing);
+      setUserData(prev => ({
+        ...prev,
+        followers: isFollowing 
+          ? (prev.followers || 0) + 1  // If was unfollowing, add the follower back
+          : Math.max(0, (prev.followers || 0) - 1)  // If was following, remove the follower
+      }));
+      
+      Alert.alert('Error', 'Could not perform this action. Please try again later.');
     }
   };
 
@@ -106,7 +263,7 @@ export default function UserProfile({ route, navigation }) {
     );
   }
 
-  if (!userData) {
+  if (error || !userId) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.header}>
@@ -117,7 +274,9 @@ export default function UserProfile({ route, navigation }) {
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: theme.colors.text }]}>User not found</Text>
+          <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+            {error || 'User not found'}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -139,6 +298,7 @@ export default function UserProfile({ route, navigation }) {
             source={{ uri: global.getSafeImageUri(userData.avatar) }}
             style={styles.profileImage}
             onError={(e) => {
+              console.log('Image error:', e.nativeEvent.error);
               // Fallback to placeholder on error
               setUserData(prev => ({
                 ...prev,
@@ -147,9 +307,11 @@ export default function UserProfile({ route, navigation }) {
             }}
           />
           
-          <Text style={[styles.name, { color: theme.colors.text }]}>{userData.name}</Text>
+          <Text style={[styles.name, { color: theme.colors.text }]}>
+            {userData.name || 'User'}
+          </Text>
           <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
-            {userData.bio}
+            {userData.bio || 'Fitness enthusiast'}
           </Text>
           
           {currentUserId !== userId && (
@@ -177,7 +339,7 @@ export default function UserProfile({ route, navigation }) {
         <View style={[styles.statsRow, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.stat}>
             <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-              {userData.stats.workouts}
+              {userData.stats?.workouts || 0}
             </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Workouts</Text>
           </View>
@@ -187,7 +349,7 @@ export default function UserProfile({ route, navigation }) {
             onPress={() => navigation.navigate('UserFollowers', { userId: userId })}
           >
             <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-              {userData.followers}
+              {userData.followers || 0}
             </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Followers</Text>
           </TouchableOpacity>
@@ -197,14 +359,14 @@ export default function UserProfile({ route, navigation }) {
             onPress={() => navigation.navigate('UserFollowing', { userId: userId })}
           >
             <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-              {userData.following}
+              {userData.following || 0}
             </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Following</Text>
           </TouchableOpacity>
           
           <View style={styles.stat}>
             <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-              {userData.stats.calories || 0}
+              {userData.stats?.calories || 0}
             </Text>
             <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>Calories</Text>
           </View>

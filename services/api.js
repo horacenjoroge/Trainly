@@ -445,6 +445,24 @@ export const userService = {
     }
   },
   
+   // New method to search users
+   searchUsers: async (query = '') => {
+    try {
+      // If there's a search query, use the query-based endpoint
+      if (query && query.length >= 2) {
+        const response = await apiClient.get(`/api/users/search/${query}`);
+        return response.data;
+      } 
+      // Otherwise, fetch all users
+      else {
+        const response = await apiClient.get('/api/users/search');
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+      return [];
+    }
+  },
   // Get user by ID
   getUserById: async (userId) => {
     try {
