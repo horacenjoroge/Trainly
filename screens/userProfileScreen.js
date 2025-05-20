@@ -1,3 +1,4 @@
+// userProfileScreen.js - clean version using only real data
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -9,10 +10,11 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { userService } from '../services/api';
+import { userService, postService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'http://192.168.100.88:3000/api'; // Same as in your api.js
@@ -34,79 +36,16 @@ export default function UserProfile({ route, navigation }) {
     followers: 0,
     following: 0
   });
+  const [userPosts, setUserPosts] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [error, setError] = useState(null);
-  
-  // Sample MongoDB ObjectId format users for testing
-  const mockUsers = {
-    // MongoDB-compatible ObjectIds (24-char hex strings)
-    '507f1f77bcf86cd799439011': {
-      _id: '507f1f77bcf86cd799439011',
-      name: 'John Doe',
-      bio: 'Fitness enthusiast and trail runner',
-      avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-      stats: {
-        workouts: 45,
-        hours: 78,
-        calories: 12500
-      },
-      followers: 24,
-      following: 36
-    },
-    '507f1f77bcf86cd799439012': {
-      _id: '507f1f77bcf86cd799439012',
-      name: 'Jane Smith',
-      bio: 'Yoga instructor and meditation practitioner',
-      avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-      stats: {
-        workouts: 67,
-        hours: 112,
-        calories: 8900
-      },
-      followers: 152,
-      following: 89
-    },
-    '507f1f77bcf86cd799439013': {
-      _id: '507f1f77bcf86cd799439013',
-      name: 'Mike Johnson',
-      bio: 'Weightlifting champion, personal trainer',
-      avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
-      stats: {
-        workouts: 124,
-        hours: 230,
-        calories: 28600
-      },
-      followers: 87,
-      following: 53
-    }
-  };
-
-  // Helper to create a mock user if none exists
-  const createMockUser = (id) => {
-    // Create a deterministic number from the userId string
-    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const userNumber = hash % 10;
-    
-    return {
-      _id: id,
-      name: `User ${userNumber}`,
-      bio: userNumber % 2 === 0 ? 'Fitness enthusiast' : 'Health and wellness advocate',
-      avatar: `https://randomuser.me/api/portraits/${userNumber % 2 === 0 ? 'men' : 'women'}/${userNumber + 1}.jpg`,
-      stats: {
-        workouts: Math.floor(20 + (hash % 80)),
-        hours: Math.floor(40 + (hash % 100)),
-        calories: Math.floor(5000 + (hash % 25000))
-      },
-      followers: Math.floor(10 + (hash % 100)),
-      following: Math.floor(10 + (hash % 50))
-    };
-  };
 
   useEffect(() => {
     if (userId) {
       loadCurrentUser();
       loadUserProfile();
+      fetchUserPosts();
     } else {
       setLoading(false);
       setError('No user ID provided');
@@ -128,26 +67,6 @@ export default function UserProfile({ route, navigation }) {
   const loadUserProfile = async () => {
     try {
       setLoading(true);
-      
-      // First check if we have this user in our mock data
-      if (mockUsers[userId]) {
-        console.log('Using mock user from predefined list');
-        setUserData(mockUsers[userId]);
-        
-        // Check if current user is following this user
-        try {
-          const followingData = await userService.getFollowing();
-          const isFollowingUser = Array.isArray(followingData) && 
-            followingData.some(user => user._id === userId);
-          setIsFollowing(isFollowingUser);
-        } catch (followError) {
-          console.error('Error checking following status:', followError);
-          setIsFollowing(false);
-        }
-        
-        setLoading(false);
-        return;
-      }
       
       // Try to get user profile from API
       try {
@@ -184,11 +103,7 @@ export default function UserProfile({ route, navigation }) {
           setUserData(profileData);
         } catch (serviceError) {
           console.error('Error from user service:', serviceError);
-          
-          // Generate a mock user as last resort
-          console.log('Generating mock user as last resort');
-          const mockUser = createMockUser(userId);
-          setUserData(mockUser);
+          setError('Failed to load user profile');
         }
       }
       
@@ -208,6 +123,54 @@ export default function UserProfile({ route, navigation }) {
       setError('Failed to load user profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch posts made by this user
+  const fetchUserPosts = async () => {
+    try {
+      // Try to fetch user posts from API
+      try {
+        // For simplicity, we'll just filter the general posts by user ID
+        // In a real app, you'd have a dedicated endpoint for this
+        const allPosts = await postService.getPosts();
+        
+        // Filter posts where the user is the author
+        if (allPosts && allPosts.length > 0) {
+          const filteredPosts = allPosts.filter(post => {
+            if (!post.user) return false;
+            
+            if (typeof post.user === 'string') {
+              return post.user === userId;
+            }
+            
+            if (post.user._id) {
+              return post.user._id === userId;
+            }
+            
+            if (post.user.id) {
+              return post.user.id === userId;
+            }
+            
+            return false;
+          });
+          
+          // Set the filtered posts - if there are none, the array will be empty
+          setUserPosts(filteredPosts);
+          console.log(`Found ${filteredPosts.length} posts for user ${userId}`);
+          return;
+        }
+        
+        // If we get here, there were no posts in the system
+        setUserPosts([]);
+        console.log('No posts found for any user in the system');
+      } catch (error) {
+        console.error('Error fetching user posts from API:', error);
+        setUserPosts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching user posts:', error);
+      setUserPosts([]);
     }
   };
 
@@ -253,6 +216,42 @@ export default function UserProfile({ route, navigation }) {
     }
   };
 
+  // Post item component for Recent Activity section
+  const PostItem = ({ post }) => {
+    return (
+      <View style={[styles.activityItem, { borderColor: theme.colors.border }]}>
+        {post.image && (
+          <Image
+            source={typeof post.image === 'string' ? global.getSafeImageUri(post.image) : post.image}
+            style={styles.activityImage}
+            onError={(e) => {
+              console.log('Post image error:', e.nativeEvent.error);
+            }}
+          />
+        )}
+        <View style={styles.activityContent}>
+          <Text style={[styles.activityText, { color: theme.colors.text }]} numberOfLines={2}>
+            {post.content}
+          </Text>
+          <View style={styles.activityMeta}>
+            <View style={styles.activityStats}>
+              <Ionicons name="heart" size={16} color={theme.colors.primary} />
+              <Text style={[styles.activityStatText, { color: theme.colors.textSecondary }]}>
+                {post.likes || 0}
+              </Text>
+            </View>
+            <View style={styles.activityStats}>
+              <Ionicons name="chatbubble-outline" size={16} color={theme.colors.textSecondary} />
+              <Text style={[styles.activityStatText, { color: theme.colors.textSecondary }]}>
+                {post.comments || 0}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -295,7 +294,7 @@ export default function UserProfile({ route, navigation }) {
       <ScrollView>
         <View style={[styles.profileHeader, { backgroundColor: theme.colors.surface }]}>
           <Image
-            source={{ uri: global.getSafeImageUri(userData.avatar) }}
+            source={global.getSafeImageUri(userData.avatar)}
             style={styles.profileImage}
             onError={(e) => {
               console.log('Image error:', e.nativeEvent.error);
@@ -372,12 +371,34 @@ export default function UserProfile({ route, navigation }) {
           </View>
         </View>
 
-        {/* You can add more sections like recent workouts, achievements, etc. */}
+        {/* Recent Activity Section with User Posts */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Recent Activity</Text>
-          <View style={styles.emptySection}>
-            <Text style={{ color: theme.colors.textSecondary }}>No recent activity</Text>
-          </View>
+          
+          {userPosts.length > 0 ? (
+            <FlatList
+              data={userPosts}
+              renderItem={({ item }) => <PostItem post={item} />}
+              keyExtractor={item => item.id || item._id || String(Math.random())}
+              scrollEnabled={false}
+            />
+          ) : (
+            <View style={styles.emptySection}>
+              <Text style={{ color: theme.colors.textSecondary }}>
+                {currentUserId === userId 
+                  ? "You haven't posted anything yet. Share your progress!" 
+                  : "This user hasn't posted anything yet."}
+              </Text>
+              {currentUserId === userId && (
+                <TouchableOpacity
+                  style={[styles.createPostButton, { backgroundColor: theme.colors.primary }]}
+                  onPress={() => navigation.navigate('CreatePost')}
+                >
+                  <Text style={styles.createPostButtonText}>Create Post</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -494,5 +515,51 @@ const styles = StyleSheet.create({
   emptySection: {
     padding: 20,
     alignItems: 'center',
+  },
+  // Activity items styles
+  activityItem: {
+    flexDirection: 'row',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(229, 124, 11, 0.1)',
+    marginBottom: 8,
+  },
+  activityImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  activityContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  activityText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  activityMeta: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  activityStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  activityStatText: {
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  createPostButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  createPostButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
