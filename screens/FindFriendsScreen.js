@@ -14,6 +14,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/api';
+// Import the getSafeImageUri function from utils
+import { getSafeImageUri } from '../utils/imageUtils';
 
 // API URL
 const API_URL = 'http://192.168.100.88:3000/api'; // Adjust to match your api.js
@@ -193,10 +195,10 @@ export default function FindFriends({ navigation }) {
           onPress={() => navigation.navigate('UserProfile', { userId: item._id })}
         >
           <Image 
-            source={{ uri: global.getSafeImageUri(item.avatar) }} 
+            source={getSafeImageUri(item.avatar)} 
             style={styles.avatar} 
             onError={(e) => {
-              console.log('Image error:', e.nativeEvent.error);
+              console.log('Avatar load error for user:', item.name, e.nativeEvent.error);
             }}
           />
           <View style={styles.nameContainer}>
