@@ -1,4 +1,4 @@
-// ProfileScreen with improvements to sync user data
+// ProfileScreen with improved avatar upload using the new upload service
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
@@ -20,7 +20,7 @@ import { userService } from '../services/api';
 
 const PROFILE_IMAGE_KEY = '@profile_image';
 const USER_DATA_KEY = '@user_data';
-const API_URL = 'http://192.168.100.88:3000/api'; // Same as in your api.js
+const API_URL = 'http://192.168.100.88:3000'; // Base URL without /api
 
 const ProfileOption = ({ icon, title, subtitle, onPress }) => {
   const theme = useTheme();
@@ -43,11 +43,57 @@ const ProfileOption = ({ icon, title, subtitle, onPress }) => {
   );
 };
 
+// Helper function to safely handle image URIs
+const getSafeImageUri = (imageSource) => {
+  console.log('Getting image for source:', imageSource);
+  
+  // If it's already a require statement (local image), return as is
+  if (typeof imageSource !== 'string') {
+    return imageSource;
+  }
+  
+  // Handle null, undefined or empty string
+  if (!imageSource) {
+    console.log('Empty image source, using fallback');
+    return require('../assets/images/bike.jpg');
+  }
+  
+  // Handle default avatar
+  if (imageSource === 'default-avatar-url') {
+    console.log('Default avatar URL detected, using fallback');
+    return require('../assets/images/bike.jpg');
+  }
+  
+  // Handle server paths that start with /uploads/
+  if (imageSource.startsWith('/uploads/')) {
+    const fullUri = `${API_URL}${imageSource}`;
+    console.log('Server image path detected:', fullUri);
+    return { uri: fullUri };
+  }
+  
+  // Handle full URLs
+  if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {
+    console.log('Full URL detected:', imageSource);
+    return { uri: imageSource };
+  }
+  
+  // Handle file:/// URLs by using a fallback
+  if (imageSource.startsWith('file:///')) {
+    console.log('Local file URI detected, using fallback image');
+    return require('../assets/images/bike.jpg');
+  }
+  
+  // Fallback to default image for any other case
+  console.log('Unknown image format, using fallback');
+  return require('../assets/images/bike.jpg');
+};
+
 export default function ProfileScreen({ navigation, route }) {
   const theme = useTheme();
   const [profileImage, setProfileImage] = useState('https://via.placeholder.com/150');
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [userData, setUserData] = useState({
     name: '',
     bio: 'Fitness enthusiast | Runner',
@@ -67,7 +113,6 @@ export default function ProfileScreen({ navigation, route }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadProfileData();
-      loadCachedImage();
       
       // Also check if we need to update from local storage (for name changes)
       checkUserDataUpdates();
@@ -78,7 +123,9 @@ export default function ProfileScreen({ navigation, route }) {
 
   useEffect(() => {
     loadProfileData();
-    loadCachedImage();
+    
+    // Make getSafeImageUri available globally
+    global.getSafeImageUri = getSafeImageUri;
   }, []);
   
   // Function to check if userData has been updated in AsyncStorage
@@ -101,23 +148,13 @@ export default function ProfileScreen({ navigation, route }) {
     }
   };
 
-  const loadCachedImage = async () => {
-    try {
-      const cachedImage = await AsyncStorage.getItem(PROFILE_IMAGE_KEY);
-      if (cachedImage) {
-        setProfileImage(cachedImage);
-      }
-    } catch (error) {
-      console.error('Error loading cached image:', error);
-    }
-  };
-
   const loadProfileData = async () => {
     try {
       setLoading(true);
       
       // Get profile data from backend using your existing service
       const profileData = await userService.getUserProfile();
+      console.log('Profile data loaded:', profileData);
       
       // Get followers and following counts
       let followersCount = 0;
@@ -183,12 +220,8 @@ export default function ProfileScreen({ navigation, route }) {
       
       // Set profile image if available from backend
       if (profileData.avatar) {
-        const imageUrl = profileData.avatar.startsWith('http') 
-          ? profileData.avatar 
-          : `${API_URL}${profileData.avatar}`;
-        
-        setProfileImage(imageUrl);
-        await AsyncStorage.setItem(PROFILE_IMAGE_KEY, imageUrl);
+        console.log('Setting profile image from API:', profileData.avatar);
+        setProfileImage(profileData.avatar);
       }
       
     } catch (error) {
@@ -216,21 +249,48 @@ export default function ProfileScreen({ navigation, route }) {
     }
   };
 
-  const updateProfileStats = async (workouts) => {
+  // Upload image to the server using the new upload endpoint
+  const uploadAvatar = async (imageUri) => {
     try {
-      // Example: Update workout count after completing a workout
-      await userService.updateUserStats({ workouts });
+      setUploading(true);
       
-      // Update local state
-      setUserData(prevData => ({
-        ...prevData,
-        stats: {
-          ...prevData.stats,
-          workouts
-        }
-      }));
+      const formData = new FormData();
+      
+      // Get filename from uri
+      const filename = imageUri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      
+      // Append image to form data
+      formData.append('image', {
+        uri: imageUri,
+        name: filename,
+        type,
+      });
+
+      const token = await AsyncStorage.getItem('token');
+
+      // Upload to the new endpoint
+      const response = await fetch(`${API_URL}/api/uploads/avatar`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'x-auth-token': token,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.avatar; // Return the server URL to the uploaded avatar
     } catch (error) {
-      console.error('Error updating stats:', error);
+      console.error('Error uploading avatar:', error);
+      throw error;
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -255,7 +315,7 @@ export default function ProfileScreen({ navigation, route }) {
       const options = {
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 1,
+        quality: 0.8,
       };
 
       const result = sourceType === 'camera' 
@@ -265,28 +325,28 @@ export default function ProfileScreen({ navigation, route }) {
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
           });
 
-      if (!result.canceled) {
+      if (!result.canceled && result.assets && result.assets[0]) {
         const selectedImageUri = result.assets[0].uri;
         
-        // Show loading state
-        setLoading(true);
-        
         try {
-          // Update profile with new avatar
-          await userService.updateUserProfile({ avatar: selectedImageUri });
+          // Upload to server using the new endpoint
+          const avatarUrl = await uploadAvatar(selectedImageUri);
           
-          // Update UI
-          setProfileImage(selectedImageUri);
-          await AsyncStorage.setItem(PROFILE_IMAGE_KEY, selectedImageUri);
+          // Update local state with the server URL
+          setProfileImage(avatarUrl);
           
+          // Update user data in storage if needed
+          const userData = await AsyncStorage.getItem('userData');
+          if (userData) {
+            const parsedData = JSON.parse(userData);
+            parsedData.avatar = avatarUrl;
+            await AsyncStorage.setItem('userData', JSON.stringify(parsedData));
+          }
+          
+          Alert.alert('Success', 'Profile picture updated successfully');
         } catch (error) {
-          console.error('Error uploading image:', error);
-          
-          // Use local image as fallback even if server update fails
-          setProfileImage(selectedImageUri);
-          await AsyncStorage.setItem(PROFILE_IMAGE_KEY, selectedImageUri);
-        } finally {
-          setLoading(false);
+          console.error('Error updating profile picture:', error);
+          Alert.alert('Error', 'Failed to update profile picture');
         }
       }
     } catch (error) {
@@ -314,18 +374,32 @@ export default function ProfileScreen({ navigation, route }) {
         <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.profileImageContainer}>
             <Image
-              source={{ uri: global.getSafeImageUri(profileImage) }}
+              source={getSafeImageUri(profileImage)}
               style={styles.profileImage}
-              onError={() => {
-                // Fallback to placeholder on error
-                setProfileImage('https://via.placeholder.com/150');
+              onLoadStart={() => console.log('Loading profile image:', profileImage)}
+              onLoad={() => console.log('Profile image loaded successfully')}
+              onError={(e) => {
+                console.log('Profile image error details:', {
+                  source: profileImage,
+                  error: e.nativeEvent.error
+                });
+                // Fallback to local image on error
+                if (profileImage.startsWith('/uploads/')) {
+                  console.log('Server image failed, using local fallback');
+                  setProfileImage(null); // This will trigger the fallback in getSafeImageUri
+                }
               }}
             />
             <TouchableOpacity 
               style={[styles.editButton, { backgroundColor: theme.colors.primary }]}
               onPress={() => setModalVisible(true)}
+              disabled={uploading}
             >
-              <Ionicons name="camera" size={20} color="#fff" />
+              {uploading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="camera" size={20} color="#fff" />
+              )}
             </TouchableOpacity>
           </View>
           <Text style={[styles.name, { color: theme.colors.text }]}>{userData.name}</Text>

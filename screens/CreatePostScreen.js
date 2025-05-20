@@ -27,6 +27,7 @@ const CreateProgressPostScreen = ({ navigation }) => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [workoutDetails, setWorkoutDetails] = useState({ type: '', duration: '', calories: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const pickImage = async () => {
     try {
@@ -46,6 +47,49 @@ const CreateProgressPostScreen = ({ navigation }) => {
     }
   };
 
+  // Function to upload an image to the server
+  const uploadImage = async (imageUri) => {
+    try {
+      const formData = new FormData();
+      
+      // Get filename from uri
+      const filename = imageUri.split('/').pop();
+      
+      // Infer the type of the image
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      
+      // Append image to form data
+      formData.append('image', {
+        uri: imageUri,
+        name: filename,
+        type,
+      });
+
+      const token = await AsyncStorage.getItem('token');
+
+      // Upload to the new endpoint
+      const response = await fetch(`${API_URL}/api/uploads/post`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'x-auth-token': token,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.imageUrl; // Return the server URL to the uploaded image
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
+
   const handleSubmitPost = async () => {
     // Validate post content
     if (!postText.trim() && selectedImages.length === 0) {
@@ -54,6 +98,7 @@ const CreateProgressPostScreen = ({ navigation }) => {
     }
 
     setIsSubmitting(true);
+    setUploadProgress(0);
     
     try {
       // Get the token
@@ -73,14 +118,40 @@ const CreateProgressPostScreen = ({ navigation }) => {
         }
       };
       
-      // In a real app, you'd upload the images first and get URLs back
-      // For now, we'll just use the first image if available
-      const imageUri = selectedImages.length > 0 ? selectedImages[0].uri : null;
+      // Upload image first if available
+      let imageUrl = null;
+      if (selectedImages.length > 0) {
+        try {
+          // Use the first selected image
+          setUploadProgress(10);
+          imageUrl = await uploadImage(selectedImages[0].uri);
+          setUploadProgress(50);
+        } catch (uploadError) {
+          console.error('Error uploading image:', uploadError);
+          Alert.alert('Upload Error', 'Failed to upload image. Continue without image?', [
+            {
+              text: 'Cancel',
+              onPress: () => {
+                setIsSubmitting(false);
+                return;
+              },
+              style: 'cancel',
+            },
+            {
+              text: 'Continue',
+              onPress: () => {
+                // Will continue with null imageUrl
+                imageUrl = null;
+              },
+            },
+          ]);
+        }
+      }
       
-      // Create post data
+      // Create post data with the server image URL
       const postData = {
         content: postText.trim(),
-        image: imageUri, // In a real app, this would be the uploaded image URL
+        image: imageUrl, // This is now a server URL, not a local file URI
         workoutDetails: workoutDetails.type ? {
           type: workoutDetails.type,
           duration: parseInt(workoutDetails.duration) || 0,
@@ -89,11 +160,13 @@ const CreateProgressPostScreen = ({ navigation }) => {
       };
       
       console.log("Sending post data:", postData);
+      setUploadProgress(75);
       
       // Submit post to API
       const response = await axios.post(`${API_URL}/api/posts`, postData, config);
       
       console.log("Post creation response:", response.data);
+      setUploadProgress(100);
       
       // Navigate back
       navigation.goBack();
@@ -111,6 +184,7 @@ const CreateProgressPostScreen = ({ navigation }) => {
       }
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -131,6 +205,26 @@ const CreateProgressPostScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+      
+      {isSubmitting && uploadProgress > 0 && (
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressBar, { backgroundColor: theme.colors.border }]}>
+            <View 
+              style={[
+                styles.progressFill, 
+                { 
+                  backgroundColor: theme.colors.primary,
+                  width: `${uploadProgress}%` 
+                }
+              ]} 
+            />
+          </View>
+          <Text style={[styles.progressText, { color: theme.colors.textSecondary }]}>
+            {uploadProgress < 100 ? 'Uploading...' : 'Creating post...'}
+          </Text>
+        </View>
+      )}
+      
       <View style={[styles.workoutDetailsContainer, { backgroundColor: theme.colors.surface }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Workout Details</Text>
         <TextInput
@@ -211,6 +305,24 @@ const styles = StyleSheet.create({
   postButton: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  progressContainer: {
+    padding: 15,
+    paddingTop: 0,
+  },
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+    width: '100%',
+    marginBottom: 5,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   workoutDetailsContainer: {
     margin: 15,

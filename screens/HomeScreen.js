@@ -1,4 +1,4 @@
-// HomeScreen.js with username syncing and corrected service imports
+// HomeScreen.js with improved image handling and user navigation
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -13,11 +13,12 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { userService, postService } from '../services/api'; // Updated to import both services
+import { userService, postService } from '../services/api';
 
 // Replace with your actual backend URL
 const API_URL = 'http://192.168.100.88:3000';
@@ -33,20 +34,93 @@ const colors = {
   accent: '#4A90E2',
 };
 
+// Helper function to safely handle image URIs of various formats
+const getSafeImageUri = (imageSource) => {
+  // If it's already a require statement (local image), return as is
+  if (typeof imageSource !== 'string') {
+    return imageSource;
+  }
+
+  // Handle file:// URIs (from device storage)
+  if (imageSource && imageSource.startsWith('file://')) {
+    return { uri: imageSource };
+  }
+  
+  // Handle paths that start with "/data/" (internal storage paths)
+  if (imageSource && imageSource.startsWith('/data/')) {
+    return { uri: `file://${imageSource}` };
+  }
+  
+  // Handle paths that directly reference ExperienceData
+  if (imageSource && imageSource.includes('ExperienceData')) {
+    return { uri: imageSource };
+  }
+  
+  // Check if the URL starts with http or https
+  if (imageSource && (imageSource.startsWith('http://') || imageSource.startsWith('https://'))) {
+    return { uri: imageSource };
+  }
+  
+  // If it's a local path without http, add the base URL
+  if (imageSource && !imageSource.startsWith('/')) {
+    return { uri: `${API_URL}/${imageSource}` };
+  }
+  
+  // If it starts with /, assume it's a local path on the server
+  if (imageSource && imageSource.startsWith('/')) {
+    return { uri: `${API_URL}${imageSource}` };
+  }
+  
+  // Fallback to default image
+  return require('../assets/images/bike.jpg');
+};
+
+// Helper function to safely extract the user ID for navigation
+const getUserIdFromPost = (post) => {
+  if (!post || !post.user) return null;
+  
+  // Check for different ID field formats
+  if (post.user._id) return post.user._id;
+  if (post.user.id) return post.user.id;
+  if (post.user.userId) return post.user.userId;
+  
+  // If the user object itself is an ID string
+  if (typeof post.user === 'string') return post.user;
+  
+  // If the post has a userId field
+  if (post.userId) return post.userId;
+  
+  return null;
+};
+
 // PostCard component for your HomeScreen
 const PostCard = ({ post, onLike, navigation }) => {
   const handleLike = async () => {
     if (onLike) {
-      onLike(post.id);
+      onLike(post.id || post._id);
     }
   };
 
   const handleComment = () => {
     navigation.navigate('Comments', {
-      postId: post.id,
+      postId: post.id || post._id,
       postContent: post.content,
       postUser: post.user
     });
+  };
+
+  // Navigate to user profile when avatar or name is clicked
+  const handleUserPress = () => {
+    const userId = getUserIdFromPost(post);
+    
+    if (userId) {
+      navigation.navigate('UserProfile', { userId });
+    } else {
+      console.log('Cannot navigate to profile - missing user ID');
+      
+      // Log the post structure to help debug
+      console.log('Post user structure:', JSON.stringify(post.user, null, 2));
+    }
   };
 
   // Format the date for display
@@ -67,15 +141,33 @@ const PostCard = ({ post, onLike, navigation }) => {
     }
   };
 
+  // Get user display name safely
+  const getUserName = () => {
+    if (!post.user) return 'User';
+    
+    if (typeof post.user === 'string') return 'User';
+    
+    return post.user.name || post.user.username || 'User';
+  };
+
   return (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
-        <Image 
-          source={post.user.avatar ? { uri: post.user.avatar } : require('../assets/images/bike.jpg')} 
-          style={styles.userAvatar} 
-        />
+        <TouchableOpacity onPress={handleUserPress}>
+          <Image 
+            source={post.user && post.user.avatar 
+              ? getSafeImageUri(post.user.avatar) 
+              : require('../assets/images/bike.jpg')} 
+            style={styles.userAvatar} 
+            onError={(e) => {
+              console.log('Avatar image error:', e.nativeEvent.error);
+            }}
+          />
+        </TouchableOpacity>
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{post.user.name}</Text>
+          <TouchableOpacity onPress={handleUserPress}>
+            <Text style={styles.userName}>{getUserName()}</Text>
+          </TouchableOpacity>
           <Text style={styles.postTime}>
             {post.createdAt ? formatDate(post.createdAt) : '2 hours ago'}
           </Text>
@@ -112,9 +204,13 @@ const PostCard = ({ post, onLike, navigation }) => {
       
       {post.image && (
         <Image 
-          source={typeof post.image === 'string' ? { uri: post.image } : post.image} 
+          source={getSafeImageUri(post.image)} 
           style={styles.postImage} 
           resizeMode="cover" 
+          onError={(e) => {
+            console.log('Post image error:', e.nativeEvent.error);
+            console.log('Failed image URL:', post.image);
+          }}
         />
       )}
       
@@ -128,14 +224,14 @@ const PostCard = ({ post, onLike, navigation }) => {
             size={20} 
             color={post.isLiked ? colors.primary : colors.textSecondary} 
           />
-          <Text style={styles.actionText}>{post.likes} Likes</Text>
+          <Text style={styles.actionText}>{post.likes || 0} Likes</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.actionButton}
           onPress={handleComment}
         >
           <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
-          <Text style={styles.actionText}>{post.comments} Comments</Text>
+          <Text style={styles.actionText}>{post.comments || 0} Comments</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -180,6 +276,34 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('User');
 
+  // Make the helper function globally available
+  useEffect(() => {
+    // Add the getSafeImageUri function to the global scope for use in other components
+    global.getSafeImageUri = getSafeImageUri;
+  }, []);
+
+  // Debug fetched posts
+  const debugPostStructure = (postsData) => {
+    if (!postsData || !postsData.length) return;
+    
+    // Log the structure of the first post to help understand what we're working with
+    console.log('FIRST POST STRUCTURE:');
+    console.log(JSON.stringify(postsData[0], null, 2));
+    
+    // Check for user ID field availability
+    const hasIds = postsData.map(post => {
+      const userId = getUserIdFromPost(post);
+      return { 
+        postId: post.id || post._id || 'no-id',
+        hasUserId: !!userId,
+        userId: userId || 'none'
+      };
+    });
+    
+    console.log('User ID availability in posts:');
+    console.log(JSON.stringify(hasIds, null, 2));
+  };
+
   // Fetch user profile and posts
   const fetchData = async () => {
     setLoading(true);
@@ -212,6 +336,7 @@ const HomeScreen = ({ navigation }) => {
           {
             id: '1',
             user: {
+              _id: '507f1f77bcf86cd799439011',
               name: 'Marion',
               avatar: require('../assets/images/run.jpg')
             },
@@ -224,6 +349,7 @@ const HomeScreen = ({ navigation }) => {
           {
             id: '2',
             user: {
+              _id: '507f1f77bcf86cd799439012',
               name: 'Mishael',
               avatar: require('../assets/images/bike.jpg')
             },
@@ -287,10 +413,41 @@ const HomeScreen = ({ navigation }) => {
 
       // Fetch posts from API
       try {
-        // Try to use our service first - UPDATED: using postService instead of userService
+        // Try to use our service first
         const postsData = await postService.getPosts();
+        
+        // Debug the structure of the posts we're getting from the API
+        debugPostStructure(postsData);
+        
         if (postsData && postsData.length > 0) {
-          setPosts(postsData);
+          // Process the posts to ensure they have the right structure
+          const processedPosts = postsData.map(post => {
+            // Make sure user object exists and has required properties
+            let postUser = post.user;
+            
+            // If user is just an ID string, convert to object
+            if (typeof postUser === 'string') {
+              postUser = { _id: postUser, name: 'User' };
+            } 
+            // If no user object, create one
+            else if (!postUser) {
+              postUser = { name: 'User' };
+            }
+            
+            // Make sure post has proper ID
+            const postId = post.id || post._id;
+            
+            return {
+              ...post,
+              id: postId,
+              _id: postId,
+              user: postUser,
+              likes: typeof post.likes === 'number' ? post.likes : 0,
+              comments: typeof post.comments === 'number' ? post.comments : 0
+            };
+          });
+          
+          setPosts(processedPosts);
         } else {
           throw new Error('No posts returned from service');
         }
@@ -306,7 +463,38 @@ const HomeScreen = ({ navigation }) => {
           };
           
           const postsRes = await axios.get(`${API_URL}/api/posts`, config);
-          setPosts(postsRes.data);
+          
+          // Debug the structure of the posts we're getting from axios
+          debugPostStructure(postsRes.data);
+          
+          // Process the posts to ensure they have the right structure
+          const processedPosts = postsRes.data.map(post => {
+            // Make sure user object exists and has required properties
+            let postUser = post.user;
+            
+            // If user is just an ID string, convert to object
+            if (typeof postUser === 'string') {
+              postUser = { _id: postUser, name: 'User' };
+            } 
+            // If no user object, create one
+            else if (!postUser) {
+              postUser = { name: 'User' };
+            }
+            
+            // Make sure post has proper ID
+            const postId = post.id || post._id;
+            
+            return {
+              ...post,
+              id: postId,
+              _id: postId,
+              user: postUser,
+              likes: typeof post.likes === 'number' ? post.likes : 0,
+              comments: typeof post.comments === 'number' ? post.comments : 0
+            };
+          });
+          
+          setPosts(processedPosts);
         } catch (axiosError) {
           console.error('Error fetching posts with axios:', axiosError);
           // Fallback to sample data
@@ -314,6 +502,7 @@ const HomeScreen = ({ navigation }) => {
             {
               id: '1',
               user: {
+                _id: '507f1f77bcf86cd799439011',
                 name: 'Marion',
                 avatar: require('../assets/images/run.jpg')
               },
@@ -326,6 +515,7 @@ const HomeScreen = ({ navigation }) => {
             {
               id: '2',
               user: {
+                _id: '507f1f77bcf86cd799439012',
                 name: 'Mishael',
                 avatar: require('../assets/images/bike.jpg')
               },
@@ -347,6 +537,7 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Rest of the component remains largely the same...
   // Add a listener for focus events to refresh data
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -364,6 +555,11 @@ const HomeScreen = ({ navigation }) => {
 
   // Handle like/unlike post
   const handleLikePost = async (postId) => {
+    if (!postId) {
+      console.log('Cannot like post - missing ID');
+      return;
+    }
+    
     try {
       const token = await AsyncStorage.getItem('token');
       
@@ -371,7 +567,7 @@ const HomeScreen = ({ navigation }) => {
         // Just update UI locally if we don't have a token yet
         setPosts(prevPosts => 
           prevPosts.map(post => 
-            post.id === postId 
+            (post.id === postId || post._id === postId) 
               ? { ...post, likes: post.isLiked ? post.likes - 1 : post.likes + 1, isLiked: !post.isLiked }
               : post
           )
@@ -379,14 +575,14 @@ const HomeScreen = ({ navigation }) => {
         return;
       }
 
-      // Try to use our service first - UPDATED: using postService instead of userService
+      // Try to use our service first
       try {
         const updatedPost = await postService.likePost(postId);
         
         // Update posts state
         setPosts(prevPosts => 
           prevPosts.map(post => 
-            post.id === postId 
+            (post.id === postId || post._id === postId) 
               ? { ...post, likes: updatedPost.likes, isLiked: updatedPost.isLiked }
               : post
           )
@@ -408,7 +604,7 @@ const HomeScreen = ({ navigation }) => {
           // Update posts state
           setPosts(prevPosts => 
             prevPosts.map(post => 
-              post.id === postId 
+              (post.id === postId || post._id === postId) 
                 ? { ...post, likes: res.data.likes, isLiked: res.data.isLiked }
                 : post
             )
@@ -418,7 +614,7 @@ const HomeScreen = ({ navigation }) => {
           // Fall back to local update
           setPosts(prevPosts => 
             prevPosts.map(post => 
-              post.id === postId 
+              (post.id === postId || post._id === postId) 
                 ? { ...post, likes: post.isLiked ? post.likes - 1 : post.likes + 1, isLiked: !post.isLiked }
                 : post
             )
@@ -527,7 +723,7 @@ const HomeScreen = ({ navigation }) => {
                   navigation={navigation}  // Pass navigation prop
                 />
               )}
-              keyExtractor={item => item.id}
+              keyExtractor={item => String(item.id || item._id || Math.random())}
               scrollEnabled={false}
             />
           ) : (
@@ -547,8 +743,9 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
-// Keeping the styles the same as your original component
+// Styles remain the same
 const styles = StyleSheet.create({
+  // ...styles from before, no changes needed
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -717,7 +914,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: 'bold',
   },
-  // Additional styles to add to your HomeScreen styles
   workoutDetailsContainer: {
     backgroundColor: 'rgba(33, 150, 243, 0.1)',
     padding: 12,
