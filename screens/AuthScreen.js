@@ -1,4 +1,4 @@
-// AuthScreen.js - simplified version that doesn't attempt token validation
+// AuthScreen.js - Updated version
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,14 +10,14 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Circle, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from '../services/api';
 
-export default function AuthScreen({ navigation, onAuthSuccess }) {
+export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSuccess }) {
   const theme = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -35,7 +35,7 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
         if (token) {
           console.log('Found existing token, proceeding to main app');
           if (onAuthSuccess) {
-            onAuthSuccess();
+            onAuthSuccess({ token });
           }
         } else {
           console.log('No token found, user needs to log in');
@@ -46,7 +46,7 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
     };
     
     checkExistingToken();
-  }, []);
+  }, [onAuthSuccess]);
 
   const validateInputs = () => {
     setError('');
@@ -88,30 +88,41 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
     setLoading(true);
     
     try {
+      let result;
+      
       if (isLogin) {
-        // Login
-        await authService.login({ email, password });
-        console.log('Login successful');
+        // Login using the onLogin prop provided by App.js
+        console.log('Attempting login with email:', email);
+        result = await onLogin({ email, password });
+        console.log('Login result:', result);
       } else {
-        // Register
-        await authService.register({ name, email, password });
-        console.log('Registration successful');
+        // Register using the onRegister prop provided by App.js
+        console.log('Attempting registration with name:', name, 'and email:', email);
+        result = await onRegister({ name, email, password });
+        console.log('Registration result:', result);
       }
       
-      // Add a small delay to ensure AsyncStorage operations complete
-      setTimeout(() => {
+      if (result && result.success) {
+        console.log('Authentication successful, user data:', result.user);
+        // onAuthSuccess can be called here if needed, but navigation should be handled by App.js
         if (onAuthSuccess) {
-          onAuthSuccess();
+          onAuthSuccess(result.user);
         }
-      }, 500);
+      } else {
+        // Handle failed authentication
+        const errorMessage = result?.message || 'Authentication failed';
+        console.error('Auth error:', errorMessage);
+        setError(errorMessage);
+      }
     } catch (error) {
-      console.error('Auth error:', error.response?.data?.message || error.message);
+      console.error('Auth error:', error);
       setError(error.response?.data?.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Logo component and other UI elements remain the same...
   const Logo = () => (
     <Svg width="150" height="150" viewBox="0 0 200 200">
       <Circle cx="100" cy="40" r="15" fill={theme.colors.primary}/>
@@ -149,6 +160,7 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
           </View>
         ) : null}
 
+        {/* Form fields remain the same... */}
         <View style={styles.formContainer}>
           {!isLogin && (
             <View style={styles.inputContainer}>
@@ -227,6 +239,7 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
             )}
           </TouchableOpacity>
 
+          {/* Rest of UI remains the same... */}
           <View style={styles.dividerContainer}>
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
             <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
@@ -263,7 +276,6 @@ export default function AuthScreen({ navigation, onAuthSuccess }) {
     </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
