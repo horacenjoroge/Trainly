@@ -12,21 +12,42 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function FollowingList({ navigation }) {
+export default function FollowingList({ route, navigation }) {
+  const { userId } = route.params || {}; 
   const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
-    loadFollowing();
+    const getCurrentUser = async () => {
+      try {
+        const data = await AsyncStorage.getItem('userData');
+        if (data) {
+          const user = JSON.parse(data);
+          setCurrentUserId(user._id || user.id);
+        }
+      } catch (error) {
+        console.error('Error getting current user:', error);
+      }
+    };
+    
+    getCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      loadFollowing();
+    }
+  }, [userId]);
 
   const loadFollowing = async () => {
     try {
       setLoading(true);
-      const response = await userService.getFollowing();
-      setFollowing(response);
+      const response = await userService.getFollowing(userId);
+      setFollowing(response || []);
     } catch (error) {
       console.error('Error loading following:', error);
     } finally {
@@ -34,13 +55,15 @@ export default function FollowingList({ navigation }) {
     }
   };
 
-  const handleUnfollow = async (userId) => {
+  const handleUnfollow = async (userIdToUnfollow) => {
     try {
-      await userService.unfollowUser(userId);
-      // Remove the unfollowed user from the list
-      setFollowing(currentFollowing => 
-        currentFollowing.filter(user => user._id !== userId)
+      await userService.unfollowUser(userIdToUnfollow);
+      // Update local state
+      setFollowing(currentFollowing =>
+        currentFollowing.filter(user => user._id !== userIdToUnfollow)
       );
+      // Reload data to ensure UI is in sync with server
+      setTimeout(loadFollowing, 500);
     } catch (error) {
       console.error('Error unfollowing user:', error);
     }
@@ -48,19 +71,19 @@ export default function FollowingList({ navigation }) {
 
   const renderFollowingItem = ({ item }) => (
     <View style={[styles.followingItem, { backgroundColor: theme.colors.surface }]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.followingInfo}
         onPress={() => navigation.navigate('UserProfile', { userId: item._id })}
       >
-        <Image 
-          source={{ uri: global.getSafeImageUri(item.avatar || 'https://via.placeholder.com/50') }} 
-          style={styles.avatar} 
+        <Image
+          source={{ uri: global.getSafeImageUri(item.avatar || 'https://via.placeholder.com/50') }}
+          style={styles.avatar}
         />
         <View style={styles.nameContainer}>
           <Text style={[styles.userName, { color: theme.colors.text }]}>{item.name}</Text>
           {item.bio && (
-            <Text 
-              style={[styles.userBio, { color: theme.colors.textSecondary }]} 
+            <Text
+              style={[styles.userBio, { color: theme.colors.textSecondary }]}
               numberOfLines={1}
             >
               {item.bio}
@@ -68,13 +91,15 @@ export default function FollowingList({ navigation }) {
           )}
         </View>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={[styles.unfollowButton, { borderColor: theme.colors.border }]}
-        onPress={() => handleUnfollow(item._id)}
-      >
-        <Text style={{ color: theme.colors.textSecondary }}>Unfollow</Text>
-      </TouchableOpacity>
+
+      {currentUserId && currentUserId === userId && (
+        <TouchableOpacity
+          style={[styles.unfollowButton, { borderColor: theme.colors.border }]}
+          onPress={() => handleUnfollow(item._id)}
+        >
+          <Text style={{ color: theme.colors.textSecondary }}>Unfollow</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -104,15 +129,19 @@ export default function FollowingList({ navigation }) {
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Following</Text>
         <View style={{ width: 24 }} />
       </View>
-      
+
       {following.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="people-outline" size={60} color={theme.colors.textSecondary} />
           <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-            Not following anyone yet
+            {currentUserId === userId 
+              ? "You're not following anyone yet" 
+              : "This user isn't following anyone yet"}
           </Text>
           <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>
-            When you follow people, they'll appear here
+            {currentUserId === userId 
+              ? "When you follow people, they'll appear here"
+              : "When they follow people, they'll appear here"}
           </Text>
         </View>
       ) : (

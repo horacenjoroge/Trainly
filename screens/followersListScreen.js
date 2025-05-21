@@ -12,21 +12,52 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function FollowersList({ navigation }) {
+export default function FollowersList({ route, navigation }) {
+  const { userId } = route.params || {};
   const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [followers, setFollowers] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [viewingUserName, setViewingUserName] = useState('');
 
   useEffect(() => {
-    loadFollowers();
+    const getCurrentUser = async () => {
+      try {
+        const data = await AsyncStorage.getItem('userData');
+        if (data) {
+          const user = JSON.parse(data);
+          setCurrentUserId(user._id || user.id);
+        }
+      } catch (error) {
+        console.error('Error getting current user:', error);
+      }
+    };
+    getCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      loadFollowers();
+      loadUserDetails();
+    }
+  }, [userId]);
+
+  const loadUserDetails = async () => {
+    try {
+      const userData = await userService.getUserById(userId);
+      setViewingUserName(userData?.name || '');
+    } catch (error) {
+      console.error('Error loading user details:', error);
+    }
+  };
 
   const loadFollowers = async () => {
     try {
       setLoading(true);
-      const response = await userService.getFollowers();
-      setFollowers(response);
+      const response = await userService.getFollowers(userId);
+      setFollowers(response || []);
     } catch (error) {
       console.error('Error loading followers:', error);
     } finally {
@@ -34,17 +65,17 @@ export default function FollowersList({ navigation }) {
     }
   };
 
-  const handleFollowBack = async (userId) => {
+  const handleFollowBack = async (userIdToFollow) => {
     try {
-      await userService.followUser(userId);
-      // Update the local state to reflect the change
-      setFollowers(currentFollowers => 
-        currentFollowers.map(follower => 
-          follower._id === userId 
-            ? { ...follower, isFollowingBack: true } 
+      await userService.followUser(userIdToFollow);
+      setFollowers(currentFollowers =>
+        currentFollowers.map(follower =>
+          follower._id === userIdToFollow
+            ? { ...follower, isFollowingBack: true }
             : follower
         )
       );
+      setTimeout(loadFollowers, 500);
     } catch (error) {
       console.error('Error following user:', error);
     }
@@ -52,19 +83,19 @@ export default function FollowersList({ navigation }) {
 
   const renderFollowerItem = ({ item }) => (
     <View style={[styles.followerItem, { backgroundColor: theme.colors.surface }]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.followerInfo}
         onPress={() => navigation.navigate('UserProfile', { userId: item._id })}
       >
-        <Image 
-          source={{ uri: global.getSafeImageUri(item.avatar || 'https://via.placeholder.com/50') }} 
-          style={styles.avatar} 
+        <Image
+          source={{ uri: global.getSafeImageUri(item.avatar || 'https://via.placeholder.com/50') }}
+          style={styles.avatar}
         />
         <View style={styles.nameContainer}>
           <Text style={[styles.userName, { color: theme.colors.text }]}>{item.name}</Text>
           {item.bio && (
-            <Text 
-              style={[styles.userBio, { color: theme.colors.textSecondary }]} 
+            <Text
+              style={[styles.userBio, { color: theme.colors.textSecondary }]}
               numberOfLines={1}
             >
               {item.bio}
@@ -72,40 +103,23 @@ export default function FollowersList({ navigation }) {
           )}
         </View>
       </TouchableOpacity>
-      
-      {!item.isFollowingBack && (
-        <TouchableOpacity 
+
+      {currentUserId === userId && !item.isFollowingBack && (
+        <TouchableOpacity
           style={[styles.followButton, { backgroundColor: theme.colors.primary }]}
           onPress={() => handleFollowBack(item._id)}
         >
           <Text style={styles.followButtonText}>Follow</Text>
         </TouchableOpacity>
       )}
-      
-      {item.isFollowingBack && (
+
+      {currentUserId === userId && item.isFollowingBack && (
         <View style={[styles.followingLabel, { borderColor: theme.colors.border }]}>
           <Text style={{ color: theme.colors.textSecondary }}>Following</Text>
         </View>
       )}
     </View>
   );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Followers</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -116,15 +130,23 @@ export default function FollowersList({ navigation }) {
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Followers</Text>
         <View style={{ width: 24 }} />
       </View>
-      
-      {followers.length === 0 ? (
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      ) : followers.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="people-outline" size={60} color={theme.colors.textSecondary} />
           <Text style={[styles.emptyText, { color: theme.colors.text }]}>
-            No followers yet
+            {currentUserId === userId 
+              ? "You don't have any followers yet" 
+              : `${viewingUserName ? viewingUserName : 'This user'} doesn't have any followers yet`}
           </Text>
           <Text style={[styles.emptySubText, { color: theme.colors.textSecondary }]}>
-            When people follow you, they'll appear here
+            {currentUserId === userId 
+              ? "When people follow you, they'll appear here"
+              : "When people follow them, they'll appear here"}
           </Text>
         </View>
       ) : (
