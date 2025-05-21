@@ -427,19 +427,19 @@ export const userService = {
     }
   },
 
-  getFollowers: async () => {
+  getFollowers: async (userId) => {
     try {
-      const response = await apiClient.get('/follow/followers');
+      const response = await apiClient.get(`/follow/followers${userId ? `?userId=${userId}` : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error loading followers:', error);
       return [];
     }
   },
-
-  getFollowing: async () => {
+  
+  getFollowing: async (userId) => {
     try {
-      const response = await apiClient.get('/follow/following');
+      const response = await apiClient.get(`/follow/following${userId ? `?userId=${userId}` : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error loading following:', error);
