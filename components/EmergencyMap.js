@@ -1,6 +1,8 @@
+// EmergencyMap.js
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function EmergencyMap({ currentLocation, theme }) {
   const mapRef = useRef(null);
@@ -15,30 +17,39 @@ export default function EmergencyMap({ currentLocation, theme }) {
     }
   }, [currentLocation]);
 
+  if (!currentLocation) {
+    return (
+      <View style={[styles.container, styles.noLocationContainer, { backgroundColor: theme.colors.surface }]}>
+        <Ionicons name="location-outline" size={40} color={theme.colors.textSecondary} />
+        <Text style={[styles.noLocationText, { color: theme.colors.text }]}>
+          Waiting for location...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={[styles.map, { borderColor: theme.colors.primary + '30' }]}
-        initialRegion={currentLocation ? {
+        initialRegion={{
           ...currentLocation,
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
-        } : null}
+        }}
         showsUserLocation={true}
         followsUserLocation={true}
         showsMyLocationButton={true}
         showsCompass={true}
         customMapStyle={mapStyle}
       >
-        {currentLocation && (
-          <Marker coordinate={currentLocation}>
-            <View style={styles.currentLocationMarker}>
-              <View style={[styles.currentLocationDot, { backgroundColor: theme.colors.error }]} />
-            </View>
-          </Marker>
-        )}
+        <Marker coordinate={currentLocation}>
+          <View style={styles.currentLocationMarker}>
+            <View style={[styles.currentLocationDot, { backgroundColor: theme.colors.error }]} />
+          </View>
+        </Marker>
       </MapView>
     </View>
   );
@@ -50,10 +61,21 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: '100%',
     borderRadius: 16,
+    marginVertical: 16,
+  },
+  noLocationContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  noLocationText: {
+    marginTop: 10,
+    fontSize: 16,
   },
   map: {
-    flex: 1,
-    margin: 16,
+    ...StyleSheet.absoluteFillObject,
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
