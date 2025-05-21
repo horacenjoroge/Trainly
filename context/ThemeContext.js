@@ -5,38 +5,38 @@ import { Appearance } from 'react-native';
 // Theme storage key
 const THEME_PREFERENCE_KEY = '@trainly_theme_mode';
 
-// Define dark colors
+// Define dark colors - modernized palette
 const darkColors = {
-  background: '#120B42',
+  background: '#121212',
   surface: '#1E1E1E',
   text: '#FFFFFF',
   textSecondary: '#B0B0B0',
   border: '#2C2C2C',
-  primary: '#E57C0B',
-  primaryLight: '#F08C3B',
-  primaryDark: '#C05000',
-  secondary: '#2196F3',
+  primary: '#FF7D2C', // Vibrant orange
+  primaryLight: '#FF9F5C',
+  primaryDark: '#E56200',
+  secondary: '#4ECDC4', // Teal accent
   card: '#252525',
-  success: '#4CAF50',
-  error: '#f44336',
-  warning: '#FF9800'
+  success: '#5CB85C',
+  error: '#FF5252',
+  warning: '#FFC107'
 };
 
-// Define light colors
+// Define light colors - modernized palette
 const lightColors = {
-  background: '#F5F5F5',
+  background: '#F8F9FA',
   surface: '#FFFFFF',
-  text: '#333333',
-  textSecondary: '#666666',
-  border: '#E0E0E0',
-  primary: '#E57C0B',
-  primaryLight: '#F08C3B',
-  primaryDark: '#C05000',
-  secondary: '#2196F3',
+  text: '#212529',
+  textSecondary: '#6C757D',
+  border: '#E9ECEF',
+  primary: '#FF7D2C', // Vibrant orange
+  primaryLight: '#FF9F5C',
+  primaryDark: '#E56200',
+  secondary: '#4ECDC4', // Teal accent
   card: '#FFFFFF',
-  success: '#4CAF50',
-  error: '#f44336',
-  warning: '#FF9800'
+  success: '#5CB85C',
+  error: '#FF5252',
+  warning: '#FFC107'
 };
 
 // Create the theme context
