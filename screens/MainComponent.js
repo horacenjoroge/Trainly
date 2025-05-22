@@ -18,6 +18,7 @@ import FollowersList from '../screens/followersListScreen';
 import FollowingList from '../screens/followingListScreen';
 import UserProfile from '../screens/userProfileScreen';
 import FindFriends from '../screens/FindFriendsScreen';
+import GymWorkoutScreen from '../screens/GymWorkoutScreen';
 import { useTheme } from '../context/ThemeContext';
 import { authService } from '../services/api';
 
@@ -84,25 +85,26 @@ const HomeStack = () => {
 };
 
 const TrainingStack = () => {
- const theme = useTheme();
- const colors = theme.colors;
- 
- return (
-   <Stack.Navigator
-     screenOptions={{
-       headerStyle: {
-         backgroundColor: colors.surface,
-         elevation: 2,
-         shadowOpacity: 0.1,
-       },
-       headerTintColor: colors.text,
-       cardStyle: { backgroundColor: colors.background },
-     }}
-   >
-     <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
-     <Stack.Screen name="Training" component={TrainingScreen} options={{ title: 'Start Training' }} />
-   </Stack.Navigator>
- );
+  const theme = useTheme();
+  const colors = theme.colors;
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.surface,
+          elevation: 2,
+          shadowOpacity: 0.1,
+        },
+        headerTintColor: colors.text,
+        cardStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
+      <Stack.Screen name="Training" component={TrainingScreen} options={{ title: 'Start Training' }} />
+      <Stack.Screen name="GymWorkout" component={GymWorkoutScreen} options={{ title: 'Gym Workout', headerShown: false }} />
+    </Stack.Navigator>
+  );
 };
 
 const ProfileStack = () => {

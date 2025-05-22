@@ -16,25 +16,29 @@ const TrainingOptions = [
     name: 'Swimming',
     icon: 'water-outline',
     image: require('../assets/images/pool.jpg'),
-    description: 'Full body workout in the pool'
+    description: 'Full body workout in the pool',
+    requiresMap: true
   },
   {
     name: 'Bike Trail',
     icon: 'bicycle-outline',
     image: require('../assets/images/bike.jpg'),
-    description: 'Cardiovascular endurance ride'
+    description: 'Cardiovascular endurance ride',
+    requiresMap: true
   },
   {
     name: 'Running Trail',
     icon: 'walk-outline',
     image: require('../assets/images/run.jpg'),
-    description: 'High-intensity cardio session'
+    description: 'High-intensity cardio session',
+    requiresMap: true
   },
   {
     name: 'Gym Session',
     icon: 'fitness-outline',
     image: require('../assets/images/gym.jpg'),
-    description: 'Strength and muscle training'
+    description: 'Strength and muscle training',
+    requiresMap: false
   }
 ];
 
@@ -42,8 +46,14 @@ const TrainingSelectionScreen = ({ navigation }) => {
   const theme = useTheme();
   const colors = theme.colors;
 
-  const handleTrainingSelect = (training) => {
-    navigation.navigate('Training', { activity: training });
+  const handleTrainingSelect = (training, requiresMap) => {
+    if (requiresMap) {
+      // For outdoor activities that need GPS tracking
+      navigation.navigate('Training', { activity: training });
+    } else {
+      // For gym workouts that don't need GPS
+      navigation.navigate('GymWorkout', { activity: training });
+    }
   };
 
   return (
@@ -66,7 +76,7 @@ const TrainingSelectionScreen = ({ navigation }) => {
           <TouchableOpacity
             key={option.name}
             style={[styles.optionCard, { backgroundColor: colors.surface }]}
-            onPress={() => handleTrainingSelect(option.name)}
+            onPress={() => handleTrainingSelect(option.name, option.requiresMap)}
           >
             <Image
               source={option.image}
