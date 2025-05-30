@@ -20,6 +20,8 @@ import UserProfile from '../screens/userProfileScreen';
 import FindFriends from '../screens/FindFriendsScreen';
 import GymWorkoutScreen from '../screens/GymWorkoutScreen';
 import { useTheme } from '../context/ThemeContext';
+import RunningScreen from '../screens/RunningScreen'; // Enhanced Running Screen
+import SwimmingScreen from '../screens/SwimmingScreen'; // Enhanced Swimming Screen
 import { authService } from '../services/api';
 
 const Drawer = createDrawerNavigator();
@@ -100,9 +102,52 @@ const TrainingStack = () => {
         cardStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
-      <Stack.Screen name="Training" component={TrainingScreen} options={{ title: 'Start Training' }} />
-      <Stack.Screen name="GymWorkout" component={GymWorkoutScreen} options={{ title: 'Gym Workout', headerShown: false }} />
+      {/* FIRST SCREEN: Your training selection - this should be the initial route */}
+      <Stack.Screen 
+        name="TrainingSelection" 
+        component={TrainingSelectionScreen} 
+        options={{ title: 'Select Training' }} 
+      />
+      
+      {/* Enhanced Running Screen */}
+      <Stack.Screen 
+        name="RunningScreen" 
+        component={RunningScreen}
+        options={{ 
+          title: 'Running',
+          headerShown: false,
+        }} 
+      />
+      
+      {/* Enhanced Swimming Screen */}
+      <Stack.Screen 
+        name="SwimmingScreen" 
+        component={SwimmingScreen}
+        options={{ 
+          title: 'Swimming',
+          headerShown: false,
+        }} 
+      />
+      
+      {/* Your original training screen for other outdoor activities */}
+      <Stack.Screen 
+        name="Training" 
+        component={TrainingScreen} 
+        options={{ 
+          title: 'Training',
+          headerShown: false,
+        }} 
+      />
+      
+      {/* Your gym workout screen */}
+      <Stack.Screen 
+        name="GymWorkout" 
+        component={GymWorkoutScreen} 
+        options={{ 
+          title: 'Gym Workout', 
+          headerShown: false 
+        }} 
+      />
     </Stack.Navigator>
   );
 };

@@ -1,3 +1,5 @@
+// Updated TrainingSelectionScreen.js - Added Swimming navigation
+
 import React from 'react';
 import {
   View,
@@ -46,9 +48,16 @@ const TrainingSelectionScreen = ({ navigation }) => {
   const theme = useTheme();
   const colors = theme.colors;
 
+  // Updated logic to route to enhanced screens
   const handleTrainingSelect = (training, requiresMap) => {
-    if (requiresMap) {
-      // For outdoor activities that need GPS tracking
+    if (training === 'Running Trail') {
+      // Route Running Trail to enhanced RunningScreen
+      navigation.navigate('RunningScreen', { activity: 'Running' });
+    } else if (training === 'Swimming') {
+      // Route Swimming to enhanced SwimmingScreen
+      navigation.navigate('SwimmingScreen', { activity: 'Swimming' });
+    } else if (requiresMap) {
+      // For other outdoor activities that need GPS tracking
       navigation.navigate('Training', { activity: training });
     } else {
       // For gym workouts that don't need GPS
