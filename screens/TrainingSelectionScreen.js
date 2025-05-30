@@ -56,6 +56,9 @@ const TrainingSelectionScreen = ({ navigation }) => {
     } else if (training === 'Swimming') {
       // Route Swimming to enhanced SwimmingScreen
       navigation.navigate('SwimmingScreen', { activity: 'Swimming' });
+    } else if (training === 'Bike Trail') {
+      // Route Bike Trail to enhanced CyclingScreen
+      navigation.navigate('CyclingScreen', { activity: 'Cycling' });
     } else if (requiresMap) {
       // For other outdoor activities that need GPS tracking
       navigation.navigate('Training', { activity: training });
