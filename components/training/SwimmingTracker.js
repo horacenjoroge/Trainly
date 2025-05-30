@@ -1,19 +1,12 @@
 // components/training/SwimmingTracker.js
 import { useState, useEffect, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Vibration } from 'react-native';
+import BaseTracker from './BaseTracker';
 
-// SwimmingTracker class that extends our BaseTracker concept
-class SwimmingTracker {
+// SwimmingTracker class that extends BaseTracker
+class SwimmingTracker extends BaseTracker {
   constructor(userId) {
-    this.userId = userId;
-    this.activityType = 'Swimming';
-    
-    // Base tracking state
-    this.isActive = false;
-    this.isPaused = false;
-    this.duration = 0;
-    this.startTime = null;
+    super('Swimming', userId);
     
     // Swimming-specific data
     this.poolLength = 25; // meters
@@ -25,43 +18,30 @@ class SwimmingTracker {
     // Rest tracking
     this.isResting = false;
     this.restTimeRemaining = 0;
-    
-    // Internal tracking
-    this.timerInterval = null;
     this.restInterval = null;
   }
 
+  // Override start to initialize lap tracking
   async start() {
-    if (this.isActive) return false;
-
-    this.startTime = new Date();
-    this.isActive = true;
-    this.isPaused = false;
-    this.currentLapStartTime = 0;
-    
-    return true;
+    const started = await super.start();
+    if (started) {
+      this.currentLapStartTime = 0;
+    }
+    return started;
   }
 
-  pause() {
-    if (!this.isActive || this.isPaused) return false;
-    this.isPaused = true;
-    return true;
-  }
-
-  resume() {
-    if (!this.isActive || !this.isPaused) return false;
-    this.isPaused = false;
-    return true;
-  }
-
+  // Override stop to clear rest timer
   stop() {
-    if (!this.isActive) return false;
-    
-    this.isActive = false;
-    this.isPaused = false;
-    this.isResting = false;
-    
-    return true;
+    const stopped = super.stop();
+    if (stopped) {
+      this.isResting = false;
+      this.restTimeRemaining = 0;
+      if (this.restInterval) {
+        clearInterval(this.restInterval);
+        this.restInterval = null;
+      }
+    }
+    return stopped;
   }
 
   // Swimming-specific methods
@@ -74,6 +54,8 @@ class SwimmingTracker {
   }
 
   completeLap(strokeCount = 0) {
+    if (!this.isActive || this.isResting) return null;
+
     const lapTime = this.duration - (this.currentLapStartTime || 0);
     const swolfScore = lapTime + strokeCount;
     
@@ -96,13 +78,29 @@ class SwimmingTracker {
   }
 
   startRest(seconds = 30) {
+    if (!this.isActive) return;
+
     this.isResting = true;
     this.restTimeRemaining = seconds;
+    
+    this.restInterval = setInterval(() => {
+      this.restTimeRemaining--;
+      this.onRestUpdate(this.restTimeRemaining);
+      
+      if (this.restTimeRemaining <= 0) {
+        this.skipRest();
+        Vibration.vibrate(500);
+      }
+    }, 1000);
   }
 
   skipRest() {
     this.isResting = false;
     this.restTimeRemaining = 0;
+    if (this.restInterval) {
+      clearInterval(this.restInterval);
+      this.restInterval = null;
+    }
   }
 
   // Calculate swimming statistics
@@ -135,49 +133,73 @@ class SwimmingTracker {
     };
   }
 
-  async saveWorkout() {
-    try {
-      const stats = this.getSwimmingStats();
-      
-      const workoutData = {
-        id: `workout_${Date.now()}`,
-        type: this.activityType,
-        duration: this.duration,
-        poolLength: this.poolLength,
-        strokeType: this.strokeType,
-        laps: this.laps,
-        totalDistance: this.totalDistance,
-        totalLaps: this.laps.length,
-        stats: stats,
-        calories: Math.floor(this.duration * 6), // Swimming calorie calculation
-        date: new Date().toISOString(),
-        userId: this.userId,
-        enhanced: true,
-      };
+  // Override calorie calculation for swimming
+  calculateCalories() {
+    // More accurate swimming calorie calculation
+    const baseRate = 10; // calories per minute for swimming
+    const intensityMultiplier = this.getIntensityMultiplier();
+    return Math.round((this.duration / 60) * baseRate * intensityMultiplier);
+  }
 
-      // Save to local storage
-      const existingWorkouts = JSON.parse(
-        await AsyncStorage.getItem('workoutHistory') || '[]'
-      );
-      existingWorkouts.unshift(workoutData);
-      await AsyncStorage.setItem('workoutHistory', JSON.stringify(existingWorkouts));
+  getIntensityMultiplier() {
+    if (this.laps.length === 0) return 1.0;
+    
+    const avgSwolf = this.getSwimmingStats().avgSwolf;
+    // Lower SWOLF = higher intensity
+    if (avgSwolf < 30) return 1.3; // High intensity
+    if (avgSwolf < 40) return 1.1; // Medium intensity
+    return 1.0; // Normal intensity
+  }
 
-      return workoutData;
-    } catch (error) {
-      console.error('Error saving swimming workout:', error);
-      throw error;
+  // Override enhanceSessionData to include swimming data
+  async enhanceSessionData(sessionData) {
+    const baseData = await super.enhanceSessionData(sessionData);
+    const stats = this.getSwimmingStats();
+    
+    return {
+      ...baseData,
+      poolLength: this.poolLength,
+      strokeType: this.strokeType,
+      laps: this.laps,
+      totalDistance: this.totalDistance,
+      totalLaps: this.laps.length,
+      stats: stats,
+      isResting: this.isResting,
+      restTimeRemaining: this.restTimeRemaining,
+      swimmingSpecific: true,
+    };
+  }
+
+  // Override prepareWorkoutData for final workout
+  async prepareWorkoutData(sessionData) {
+    const baseWorkout = await super.prepareWorkoutData(sessionData);
+    const stats = this.getSwimmingStats();
+    
+    return {
+      ...baseWorkout,
+      poolLength: this.poolLength,
+      strokeType: this.strokeType,
+      laps: this.laps,
+      totalDistance: this.totalDistance,
+      totalLaps: this.laps.length,
+      stats: stats,
+      enhanced: true,
+      activitySubtype: 'Pool Swimming',
+    };
+  }
+
+  // Override cleanup to clear rest timer
+  cleanup() {
+    super.cleanup();
+    if (this.restInterval) {
+      clearInterval(this.restInterval);
+      this.restInterval = null;
     }
   }
 
-  formatDuration(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  // Swimming-specific callback for rest updates
+  onRestUpdate(timeRemaining) {
+    // Override in hook to update UI
   }
 
   formatTime(seconds) {
@@ -188,7 +210,7 @@ class SwimmingTracker {
 }
 
 // React Hook for using SwimmingTracker
-export const useSwimmingTracker = (userId) => {
+const useSwimmingTracker = (userId) => {
   const [tracker] = useState(() => new SwimmingTracker(userId));
   const [duration, setDuration] = useState(0);
   const [laps, setLaps] = useState([]);
@@ -199,55 +221,50 @@ export const useSwimmingTracker = (userId) => {
   const [isPaused, setIsPaused] = useState(false);
   const [isResting, setIsResting] = useState(false);
   const [restTimeRemaining, setRestTimeRemaining] = useState(0);
-  
-  const timerRef = useRef(null);
-  const restTimerRef = useRef(null);
 
-  // Main timer effect
   useEffect(() => {
-    if (tracker.isActive && !tracker.isPaused && !tracker.isResting) {
-      timerRef.current = setInterval(() => {
-        if (tracker.startTime) {
-          const newDuration = Math.floor((new Date() - tracker.startTime) / 1000);
-          tracker.duration = newDuration;
-          setDuration(newDuration);
-        }
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
+    // Override callbacks for swimming-specific updates
+    tracker.onDurationUpdate = (newDuration) => {
+      setDuration(newDuration);
+    };
+
+    tracker.onRestUpdate = (timeRemaining) => {
+      setRestTimeRemaining(timeRemaining);
+    };
+
+    // Override state change callbacks
+    const originalStart = tracker.onStart;
+    tracker.onStart = () => {
+      setIsActive(true);
+      setIsPaused(false);
+      originalStart.call(tracker);
+    };
+
+    const originalPause = tracker.onPause;
+    tracker.onPause = () => {
+      setIsPaused(true);
+      originalPause.call(tracker);
+    };
+
+    const originalResume = tracker.onResume;
+    tracker.onResume = () => {
+      setIsPaused(false);
+      originalResume.call(tracker);
+    };
+
+    const originalStop = tracker.onStop;
+    tracker.onStop = () => {
+      setIsActive(false);
+      setIsPaused(false);
+      setIsResting(false);
+      setRestTimeRemaining(0);
+      originalStop.call(tracker);
+    };
 
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      tracker.cleanup();
     };
-  }, [tracker.isActive, tracker.isPaused, tracker.isResting]);
-
-  // Rest timer effect
-  useEffect(() => {
-    if (tracker.isResting && tracker.restTimeRemaining > 0) {
-      restTimerRef.current = setInterval(() => {
-        tracker.restTimeRemaining--;
-        setRestTimeRemaining(tracker.restTimeRemaining);
-        
-        if (tracker.restTimeRemaining <= 0) {
-          tracker.isResting = false;
-          setIsResting(false);
-          Vibration.vibrate(500);
-          clearInterval(restTimerRef.current);
-        }
-      }, 1000);
-    } else if (restTimerRef.current) {
-      clearInterval(restTimerRef.current);
-    }
-
-    return () => {
-      if (restTimerRef.current) {
-        clearInterval(restTimerRef.current);
-      }
-    };
-  }, [tracker.isResting, tracker.restTimeRemaining]);
+  }, [tracker]);
 
   // Update state when tracker changes
   useEffect(() => {
@@ -256,10 +273,10 @@ export const useSwimmingTracker = (userId) => {
       setTotalDistance(tracker.totalDistance);
       setPoolLength(tracker.poolLength);
       setStrokeType(tracker.strokeType);
-      setIsActive(tracker.isActive);
-      setIsPaused(tracker.isPaused);
       setIsResting(tracker.isResting);
-      setRestTimeRemaining(tracker.restTimeRemaining);
+      if (tracker.isResting) {
+        setRestTimeRemaining(tracker.restTimeRemaining);
+      }
     }, 1000);
 
     return () => clearInterval(updateInterval);
@@ -267,8 +284,10 @@ export const useSwimmingTracker = (userId) => {
 
   const completeLap = (strokeCount) => {
     const lap = tracker.completeLap(strokeCount);
-    setLaps([...tracker.laps]);
-    setTotalDistance(tracker.totalDistance);
+    if (lap) {
+      setLaps([...tracker.laps]);
+      setTotalDistance(tracker.totalDistance);
+    }
     return lap;
   };
 
@@ -305,6 +324,7 @@ export const useSwimmingTracker = (userId) => {
     isPaused,
     isResting,
     restTimeRemaining,
+    formattedDuration: tracker.formatDuration(duration),
     completeLap,
     startRest,
     skipRest,
@@ -313,7 +333,14 @@ export const useSwimmingTracker = (userId) => {
     getSwimmingStats: () => tracker.getSwimmingStats(),
     formatTime: (seconds) => tracker.formatTime(seconds),
     formatDuration: (seconds) => tracker.formatDuration(seconds),
+    // BaseTracker methods
+    startTracking: async () => await tracker.start(),
+    pauseTracking: () => tracker.pause(),
+    resumeTracking: () => tracker.resume(),
+    stopTracking: () => tracker.stop(),
+    saveWorkout: async () => await tracker.saveWorkout(),
   };
 };
 
+export { useSwimmingTracker };
 export default SwimmingTracker;
