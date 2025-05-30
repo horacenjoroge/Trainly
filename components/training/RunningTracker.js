@@ -1,142 +1,147 @@
 // components/training/RunningTracker.js
-import BaseTracker from './BaseTracker';
-import Geolocation from 'react-native-geolocation-service';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import * as Location from 'expo-location';
+import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-class RunningTracker extends BaseTracker {
+// Simple RunningTracker class for the hook
+class RunningTracker {
   constructor(userId) {
-    super('Running', userId);
+    this.userId = userId;
+    this.activityType = 'Running';
     
-    // Running-specific properties
+    // Tracking state
+    this.isActive = false;
+    this.isPaused = false;
+    this.duration = 0;
+    this.startTime = null;
+    
+    // GPS data
     this.gpsPoints = [];
     this.distance = 0; // in meters
     this.currentPace = 0; // min/km
     this.averagePace = 0; // min/km
-    this.splits = []; // km splits
+    this.splits = [];
     this.elevation = { gain: 0, loss: 0, current: 0 };
-    this.currentSpeed = 0; // m/s
-    this.maxSpeed = 0;
     
-    // GPS tracking
+    // Internal tracking
     this.watchId = null;
     this.lastGpsPoint = null;
-    this.gpsAccuracy = 10; // minimum accuracy in meters
-    
-    // Auto-lap settings
-    this.lapDistance = 1000; // 1km
-    this.lastLapDistance = 0;
+    this.timerInterval = null;
   }
 
-  async requestLocationPermission() {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Location Permission',
-          message: 'This app needs access to location for GPS tracking.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    }
-    return true; // iOS handles permissions differently
-  }
+  async start() {
+    if (this.isActive) return false;
 
-  async onStart() {
-    super.onStart();
-    
+    // Request location permission
     const hasPermission = await this.requestLocationPermission();
     if (!hasPermission) {
       throw new Error('Location permission denied');
     }
 
+    this.startTime = new Date();
+    this.isActive = true;
+    this.isPaused = false;
+    
+    // Start GPS tracking
     this.startGPSTracking();
+    
+    return true;
   }
 
-  startGPSTracking() {
-    const options = {
-      enableHighAccuracy: true,
-      distanceFilter: 5, // minimum distance (in meters) to trigger update
-      interval: 5000, // update interval in ms
-      fastestInterval: 2000, // fastest update interval
-    };
+  pause() {
+    if (!this.isActive || this.isPaused) return false;
+    this.isPaused = true;
+    return true;
+  }
 
-    this.watchId = Geolocation.watchPosition(
-      (position) => {
-        this.handleGPSUpdate(position);
-      },
-      (error) => {
-        console.error('GPS Error:', error);
-      },
-      options
-    );
+  resume() {
+    if (!this.isActive || !this.isPaused) return false;
+    this.isPaused = false;
+    return true;
+  }
+
+  stop() {
+    if (!this.isActive) return false;
+    
+    this.isActive = false;
+    this.isPaused = false;
+    
+    // Stop GPS tracking
+    if (this.watchId !== null) {
+      Location.watchPositionAsync(this.watchId).then(subscription => {
+        if (subscription) subscription.remove();
+      });
+      this.watchId = null;
+    }
+    
+    return true;
+  }
+
+  async requestLocationPermission() {
+    try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } else {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        return status === 'granted';
+      }
+    } catch (error) {
+      console.error('Permission error:', error);
+      return false;
+    }
+  }
+
+  async startGPSTracking() {
+    try {
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 1000,
+          distanceInterval: 5,
+        },
+        (location) => {
+          if (!this.isPaused && this.isActive) {
+            this.handleGPSUpdate(location);
+          }
+        }
+      );
+      this.watchId = subscription;
+    } catch (error) {
+      console.error('GPS tracking error:', error);
+    }
   }
 
   handleGPSUpdate(position) {
-    const { latitude, longitude, accuracy, altitude, speed } = position.coords;
+    const { latitude, longitude, altitude } = position.coords;
     
-    // Filter out inaccurate GPS points
-    if (accuracy > this.gpsAccuracy) {
-      return;
-    }
-
-    const timestamp = new Date().toISOString();
     const newPoint = {
       latitude,
       longitude,
       altitude: altitude || 0,
-      accuracy,
-      speed: speed || 0,
-      timestamp,
+      timestamp: new Date().toISOString(),
     };
 
-    // Calculate distance and pace if we have a previous point
+    // Calculate distance if we have a previous point
     if (this.lastGpsPoint) {
       const segmentDistance = this.calculateDistance(this.lastGpsPoint, newPoint);
-      const timeDiff = (new Date(timestamp) - new Date(this.lastGpsPoint.timestamp)) / 1000; // seconds
-      
-      // Update distance
       this.distance += segmentDistance;
       
-      // Calculate current speed and pace
-      if (timeDiff > 0) {
-        this.currentSpeed = segmentDistance / timeDiff; // m/s
-        this.maxSpeed = Math.max(this.maxSpeed, this.currentSpeed);
-        this.currentPace = this.calculatePace(this.currentSpeed);
+      // Calculate pace
+      if (this.duration > 0 && this.distance > 0) {
+        const averageSpeed = this.distance / this.duration; // m/s
+        this.averagePace = this.calculatePace(averageSpeed);
       }
-      
-      // Update elevation
-      if (this.lastGpsPoint.altitude && newPoint.altitude) {
-        const elevationChange = newPoint.altitude - this.lastGpsPoint.altitude;
-        if (elevationChange > 0) {
-          this.elevation.gain += elevationChange;
-        } else {
-          this.elevation.loss += Math.abs(elevationChange);
-        }
-      }
-      
-      // Check for auto-lap
-      this.checkAutoLap();
     }
 
     this.gpsPoints.push(newPoint);
     this.lastGpsPoint = newPoint;
-    this.elevation.current = newPoint.altitude || 0;
-
-    // Calculate average pace
-    if (this.duration > 0 && this.distance > 0) {
-      const averageSpeed = this.distance / this.duration; // m/s
-      this.averagePace = this.calculatePace(averageSpeed);
-    }
-
-    // Trigger real-time updates
-    this.onRunningDataUpdate();
   }
 
   calculateDistance(point1, point2) {
-    // Haversine formula for calculating distance between two GPS points
     const R = 6371e3; // Earth's radius in meters
     const φ1 = point1.latitude * Math.PI / 180;
     const φ2 = point2.latitude * Math.PI / 180;
@@ -148,12 +153,11 @@ class RunningTracker extends BaseTracker {
               Math.sin(Δλ/2) * Math.sin(Δλ/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-    return R * c; // Distance in meters
+    return R * c;
   }
 
   calculatePace(speedMs) {
     if (speedMs === 0) return 0;
-    
     const speedKmh = speedMs * 3.6;
     const paceMinPerKm = 60 / speedKmh;
     return paceMinPerKm;
@@ -161,165 +165,126 @@ class RunningTracker extends BaseTracker {
 
   formatPace(paceMinPerKm) {
     if (paceMinPerKm === 0) return '0:00';
-    
     const minutes = Math.floor(paceMinPerKm);
     const seconds = Math.round((paceMinPerKm - minutes) * 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  checkAutoLap() {
-    const distanceSinceLastLap = this.distance - this.lastLapDistance;
-    
-    if (distanceSinceLastLap >= this.lapDistance) {
-      this.recordSplit();
+  formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
-  recordSplit() {
-    const splitNumber = this.splits.length + 1;
-    const splitDistance = this.distance - this.lastLapDistance;
-    const splitTime = this.duration - (this.splits.length > 0 ? 
-      this.splits.reduce((total, split) => total + split.time, 0) : 0);
-    
-    const splitPace = splitTime > 0 ? this.calculatePace(splitDistance / splitTime) : 0;
-    
-    const split = {
-      number: splitNumber,
-      distance: splitDistance,
-      time: splitTime,
-      pace: splitPace,
-      timestamp: new Date().toISOString(),
-    };
+  async saveWorkout() {
+    try {
+      const workoutData = {
+        id: `workout_${Date.now()}`,
+        type: this.activityType,
+        duration: this.duration,
+        distance: this.distance,
+        distanceKm: this.distance / 1000,
+        averagePace: this.averagePace,
+        gpsPoints: this.gpsPoints,
+        splits: this.splits,
+        elevation: this.elevation,
+        date: new Date().toISOString(),
+        userId: this.userId,
+      };
 
-    this.splits.push(split);
-    this.lastLapDistance = this.distance;
-    
-    // Trigger split notification
-    this.onSplitRecorded(split);
-  }
+      // Save to local storage
+      const existingWorkouts = JSON.parse(
+        await AsyncStorage.getItem('workoutHistory') || '[]'
+      );
+      existingWorkouts.unshift(workoutData);
+      await AsyncStorage.setItem('workoutHistory', JSON.stringify(existingWorkouts));
 
-  onStop() {
-    super.onStop();
-    
-    // Stop GPS tracking
-    if (this.watchId !== null) {
-      Geolocation.clearWatch(this.watchId);
-      this.watchId = null;
+      return workoutData;
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      throw error;
     }
-
-    // Record final split if needed
-    if (this.distance - this.lastLapDistance > 100) { // At least 100m
-      this.recordSplit();
-    }
-  }
-
-  getRunningStats() {
-    return {
-      distance: this.distance,
-      distanceKm: this.distance / 1000,
-      currentPace: this.currentPace,
-      averagePace: this.averagePace,
-      currentSpeed: this.currentSpeed,
-      maxSpeed: this.maxSpeed,
-      elevation: this.elevation,
-      splits: this.splits,
-      gpsPoints: this.gpsPoints,
-    };
-  }
-
-  async enhanceSessionData(sessionData) {
-    const baseData = await super.enhanceSessionData(sessionData);
-    const runningStats = this.getRunningStats();
-    
-    return {
-      ...baseData,
-      ...runningStats,
-      avgSpeedKmh: (runningStats.distance / 1000) / (this.duration / 3600),
-      totalGpsPoints: this.gpsPoints.length,
-    };
-  }
-
-  async prepareWorkoutData(sessionData) {
-    const baseWorkout = await super.prepareWorkoutData(sessionData);
-    const runningStats = this.getRunningStats();
-    
-    return {
-      ...baseWorkout,
-      activityData: {
-        type: 'Running',
-        distance: runningStats.distance,
-        distanceKm: runningStats.distanceKm,
-        averagePace: runningStats.averagePace,
-        maxSpeed: runningStats.maxSpeed,
-        elevation: runningStats.elevation,
-        splits: runningStats.splits,
-        route: this.compressGPSPoints(runningStats.gpsPoints),
-      },
-      summary: {
-        distance: `${runningStats.distanceKm.toFixed(2)} km`,
-        pace: this.formatPace(runningStats.averagePace),
-        splits: runningStats.splits.length,
-      },
-    };
-  }
-
-  compressGPSPoints(points) {
-    // Simple compression: keep every nth point and important points
-    if (points.length <= 100) return points;
-    
-    const compressed = [];
-    const step = Math.ceil(points.length / 100);
-    
-    for (let i = 0; i < points.length; i += step) {
-      compressed.push(points[i]);
-    }
-    
-    // Always include start and end
-    if (compressed[compressed.length - 1] !== points[points.length - 1]) {
-      compressed.push(points[points.length - 1]);
-    }
-    
-    return compressed;
-  }
-
-  // Override callbacks for UI updates
-  onRunningDataUpdate() {
-    // Override in component for real-time UI updates
-  }
-
-  onSplitRecorded(split) {
-    console.log(`Split ${split.number}: ${this.formatPace(split.pace)} pace`);
-    // Override in component for split notifications
   }
 }
 
-// React Hook for RunningTracker
+// React Hook for using RunningTracker
 export const useRunningTracker = (userId) => {
   const [tracker] = useState(() => new RunningTracker(userId));
-  const [runningData, setRunningData] = useState({
-    distance: 0,
-    currentPace: 0,
-    averagePace: 0,
-    splits: [],
-    elevation: { gain: 0, loss: 0, current: 0 },
-  });
+  const [duration, setDuration] = useState(0);
+  const [distance, setDistance] = useState(0);
+  const [currentPace, setCurrentPace] = useState(0);
+  const [averagePace, setAveragePace] = useState(0);
+  const [splits, setSplits] = useState([]);
+  const [elevation, setElevation] = useState({ gain: 0, loss: 0, current: 0 });
+  const [isActive, setIsActive] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  
+  const timerRef = useRef(null);
 
+  // Timer effect
   useEffect(() => {
-    // Override data update callback
-    tracker.onRunningDataUpdate = () => {
-      setRunningData(tracker.getRunningStats());
-    };
+    if (tracker.isActive && !tracker.isPaused) {
+      timerRef.current = setInterval(() => {
+        if (tracker.startTime) {
+          const newDuration = Math.floor((new Date() - tracker.startTime) / 1000);
+          tracker.duration = newDuration;
+          setDuration(newDuration);
+        }
+      }, 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
 
     return () => {
-      tracker.cleanup();
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     };
+  }, [tracker.isActive, tracker.isPaused]);
+
+  // Update state when tracker changes
+  useEffect(() => {
+    const updateInterval = setInterval(() => {
+      setDistance(tracker.distance);
+      setCurrentPace(tracker.currentPace);
+      setAveragePace(tracker.averagePace);
+      setSplits([...tracker.splits]);
+      setElevation({ ...tracker.elevation });
+      setIsActive(tracker.isActive);
+      setIsPaused(tracker.isPaused);
+    }, 1000);
+
+    return () => clearInterval(updateInterval);
   }, [tracker]);
 
+  const formatPace = (pace) => tracker.formatPace(pace);
+  const recordManualSplit = () => {
+    // Simple manual split implementation
+    const split = {
+      number: splits.length + 1,
+      distance: distance,
+      time: duration,
+      timestamp: new Date().toISOString(),
+    };
+    tracker.splits.push(split);
+    setSplits([...tracker.splits]);
+  };
+
   return {
-    ...runningData,
     tracker,
-    formatPace: tracker.formatPace.bind(tracker),
-    recordManualSplit: () => tracker.recordSplit(),
+    duration,
+    distance,
+    currentPace,
+    averagePace,
+    splits,
+    elevation,
+    formatPace,
+    recordManualSplit,
   };
 };
 
