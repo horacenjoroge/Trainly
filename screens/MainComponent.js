@@ -22,6 +22,7 @@ import GymWorkoutScreen from '../screens/GymWorkoutScreen';
 import { useTheme } from '../context/ThemeContext';
 import RunningScreen from '../screens/RunningScreen'; // Enhanced Running Screen
 import SwimmingScreen from '../screens/SwimmingScreen'; // Enhanced Swimming Screen
+import CyclingScreen from '../screens/CyclingScreen'; // Enhanced Cycling Screen
 import { authService } from '../services/api';
 
 const Drawer = createDrawerNavigator();
@@ -129,6 +130,16 @@ const TrainingStack = () => {
         }} 
       />
       
+      {/* Enhanced Cycling Screen */}
+      <Stack.Screen 
+        name="CyclingScreen" 
+        component={CyclingScreen}
+        options={{ 
+          title: 'Cycling',
+          headerShown: false,
+        }} 
+      />
+      
       {/* Your original training screen for other outdoor activities */}
       <Stack.Screen 
         name="Training" 
@@ -151,7 +162,6 @@ const TrainingStack = () => {
     </Stack.Navigator>
   );
 };
-
 const ProfileStack = () => {
  const theme = useTheme();
  const colors = theme.colors;
