@@ -1,7 +1,7 @@
-// components/training/BaseTracker.js
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Vibration } from 'react-native';
+import { workoutAPI } from '../../services/workoutAPI'; // Import workoutAPI
 
 class BaseTracker {
   constructor(activityType, userId) {
@@ -53,6 +53,7 @@ class BaseTracker {
     if (!this.isActive || this.isPaused) return false;
 
     this.isPaused = true;
+    this.pauseStartTime = new Date();
     this.onPause();
     return true;
   }
@@ -129,51 +130,36 @@ class BaseTracker {
   async saveWorkout() {
     try {
       const sessionData = this.getSessionData();
-      const workoutData = await this.prepareWorkoutData(sessionData);
+      const trackerData = await this.prepareWorkoutData(sessionData);
       
       // Save to workout history
       const existingWorkouts = JSON.parse(
         await AsyncStorage.getItem('workoutHistory') || '[]'
       );
-      existingWorkouts.unshift(workoutData);
+      existingWorkouts.unshift(trackerData);
       await AsyncStorage.setItem('workoutHistory', JSON.stringify(existingWorkouts));
 
       // Clear active session
       await AsyncStorage.removeItem(`active_session_${this.sessionId}`);
 
-      // Try to sync with backend
-      await this.syncWorkoutToBackend(workoutData);
-
-      return workoutData;
-    } catch (error) {
-      console.error('Save workout failed:', error);
-      throw error;
-    }
-  }
-
-  // Sync with backend API
-  async syncWorkoutToBackend(workoutData) {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/workouts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(workoutData),
-      });
-
-      if (response.ok) {
-        console.log('Workout synced to backend');
-        return await response.json();
-      } else {
-        throw new Error('Backend sync failed');
+      // Sync with backend using workoutAPI
+      const response = await workoutAPI.saveWorkout(this.activityType, trackerData);
+      
+      if (!response.success) {
+        // Add to sync queue for retry
+        await this.addToSyncQueue(trackerData);
+        throw new Error(response.message || 'Failed to sync workout');
       }
+
+      return response; // { success, workout, achievements, message }
     } catch (error) {
-      console.error('Backend sync error:', error);
-      // Add to sync queue for later
-      await this.addToSyncQueue(workoutData);
+      console.error(`Error saving ${this.activityType} workout:`, error);
+      // Add to sync queue for offline scenarios
+      await this.addToSyncQueue(trackerData);
+      return {
+        success: false,
+        message: error.message || `Failed to save ${this.activityType} session`,
+      };
     }
   }
 
@@ -281,6 +267,7 @@ class BaseTracker {
     return {
       ...enhancedData,
       id: `workout_${Date.now()}`,
+      name: `${this.activityType} Session ${new Date().toISOString().split('T')[0]}`,
       type: this.activityType,
       date: this.startTime?.toISOString(),
       completed: true,
