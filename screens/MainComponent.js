@@ -46,6 +46,33 @@ const HomeStack = () => {
    >
      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
      <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
+     
+     {/* ADD ENHANCED SCREENS TO HOMESTACK - THIS FIXES THE NAVIGATION */}
+     <Stack.Screen 
+       name="RunningScreen" 
+       component={RunningScreen}
+       options={{ 
+         title: 'Running',
+         headerShown: false,
+       }} 
+     />
+     <Stack.Screen 
+       name="CyclingScreen" 
+       component={CyclingScreen}
+       options={{ 
+         title: 'Cycling',
+         headerShown: false,
+       }} 
+     />
+     <Stack.Screen 
+       name="SwimmingScreen" 
+       component={SwimmingScreen}
+       options={{ 
+         title: 'Swimming',
+         headerShown: false,
+       }} 
+     />
+     
      <Stack.Screen name="CreatePost" component={CreateProgressPostScreen} options={{ title: 'Share Progress', presentation: 'modal' }} />
      <Stack.Screen name="EditStats" component={EditStatsScreen} options={{ title: 'Edit Progress', presentation: 'modal' }} />
      <Stack.Screen
@@ -162,6 +189,7 @@ const TrainingStack = () => {
     </Stack.Navigator>
   );
 };
+
 const ProfileStack = () => {
  const theme = useTheme();
  const colors = theme.colors;
