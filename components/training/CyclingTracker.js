@@ -1,7 +1,8 @@
-// components/training/CyclingTracker.js
+// components/training/CyclingTracker.js - Updated with workoutAPI integration
 import { useState, useEffect } from 'react';
 import { Vibration, Alert } from 'react-native';
 import * as Location from 'expo-location';
+import { workoutAPI } from '../../services/workoutAPI'; // Import the workoutAPI
 import BaseTracker from './BaseTracker';
 
 // CyclingTracker class that extends BaseTracker
@@ -192,11 +193,17 @@ class CyclingTracker extends BaseTracker {
         if (this.currentSegment) {
           this.updateCurrentSegment(segmentDistance, elevationChange);
         }
+        
+        // Notify UI of location update
+        this.onLocationUpdate(coords);
       }
     }
     
     this.lastLocationTime = Date.now();
     this.calculateAverageSpeed();
+    
+    // Update stats for UI
+    this.onStatsUpdate(this.getCyclingStats());
   }
 
   // Calculate distance between two GPS points using Haversine formula
@@ -338,47 +345,35 @@ class CyclingTracker extends BaseTracker {
     return 12.0; // Racing
   }
 
-  // Override enhanceSessionData to include cycling data
-  async enhanceSessionData(sessionData) {
-    const baseData = await super.enhanceSessionData(sessionData);
-    const stats = this.getCyclingStats();
-    
-    return {
-      ...baseData,
-      distance: this.distance,
-      route: this.route,
-      segments: this.segments,
-      intervals: this.intervals,
-      stats: stats,
-      maxSpeed: this.maxSpeed,
-      avgSpeed: this.avgSpeed,
-      currentSpeed: this.currentSpeed,
-      elevation: {
-        gain: this.totalElevationGain,
-        loss: this.totalElevationLoss,
-        current: this.currentElevation,
-      },
-      autoPauseEnabled: this.autoPauseEnabled,
-      cyclingSpecific: true,
-    };
-  }
+  // UPDATED: Save workout using workoutAPI
+  async saveWorkout() {
+    try {
+      const trackerData = {
+        startTime: this.startTime,
+        endTime: this.endTime || new Date(),
+        duration: this.duration,
+        distance: this.distance,
+        avgSpeed: this.avgSpeed,
+        maxSpeed: this.maxSpeed,
+        currentSpeed: this.currentSpeed,
+        elevation: {
+          gain: this.totalElevationGain,
+          loss: this.totalElevationLoss,
+          current: this.currentElevation,
+        },
+        route: this.route,
+        segments: this.segments,
+        intervals: this.intervals,
+        calories: this.calculateCalories(),
+        currentLocation: this.currentLocation,
+      };
 
-  // Override prepareWorkoutData for final workout
-  async prepareWorkoutData(sessionData) {
-    const baseWorkout = await super.prepareWorkoutData(sessionData);
-    const stats = this.getCyclingStats();
-    
-    return {
-      ...baseWorkout,
-      distance: this.distance / 1000, // km
-      route: this.route,
-      segments: this.segments,
-      intervals: this.intervals,
-      stats: stats,
-      activitySubtype: 'Road Cycling',
-      enhanced: true,
-      gpsTracked: true,
-    };
+      const result = await workoutAPI.saveWorkout('Cycling', trackerData);
+      return result;
+    } catch (error) {
+      console.error('Error saving cycling workout:', error);
+      throw error;
+    }
   }
 
   // Override cleanup to stop location tracking
@@ -461,26 +456,26 @@ const useCyclingTracker = (userId) => {
     tracker.onStart = () => {
       setIsActive(true);
       setIsPaused(false);
-      originalStart.call(tracker);
+      if (originalStart) originalStart.call(tracker);
     };
 
     const originalPause = tracker.onPause;
     tracker.onPause = () => {
       setIsPaused(true);
-      originalPause.call(tracker);
+      if (originalPause) originalPause.call(tracker);
     };
 
     const originalResume = tracker.onResume;
     tracker.onResume = () => {
       setIsPaused(false);
-      originalResume.call(tracker);
+      if (originalResume) originalResume.call(tracker);
     };
 
     const originalStop = tracker.onStop;
     tracker.onStop = () => {
       setIsActive(false);
       setIsPaused(false);
-      originalStop.call(tracker);
+      if (originalStop) originalStop.call(tracker);
     };
 
     return () => {
@@ -491,19 +486,20 @@ const useCyclingTracker = (userId) => {
   // Update state when tracker changes
   useEffect(() => {
     const updateInterval = setInterval(() => {
-      const stats = tracker.getCyclingStats();
-      setDistance(tracker.distance);
-      setCurrentSpeed(tracker.currentSpeed);
-      setAvgSpeed(tracker.avgSpeed);
-      setMaxSpeed(tracker.maxSpeed);
-      setElevation({
-        gain: tracker.totalElevationGain,
-        loss: tracker.totalElevationLoss,
-        current: tracker.currentElevation,
-      });
-      setRoute([...tracker.route]);
-      setSegments([...tracker.segments]);
-      setIntervals([...tracker.intervals]);
+      if (tracker.isActive) {
+        setDistance(tracker.distance);
+        setCurrentSpeed(tracker.currentSpeed);
+        setAvgSpeed(tracker.avgSpeed);
+        setMaxSpeed(tracker.maxSpeed);
+        setElevation({
+          gain: tracker.totalElevationGain,
+          loss: tracker.totalElevationLoss,
+          current: tracker.currentElevation,
+        });
+        setRoute([...tracker.route]);
+        setSegments([...tracker.segments]);
+        setIntervals([...tracker.intervals]);
+      }
     }, 1000);
 
     return () => clearInterval(updateInterval);
@@ -544,7 +540,7 @@ const useCyclingTracker = (userId) => {
     pauseTracking: () => tracker.pause(),
     resumeTracking: () => tracker.resume(),
     stopTracking: () => tracker.stop(),
-    saveWorkout: async () => await tracker.saveWorkout(),
+    saveWorkout: async () => await tracker.saveWorkout(), // Now uses workoutAPI
   };
 };
 

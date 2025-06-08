@@ -1,7 +1,7 @@
-// components/training/SwimmingTracker.js
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Vibration } from 'react-native';
 import BaseTracker from './BaseTracker';
+import { workoutAPI } from '../../services/workoutAPI';
 
 // SwimmingTracker class that extends BaseTracker
 class SwimmingTracker extends BaseTracker {
@@ -113,6 +113,7 @@ class SwimmingTracker extends BaseTracker {
         pace100m: 0,
         totalLaps: 0,
         totalDistance: 0,
+        caloriesEstimate: 0,
       };
     }
 
@@ -130,6 +131,7 @@ class SwimmingTracker extends BaseTracker {
       pace100m,
       totalLaps: this.laps.length,
       totalDistance: this.totalDistance,
+      caloriesEstimate: this.calculateCalories(),
     };
   }
 
@@ -177,15 +179,38 @@ class SwimmingTracker extends BaseTracker {
     
     return {
       ...baseWorkout,
+      name: `Swimming Session ${new Date().toISOString().split('T')[0]}`,
+      duration: this.duration,
+      calories: this.calculateCalories(),
+      startTime: new Date(Date.now() - this.duration * 1000).toISOString(),
+      endTime: new Date().toISOString(),
       poolLength: this.poolLength,
       strokeType: this.strokeType,
       laps: this.laps,
       totalDistance: this.totalDistance,
       totalLaps: this.laps.length,
-      stats: stats,
+      avgSwolf: stats.avgSwolf,
+      avgStrokeRate: stats.avgStrokeRate,
+      pace100m: stats.pace100m,
       enhanced: true,
       activitySubtype: 'Pool Swimming',
     };
+  }
+
+  // Override saveWorkout to use workoutAPI.saveWorkout
+  async saveWorkout() {
+    try {
+      const sessionData = await this.enhanceSessionData({});
+      const trackerData = await this.prepareWorkoutData(sessionData);
+      const response = await workoutAPI.saveWorkout('Swimming', trackerData);
+      return response; // Already in { success, workout, achievements, message } format
+    } catch (error) {
+      console.error('Error saving swimming workout:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to save swimming session',
+      };
+    }
   }
 
   // Override cleanup to clear rest timer
@@ -209,7 +234,7 @@ class SwimmingTracker extends BaseTracker {
   }
 }
 
-// React Hook for using SwimmingTracker
+// React Hook for using SwimmingTracker - FIXED VERSION
 const useSwimmingTracker = (userId) => {
   const [tracker] = useState(() => new SwimmingTracker(userId));
   const [duration, setDuration] = useState(0);
@@ -222,6 +247,7 @@ const useSwimmingTracker = (userId) => {
   const [isResting, setIsResting] = useState(false);
   const [restTimeRemaining, setRestTimeRemaining] = useState(0);
 
+  // Setup callbacks only once, no dependencies that change
   useEffect(() => {
     // Override callbacks for swimming-specific updates
     tracker.onDurationUpdate = (newDuration) => {
@@ -232,86 +258,85 @@ const useSwimmingTracker = (userId) => {
       setRestTimeRemaining(timeRemaining);
     };
 
-    // Override state change callbacks
-    const originalStart = tracker.onStart;
+    // Override state change callbacks - store original methods to avoid infinite calls
+    const originalStart = tracker.onStart || (() => {});
     tracker.onStart = () => {
       setIsActive(true);
       setIsPaused(false);
-      originalStart.call(tracker);
+      if (typeof originalStart === 'function') {
+        originalStart.call(tracker);
+      }
     };
 
-    const originalPause = tracker.onPause;
+    const originalPause = tracker.onPause || (() => {});
     tracker.onPause = () => {
       setIsPaused(true);
-      originalPause.call(tracker);
+      if (typeof originalPause === 'function') {
+        originalPause.call(tracker);
+      }
     };
 
-    const originalResume = tracker.onResume;
+    const originalResume = tracker.onResume || (() => {});
     tracker.onResume = () => {
       setIsPaused(false);
-      originalResume.call(tracker);
+      if (typeof originalResume === 'function') {
+        originalResume.call(tracker);
+      }
     };
 
-    const originalStop = tracker.onStop;
+    const originalStop = tracker.onStop || (() => {});
     tracker.onStop = () => {
       setIsActive(false);
       setIsPaused(false);
       setIsResting(false);
       setRestTimeRemaining(0);
-      originalStop.call(tracker);
+      if (typeof originalStop === 'function') {
+        originalStop.call(tracker);
+      }
     };
 
     return () => {
       tracker.cleanup();
     };
-  }, [tracker]);
+  }, []); // Empty dependency array - only run once
 
-  // Update state when tracker changes
-  useEffect(() => {
-    const updateInterval = setInterval(() => {
-      setLaps([...tracker.laps]);
-      setTotalDistance(tracker.totalDistance);
-      setPoolLength(tracker.poolLength);
-      setStrokeType(tracker.strokeType);
-      setIsResting(tracker.isResting);
-      if (tracker.isResting) {
-        setRestTimeRemaining(tracker.restTimeRemaining);
-      }
-    }, 1000);
-
-    return () => clearInterval(updateInterval);
-  }, [tracker]);
-
-  const completeLap = (strokeCount) => {
+  const completeLap = useCallback((strokeCount) => {
     const lap = tracker.completeLap(strokeCount);
     if (lap) {
+      // Update state immediately after lap completion
       setLaps([...tracker.laps]);
       setTotalDistance(tracker.totalDistance);
     }
     return lap;
-  };
+  }, [tracker]);
 
-  const startRest = (seconds) => {
+  const startRest = useCallback((seconds) => {
     tracker.startRest(seconds);
     setIsResting(true);
     setRestTimeRemaining(seconds);
-  };
+  }, [tracker]);
 
-  const skipRest = () => {
+  const skipRest = useCallback(() => {
     tracker.skipRest();
     setIsResting(false);
     setRestTimeRemaining(0);
-  };
+  }, [tracker]);
 
-  const updatePoolLength = (length) => {
+  const updatePoolLength = useCallback((length) => {
     tracker.setPoolLength(length);
     setPoolLength(length);
-  };
+  }, [tracker]);
 
-  const updateStrokeType = (stroke) => {
+  const updateStrokeType = useCallback((stroke) => {
     tracker.setStrokeType(stroke);
     setStrokeType(stroke);
-  };
+  }, [tracker]);
+
+  // Memoized methods to prevent recreation
+  const getSwimmingStats = useCallback(() => tracker.getSwimmingStats(), [tracker]);
+  const formatTime = useCallback((seconds) => tracker.formatTime(seconds), [tracker]);
+  const formatDuration = useCallback((seconds) => tracker.formatDuration(seconds), [tracker]);
+  const saveWorkout = useCallback(async () => await tracker.saveWorkout(), [tracker]);
 
   return {
     tracker,
@@ -330,15 +355,15 @@ const useSwimmingTracker = (userId) => {
     skipRest,
     updatePoolLength,
     updateStrokeType,
-    getSwimmingStats: () => tracker.getSwimmingStats(),
-    formatTime: (seconds) => tracker.formatTime(seconds),
-    formatDuration: (seconds) => tracker.formatDuration(seconds),
+    getSwimmingStats,
+    formatTime,
+    formatDuration,
     // BaseTracker methods
-    startTracking: async () => await tracker.start(),
-    pauseTracking: () => tracker.pause(),
-    resumeTracking: () => tracker.resume(),
-    stopTracking: () => tracker.stop(),
-    saveWorkout: async () => await tracker.saveWorkout(),
+    startTracking: useCallback(async () => await tracker.start(), [tracker]),
+    pauseTracking: useCallback(() => tracker.pause(), [tracker]),
+    resumeTracking: useCallback(() => tracker.resume(), [tracker]),
+    stopTracking: useCallback(() => tracker.stop(), [tracker]),
+    saveWorkout,
   };
 };
 
