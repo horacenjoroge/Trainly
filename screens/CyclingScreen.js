@@ -1,4 +1,4 @@
-// screens/CyclingScreen.js - Enhanced Cycling Workout Screen
+// screens/CyclingScreen.js - Updated with real user authentication
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -13,11 +13,12 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Polyline, Marker } from 'react-native-maps';
 import { useTheme } from '../context/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import your existing header component
 import TrainingHeader from '../components/Trainheader';
+import TrainingMap from '../components/Trainmap';
 
 // Import the CyclingTracker component
 import { useCyclingTracker } from '../components/training/CyclingTracker';
@@ -30,9 +31,32 @@ export default function CyclingScreen({ navigation, route }) {
   
   // Get activity type and user info
   const activityType = route.params?.activity || 'Cycling';
-  const userId = 'current-user-id'; // Replace with your auth context
+  const [userId, setUserId] = useState(null);
   
-  // Use the CyclingTracker hook
+  // Get current user ID from AsyncStorage
+  useEffect(() => {
+    const getCurrentUserId = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const user = JSON.parse(userData);
+          const currentUserId = user._id || user.id || user.userId;
+          setUserId(currentUserId);
+        } else {
+          Alert.alert('Error', 'User not authenticated. Please login again.');
+          navigation.goBack();
+        }
+      } catch (error) {
+        console.error('Error getting current user ID:', error);
+        Alert.alert('Error', 'Authentication error. Please login again.');
+        navigation.goBack();
+      }
+    };
+
+    getCurrentUserId();
+  }, [navigation]);
+  
+  // Use the CyclingTracker hook only when we have userId
   const {
     tracker,
     duration,
@@ -67,36 +91,33 @@ export default function CyclingScreen({ navigation, route }) {
   const [intervalType, setIntervalType] = useState('work');
   const [intervalDuration, setIntervalDuration] = useState('300');
   const [targetPower, setTargetPower] = useState('');
-  const [mapRegion, setMapRegion] = useState(null);
-  const [showMap, setShowMap] = useState(true);
+  
+  // Map state for TrainingMap component
+  const [coordinates, setCoordinates] = useState([]);
 
-  // Set initial map region when location is available
+  // Update coordinates when route changes
   useEffect(() => {
-    if (currentLocation && !mapRegion) {
-      setMapRegion({
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      });
+    if (cyclingRoute.length > 0) {
+      const coords = cyclingRoute.map(point => ({
+        latitude: point.latitude,
+        longitude: point.longitude,
+      }));
+      setCoordinates(coords);
     }
-  }, [currentLocation]);
+  }, [cyclingRoute]);
 
-  // Update map region to follow user
-  useEffect(() => {
-    if (currentLocation && isActive) {
-      setMapRegion(prev => prev ? {
-        ...prev,
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-      } : {
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      });
-    }
-  }, [currentLocation, isActive]);
+  // Don't render until we have userId
+  if (!userId) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.text }]}>
+            Loading...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const handleStartPause = async () => {
     try {
@@ -137,27 +158,46 @@ export default function CyclingScreen({ navigation, route }) {
   };
 
   const handleFinish = async () => {
-    if (distance < 100) { // Less than 100 meters
+    if (distance < 100) {
       Alert.alert('Short Ride', 'Ride for at least 100 meters to save your cycling session.');
       return;
     }
 
     try {
-      // Stop the tracker
+      // Stop the tracker and save workout
       stopTracking();
+      const result = await saveWorkout();
       
-      // Save workout with all the enhanced data
-      const workoutData = await saveWorkout();
-      
-      // Navigate back to TrainingSelection
-      navigation.navigate('TrainingSelection', {
-        newWorkout: workoutData,
-        message: 'Cycling session completed!'
-      });
+      if (result.success) {
+        // Show achievements if earned
+        if (result.achievements && result.achievements.length > 0) {
+          Alert.alert(
+            '🎉 New Achievement!',
+            `You earned: ${result.achievements.map(a => a.title).join(', ')}`,
+            [{ text: 'Awesome!', style: 'default' }]
+          );
+        }
+        
+        // Navigate back with success
+        navigation.navigate('TrainingSelection', {
+          newWorkout: result.workout,
+          achievementsEarned: result.achievements,
+          message: result.message
+        });
+      } else {
+        throw new Error('Failed to save workout');
+      }
       
     } catch (error) {
       console.error('Error finishing workout:', error);
-      Alert.alert('Error', 'Could not save cycling session.');
+      Alert.alert(
+        'Save Error', 
+        'Could not save your cycling session. Would you like to try again?',
+        [
+          { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+          { text: 'Retry', onPress: handleFinish }
+        ]
+      );
     }
   };
 
@@ -179,76 +219,14 @@ export default function CyclingScreen({ navigation, route }) {
         isPaused={isPaused}
       />
 
+      {/* Use TrainingMap component like in RunningScreen */}
+      <TrainingMap
+        currentLocation={currentLocation}
+        coordinates={coordinates}
+        theme={theme}
+      />
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Map View */}
-        {showMap && mapRegion && (
-          <View style={styles.mapContainer}>
-            <MapView
-              style={styles.map}
-              region={mapRegion}
-              showsUserLocation={true}
-              showsMyLocationButton={false}
-              followsUserLocation={isActive}
-              mapType="standard"
-            >
-              {/* Route polyline */}
-              {cyclingRoute.length > 1 && (
-                <Polyline
-                  coordinates={cyclingRoute.map(point => ({
-                    latitude: point.latitude,
-                    longitude: point.longitude,
-                  }))}
-                  strokeColor={colors.primary}
-                  strokeWidth={4}
-                />
-              )}
-              
-              {/* Start marker */}
-              {cyclingRoute.length > 0 && (
-                <Marker
-                  coordinate={{
-                    latitude: cyclingRoute[0].latitude,
-                    longitude: cyclingRoute[0].longitude,
-                  }}
-                  title="Start"
-                  pinColor="green"
-                />
-              )}
-              
-              {/* Current location marker */}
-              {currentLocation && (
-                <Marker
-                  coordinate={{
-                    latitude: currentLocation.latitude,
-                    longitude: currentLocation.longitude,
-                  }}
-                  title="Current Location"
-                  pinColor={colors.primary}
-                />
-              )}
-            </MapView>
-            
-            {/* Map toggle button */}
-            <TouchableOpacity
-              style={[styles.mapToggle, { backgroundColor: colors.surface }]}
-              onPress={() => setShowMap(false)}
-            >
-              <Ionicons name="contract-outline" size={20} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Map toggle when hidden */}
-        {!showMap && (
-          <TouchableOpacity
-            style={[styles.mapToggleExpand, { backgroundColor: colors.surface }]}
-            onPress={() => setShowMap(true)}
-          >
-            <Ionicons name="map-outline" size={20} color={colors.primary} />
-            <Text style={[styles.mapToggleText, { color: colors.text }]}>Show Map</Text>
-          </TouchableOpacity>
-        )}
-
         {/* Main Stats Card */}
         <View style={[styles.mainStatsCard, { backgroundColor: colors.surface }]}>
           <View style={styles.mainStatsGrid}>
@@ -324,9 +302,6 @@ export default function CyclingScreen({ navigation, route }) {
             
             <View style={styles.elevationItem}>
               <Ionicons name="trending-down" size={20} color="#FF5722" />
-              <Text style={[styles.elevationValue, { color: colors.text }]}>
-                {formatElevation(elevation.loss)}
-              </Text>
               <Text style={[styles.elevationLabel, { color: colors.textSecondary }]}>
                 Loss
               </Text>
@@ -551,51 +526,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
   content: {
     flex: 1,
     padding: 16,
-  },
-  mapContainer: {
-    height: 200,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 16,
-    position: 'relative',
-  },
-  map: {
-    flex: 1,
-  },
-  mapToggle: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  mapToggleExpand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  mapToggleText: {
-    marginLeft: 8,
-    fontWeight: '600',
   },
   mainStatsCard: {
     padding: 20,
@@ -838,3 +780,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

@@ -1,4 +1,4 @@
-// GymWorkoutScreen.js - Main Component
+// GymWorkoutScreen.js - Updated with real user authentication & API integration
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { workoutAPI } from '../services/workoutAPI'; // Import workoutAPI
 
 // Import sub-components
 import ExercisesTab from '../components/gym/ExercisesTab';
@@ -46,6 +47,9 @@ const GymWorkoutScreen = ({ navigation, route }) => {
   const colors = theme.colors;
   const activityType = route.params?.activity || 'Gym Session';
   
+  // User authentication state
+  const [userId, setUserId] = useState(null);
+  
   // Main state
   const [exercises, setExercises] = useState([]);
   const [selectedExercises, setSelectedExercises] = useState([]);
@@ -71,10 +75,35 @@ const GymWorkoutScreen = ({ navigation, route }) => {
   const [restTimeRemaining, setRestTimeRemaining] = useState(0);
   const restTimerRef = useRef(null);
   
-  // Load exercises and history on mount
+  // Get current user ID from AsyncStorage
   useEffect(() => {
-    loadData();
-  }, []);
+    const getCurrentUserId = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const user = JSON.parse(userData);
+          const currentUserId = user._id || user.id || user.userId;
+          setUserId(currentUserId);
+        } else {
+          Alert.alert('Error', 'User not authenticated. Please login again.');
+          navigation.goBack();
+        }
+      } catch (error) {
+        console.error('Error getting current user ID:', error);
+        Alert.alert('Error', 'Authentication error. Please login again.');
+        navigation.goBack();
+      }
+    };
+
+    getCurrentUserId();
+  }, [navigation]);
+  
+  // Load exercises and history on mount (only when we have userId)
+  useEffect(() => {
+    if (userId) {
+      loadData();
+    }
+  }, [userId]);
   
   // Control main workout timer
   useEffect(() => {
@@ -130,6 +159,19 @@ const GymWorkoutScreen = ({ navigation, route }) => {
       saveWorkoutProgress();
     }
   }, [selectedExercises]);
+
+  // Don't render until we have userId
+  if (!userId) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.text }]}>
+            Loading...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Load saved data
   const loadData = async () => {
@@ -269,7 +311,7 @@ const GymWorkoutScreen = ({ navigation, route }) => {
     setRestTimeRemaining(0);
   };
 
-  // Finish the workout
+  // UPDATED: Finish the workout with API integration
   const finishWorkout = async () => {
     if (selectedExercises.length === 0) {
       Alert.alert('No Exercises', 'Add exercises to your workout first');
@@ -293,39 +335,88 @@ const GymWorkoutScreen = ({ navigation, route }) => {
         { 
           text: 'Finish', 
           onPress: async () => {
-            const completedSets = selectedExercises.reduce((total, ex) => 
-              total + ex.sets.filter(set => set.completed).length, 0);
-              
-            const totalWeight = selectedExercises.reduce((total, ex) => 
-              total + ex.sets.reduce((setTotal, set) => 
-                setTotal + (set.completed ? set.weight * set.actualReps : 0), 0), 0);
-                
-            const workoutData = {
-              id: new Date().getTime().toString(),
-              type: activityType,
-              duration: workoutDuration,
-              date: new Date().toISOString(),
-              exercises: selectedExercises,
-              stats: {
-                totalSets: completedSets,
-                totalWeight: totalWeight,
-                exercises: selectedExercises.length
-              }
-            };
-            
             try {
-              const newHistory = [workoutData, ...workoutHistory];
-              await AsyncStorage.setItem('workoutHistory', JSON.stringify(newHistory));
-              await AsyncStorage.removeItem('currentWorkout');
+              const completedSets = selectedExercises.reduce((total, ex) => 
+                total + ex.sets.filter(set => set.completed).length, 0);
+                
+              const totalWeight = selectedExercises.reduce((total, ex) => 
+                total + ex.sets.reduce((setTotal, set) => 
+                  setTotal + (set.completed ? set.weight * set.actualReps : 0), 0), 0);
               
-              navigation.navigate('Home', { newWorkout: workoutData });
+              const totalReps = selectedExercises.reduce((total, ex) => 
+                total + ex.sets.reduce((setTotal, set) => 
+                  setTotal + (set.completed ? set.actualReps : 0), 0), 0);
+                  
+              // Prepare workout data for API
+              const trackerData = {
+                startTime: new Date(Date.now() - (workoutDuration * 1000)),
+                endTime: new Date(),
+                duration: workoutDuration,
+                exercises: selectedExercises.map(exercise => ({
+                  name: exercise.name,
+                  category: exercise.category.toLowerCase(),
+                  muscleGroups: [exercise.category.toLowerCase()],
+                  sets: exercise.sets.map((set, index) => ({
+                    setNumber: index + 1,
+                    targetReps: exercise.reps,
+                    actualReps: set.actualReps || 0,
+                    weight: set.weight || 0,
+                    completed: set.completed,
+                    rpe: 7, // Default RPE
+                    notes: '',
+                    timestamp: new Date(),
+                  })),
+                  totalVolume: exercise.sets.reduce((total, set) => 
+                    total + (set.completed ? set.weight * set.actualReps : 0), 0),
+                })),
+                totalSets: completedSets,
+                totalReps: totalReps,
+                totalWeight: totalWeight,
+                muscleGroups: [...new Set(selectedExercises.map(ex => ex.category.toLowerCase()))],
+                averageRestTime: restTime,
+                calories: workoutAPI.estimateCalories('Gym', workoutDuration),
+              };
+
+              // Save to backend using workoutAPI
+              const result = await workoutAPI.saveWorkout('Gym', trackerData);
+              
+              if (result.success) {
+                // Clear local storage
+                await AsyncStorage.removeItem('currentWorkout');
+                
+                // Show achievements if earned
+                if (result.achievements && result.achievements.length > 0) {
+                  Alert.alert(
+                    '🎉 New Achievement!',
+                    `You earned: ${result.achievements.map(a => a.title).join(', ')}`,
+                    [{ text: 'Awesome!', style: 'default' }]
+                  );
+                }
+                
+                // Navigate with success
+                navigation.navigate('TrainingSelection', {
+                  newWorkout: result.workout,
+                  achievementsEarned: result.achievements,
+                  message: result.message
+                });
+              } else {
+                throw new Error('Failed to save workout');
+              }
+              
+              setTimerActive(false);
+              setRestTimerActive(false);
+              
             } catch (error) {
-              console.error('Error saving workout history:', error);
-              Alert.alert('Error', 'Could not save workout data');
+              console.error('Error saving workout:', error);
+              Alert.alert(
+                'Save Error', 
+                'Could not save your gym session. Would you like to try again?',
+                [
+                  { text: 'Discard', style: 'destructive' },
+                  { text: 'Retry', onPress: () => finishWorkout() }
+                ]
+              );
             }
-            
-            setTimerActive(false);
-            setRestTimerActive(false);
           }
         }
       ]
@@ -497,6 +588,15 @@ const GymWorkoutScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   header: {
     flexDirection: 'row',
