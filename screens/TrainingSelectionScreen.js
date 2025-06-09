@@ -1,4 +1,4 @@
-// Updated TrainingSelectionScreen.js - Added Swimming navigation
+// Updated TrainingSelectionScreen.js - FIXED navigation for GymWorkout
 
 import React from 'react';
 import {
@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -19,28 +20,32 @@ const TrainingOptions = [
     icon: 'water-outline',
     image: require('../assets/images/pool.jpg'),
     description: 'Full body workout in the pool',
-    requiresMap: true
+    requiresMap: true,
+    available: false // Temporarily disabled due to infinite loop issue
   },
   {
     name: 'Bike Trail',
     icon: 'bicycle-outline',
     image: require('../assets/images/bike.jpg'),
     description: 'Cardiovascular endurance ride',
-    requiresMap: true
+    requiresMap: true,
+    available: true
   },
   {
     name: 'Running Trail',
     icon: 'walk-outline',
     image: require('../assets/images/run.jpg'),
     description: 'High-intensity cardio session',
-    requiresMap: true
+    requiresMap: true,
+    available: true
   },
   {
     name: 'Gym Session',
     icon: 'fitness-outline',
     image: require('../assets/images/gym.jpg'),
     description: 'Strength and muscle training',
-    requiresMap: false
+    requiresMap: false,
+    available: true
   }
 ];
 
@@ -48,8 +53,18 @@ const TrainingSelectionScreen = ({ navigation }) => {
   const theme = useTheme();
   const colors = theme.colors;
 
-  // Updated logic to route to enhanced screens
-  const handleTrainingSelect = (training, requiresMap) => {
+  // FIXED: Updated navigation logic
+  const handleTrainingSelect = (training, requiresMap, available) => {
+    // Check if activity is available
+    if (!available) {
+      Alert.alert(
+        'Coming Soon',
+        'This activity is currently under development. Please check back in the next update!',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (training === 'Running Trail') {
       // Route Running Trail to enhanced RunningScreen
       navigation.navigate('RunningScreen', { activity: 'Running' });
@@ -59,12 +74,24 @@ const TrainingSelectionScreen = ({ navigation }) => {
     } else if (training === 'Bike Trail') {
       // Route Bike Trail to enhanced CyclingScreen
       navigation.navigate('CyclingScreen', { activity: 'Cycling' });
+    } else if (training === 'Gym Session') {
+      // FIXED: Try nested navigation first, fallback to direct navigation
+      try {
+        // Option 1: Try nested navigation if we're in HomeStack
+        navigation.navigate('TrainingStack', {
+          screen: 'GymWorkout',
+          params: { activity: training }
+        });
+      } catch (error) {
+        // Option 2: Direct navigation if we're already in TrainingStack
+        navigation.navigate('GymWorkout', { activity: training });
+      }
     } else if (requiresMap) {
       // For other outdoor activities that need GPS tracking
       navigation.navigate('Training', { activity: training });
     } else {
-      // For gym workouts that don't need GPS
-      navigation.navigate('GymWorkout', { activity: training });
+      // Fallback
+      Alert.alert('Error', 'Unable to navigate to this activity. Please try again.');
     }
   };
 
@@ -87,26 +114,48 @@ const TrainingSelectionScreen = ({ navigation }) => {
         {TrainingOptions.map((option) => (
           <TouchableOpacity
             key={option.name}
-            style={[styles.optionCard, { backgroundColor: colors.surface }]}
-            onPress={() => handleTrainingSelect(option.name, option.requiresMap)}
+            style={[
+              styles.optionCard, 
+              { backgroundColor: colors.surface },
+              !option.available && styles.disabledCard
+            ]}
+            onPress={() => handleTrainingSelect(option.name, option.requiresMap, option.available)}
           >
             <Image
               source={option.image}
-              style={styles.optionImage}
+              style={[styles.optionImage, !option.available && styles.disabledImage]}
               resizeMode="cover"
             />
             <View style={styles.optionOverlay}>
-              <View style={styles.iconContainer}>
+              <View style={[
+                styles.iconContainer,
+                !option.available && styles.disabledIconContainer
+              ]}>
                 <Ionicons
                   name={option.icon}
                   size={30}
-                  color="#FFFFFF"
+                  color={option.available ? "#FFFFFF" : "#999999"}
                 />
               </View>
-              <Text style={[styles.optionTitle, { color: colors.text }]}>{option.name}</Text>
-              <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
-                {option.description}
+              <Text style={[
+                styles.optionTitle, 
+                { color: colors.text },
+                !option.available && styles.disabledText
+              ]}>
+                {option.name}
               </Text>
+              <Text style={[
+                styles.optionDescription, 
+                { color: colors.textSecondary },
+                !option.available && styles.disabledText
+              ]}>
+                {option.available ? option.description : 'Coming Soon'}
+              </Text>
+              {!option.available && (
+                <View style={styles.comingSoonBadge}>
+                  <Text style={styles.comingSoonText}>Coming Soon</Text>
+                </View>
+              )}
             </View>
           </TouchableOpacity>
         ))}
@@ -158,10 +207,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
+  disabledCard: {
+    opacity: 0.6,
+  },
   optionImage: {
     width: '100%',
     height: '100%',
     position: 'absolute',
+  },
+  disabledImage: {
+    opacity: 0.5,
   },
   optionOverlay: {
     flex: 1,
@@ -179,6 +234,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  disabledIconContainer: {
+    backgroundColor: 'rgba(153, 153, 153, 0.5)',
+  },
   optionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -189,6 +247,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     opacity: 0.9,
+  },
+  disabledText: {
+    color: '#999999',
+  },
+  comingSoonBadge: {
+    backgroundColor: 'rgba(255, 193, 7, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  comingSoonText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });
 
