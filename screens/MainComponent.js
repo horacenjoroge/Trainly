@@ -1,7 +1,8 @@
 import React from 'react';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -29,7 +30,7 @@ import WorkoutHistoryScreen from '../screens/WorkoutHistoryScreen'; // Workout h
 import WorkoutDetailScreen from '../screens/WorkoutDetailScreen'; // Individual workout details
 import { authService } from '../services/api';
 
-const Drawer = createDrawerNavigator();
+const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 const HomeStack = () => {
@@ -76,7 +77,6 @@ const HomeStack = () => {
           headerShown: false,
         }} 
       />
-      {/* ADD THIS: GymWorkout screen to HomeStack */}
       <Stack.Screen 
         name="GymWorkout" 
         component={GymWorkoutScreen} 
@@ -135,7 +135,7 @@ const HomeStack = () => {
       />
     </Stack.Navigator>
   );
- };
+};
 
 const TrainingStack = () => {
   const theme = useTheme();
@@ -215,7 +215,7 @@ const TrainingStack = () => {
   );
 };
 
-// NEW: Stats Stack with workout history
+// Stats Stack with workout history
 const StatsStack = () => {
   const theme = useTheme();
   const colors = theme.colors;
@@ -260,247 +260,227 @@ const StatsStack = () => {
 };
 
 const ProfileStack = () => {
- const theme = useTheme();
- const colors = theme.colors;
- 
- return (
-   <Stack.Navigator
-     screenOptions={{
-       headerStyle: {
-         backgroundColor: colors.surface,
-         elevation: 2,
-         shadowOpacity: 0.1,
-       },
-       headerTintColor: colors.text,
-       cardStyle: { backgroundColor: colors.background },
-       headerShown: false,
-     }}
-   >
-     <Stack.Screen name="ProfileMain" component={ProfileScreen} />
-     <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ title: 'Personal Information', headerShown: true }} />
-     
-     {/* Workout History - accessible from profile */}
-     <Stack.Screen 
-       name="WorkoutHistory" 
-       component={WorkoutHistoryScreen} 
-       options={{ title: 'My Workouts', headerShown: true }} 
-     />
-     
-     {/* Workout Detail - accessible from profile workout history */}
-     <Stack.Screen 
-       name="WorkoutDetail" 
-       component={WorkoutDetailScreen}
-       options={{ 
-         title: 'Workout Details',
-         headerShown: true,
-       }} 
-     />
-     
-     <Stack.Screen name="FollowersList" component={FollowersList} />
-     <Stack.Screen name="FollowingList" component={FollowingList} />
-     <Stack.Screen
-       name="UserProfile"
-       component={UserProfile}
-       options={({ route }) => ({
-         title: 'User Profile',
-       })}
-     />
-     <Stack.Screen name="FindFriends" component={FindFriends} options={{ title: 'Find Friends', headerShown: true }} />
-     <Stack.Screen
-       name="UserFollowers"
-       component={FollowersList}
-       options={({ route }) => ({
-         title: 'Followers',
-         headerShown: true,
-       })}
-     />
-   </Stack.Navigator>
- );
+  const theme = useTheme();
+  const colors = theme.colors;
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.surface,
+          elevation: 2,
+          shadowOpacity: 0.1,
+        },
+        headerTintColor: colors.text,
+        cardStyle: { backgroundColor: colors.background },
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ title: 'Personal Information', headerShown: true }} />
+      
+      {/* Workout History - accessible from profile */}
+      <Stack.Screen 
+        name="WorkoutHistory" 
+        component={WorkoutHistoryScreen} 
+        options={{ title: 'My Workouts', headerShown: true }} 
+      />
+      
+      {/* Workout Detail - accessible from profile workout history */}
+      <Stack.Screen 
+        name="WorkoutDetail" 
+        component={WorkoutDetailScreen}
+        options={{ 
+          title: 'Workout Details',
+          headerShown: true,
+        }} 
+      />
+      
+      <Stack.Screen name="FollowersList" component={FollowersList} />
+      <Stack.Screen name="FollowingList" component={FollowingList} />
+      <Stack.Screen
+        name="UserProfile"
+        component={UserProfile}
+        options={({ route }) => ({
+          title: 'User Profile',
+        })}
+      />
+      <Stack.Screen name="FindFriends" component={FindFriends} options={{ title: 'Find Friends', headerShown: true }} />
+      <Stack.Screen
+        name="UserFollowers"
+        component={FollowersList}
+        options={({ route }) => ({
+          title: 'Followers',
+          headerShown: true,
+        })}
+      />
+    </Stack.Navigator>
+  );
 };
 
-const SettingsStack = () => {
- const theme = useTheme();
- const colors = theme.colors;
- 
- return (
-   <Stack.Navigator
-     screenOptions={{
-       headerStyle: {
-         backgroundColor: colors.surface,
-         elevation: 2,
-         shadowOpacity: 0.1,
-       },
-       headerTintColor: colors.text,
-       cardStyle: { backgroundColor: colors.background },
-     }}
-   >
-     <Stack.Screen name="SettingsMain" component={SettingsScreen} options={{ title: 'Settings' }} />
-     <Stack.Screen name="SecuritySettings" component={PersonalInfoScreen} options={{ title: 'Security Settings' }} />
-     <Stack.Screen name="LanguageSettings" component={PersonalInfoScreen} options={{ title: 'Language Settings' }} />
-     <Stack.Screen name="HeartRateZones" component={PersonalInfoScreen} options={{ title: 'Heart Rate Zones' }} />
-     <Stack.Screen name="SocialSharing" component={PersonalInfoScreen} options={{ title: 'Social Sharing' }} />
-     <Stack.Screen name="PrivacySettings" component={PersonalInfoScreen} options={{ title: 'Privacy Settings' }} />
-     <Stack.Screen name="FindFriends" component={FindFriends} options={{ title: 'Find Friends' }} />
-   </Stack.Navigator>
- );
+const MoreStack = () => {
+  const theme = useTheme();
+  const colors = theme.colors;
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.surface,
+          elevation: 2,
+          shadowOpacity: 0.1,
+        },
+        headerTintColor: colors.text,
+        cardStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="SettingsMain" component={SettingsScreen} options={{ title: 'Settings' }} />
+      <Stack.Screen name="SecuritySettings" component={PersonalInfoScreen} options={{ title: 'Security Settings' }} />
+      <Stack.Screen name="LanguageSettings" component={PersonalInfoScreen} options={{ title: 'Language Settings' }} />
+      <Stack.Screen name="HeartRateZones" component={PersonalInfoScreen} options={{ title: 'Heart Rate Zones' }} />
+      <Stack.Screen name="SocialSharing" component={PersonalInfoScreen} options={{ title: 'Social Sharing' }} />
+      <Stack.Screen name="PrivacySettings" component={PersonalInfoScreen} options={{ title: 'Privacy Settings' }} />
+      <Stack.Screen name="FindFriends" component={FindFriends} options={{ title: 'Find Friends' }} />
+      
+      {/* Emergency Services */}
+      <Stack.Screen name="EmergencyServices" component={EmergencyServicesScreen} options={{ title: 'Emergency Services' }} />
+      <Stack.Screen
+        name="EmergencyContacts"
+        component={ContactsScreen}
+        options={{
+          title: 'Emergency Contacts',
+          headerRight: () => (
+            <Ionicons name="person-add-outline" size={24} color={colors.text} style={{ marginRight: 16 }} />
+          ),
+        }}
+      />
+    </Stack.Navigator>
+  );
 };
-
-const EmergencyStack = () => {
- const theme = useTheme();
- const colors = theme.colors;
- 
- return (
-   <Stack.Navigator
-     screenOptions={{
-       headerStyle: {
-         backgroundColor: colors.surface,
-         elevation: 2,
-         shadowOpacity: 0.1,
-       },
-       headerTintColor: colors.text,
-       cardStyle: { backgroundColor: colors.background },
-     }}
-   >
-     <Stack.Screen name="EmergencyServices" component={EmergencyServicesScreen} options={{ title: 'Emergency Services' }} />
-     <Stack.Screen
-       name="EmergencyContacts"
-       component={ContactsScreen}
-       options={{
-         title: 'Emergency Contacts',
-         headerRight: () => (
-           <Ionicons name="person-add-outline" size={24} color={colors.text} style={{ marginRight: 16 }} />
-         ),
-       }}
-     />
-   </Stack.Navigator>
- );
-};
-
-const EmptyComponent = () => null;
 
 const MainComponent = (props) => {
- const theme = useTheme();
- const colors = theme.colors;
- 
- const handleLogout = async () => {
-   try {
-     await authService.logout();
-     if (props && props.onLogout) {
-       props.onLogout();
-     }
-     console.log('Logged out successfully');
-   } catch (error) {
-     console.error('Logout error:', error);
-   }
- };
+  const theme = useTheme();
+  const colors = theme.colors;
+  
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authService.logout();
+              if (props && props.onLogout) {
+                props.onLogout();
+              }
+              console.log('Logged out successfully');
+            } catch (error) {
+              console.error('Logout error:', error);
+            }
+          }
+        }
+      ]
+    );
+  };
 
- return (
-   <Drawer.Navigator
-     initialRouteName="HomeStack"
-     screenOptions={{
-       headerStyle: {
-         backgroundColor: colors.surface,
-         elevation: 2,
-         shadowOffset: { width: 0, height: 2 },
-         shadowOpacity: 0.1,
-         shadowRadius: 3,
-         borderBottomWidth: 0,
-       },
-       headerTintColor: colors.text,
-       drawerStyle: {
-         backgroundColor: colors.surface,
-         width: 260,
-       },
-       drawerActiveTintColor: colors.primary,
-       drawerInactiveTintColor: colors.textSecondary,
-       drawerActiveBackgroundColor: `${colors.primary}15`,
-       drawerInactiveBackgroundColor: 'transparent',
-       drawerLabelStyle: {
-         marginLeft: -10,
-         fontSize: 15,
-         fontWeight: '500',
-       },
-       drawerItemStyle: {
-         borderRadius: 8,
-         marginHorizontal: 5,
-         marginVertical: 2,
-       },
-       sceneContainerStyle: {
-         backgroundColor: colors.background,
-       },
-     }}
-   >
-     <Drawer.Screen
-       name="HomeStack"
-       component={HomeStack}
-       options={{
-         headerTitle: 'Home',
-         title: 'Home',
-         drawerIcon: ({ color }) => <Ionicons name="home-outline" size={22} color={color} />,
-       }}
-     />
-     <Drawer.Screen
-       name="TrainingStack"
-       component={TrainingStack}
-       options={{
-         headerTitle: 'Training',
-         title: 'Training',
-         drawerIcon: ({ color }) => <Ionicons name="fitness-outline" size={22} color={color} />,
-       }}
-     />
-     {/* NEW: Stats as a main drawer item */}
-     <Drawer.Screen
-       name="StatsStack"
-       component={StatsStack}
-       options={{
-         headerTitle: 'Stats',
-         title: 'Stats',
-         drawerIcon: ({ color }) => <Ionicons name="analytics-outline" size={22} color={color} />,
-       }}
-     />
-     <Drawer.Screen
-       name="ProfileStack"
-       component={ProfileStack}
-       options={{
-         headerTitle: 'Profile',
-         title: 'Profile',
-         drawerIcon: ({ color }) => <Ionicons name="person-outline" size={22} color={color} />,
-       }}
-     />
-     <Drawer.Screen
-       name="EmergencyStack"
-       component={EmergencyStack}
-       options={{
-         headerTitle: 'Emergency Services',
-         title: 'Emergency Services',
-         drawerIcon: ({ color }) => <Ionicons name="alert-circle-outline" size={22} color={color} />,
-       }}
-     />
-     <Drawer.Screen
-       name="SettingsStack"
-       component={SettingsStack}
-       options={{
-         headerTitle: 'Settings',
-         title: 'Settings',
-         drawerIcon: ({ color }) => <Ionicons name="settings-outline" size={22} color={color} />,
-       }}
-     />
-     <Drawer.Screen
-       name="Logout"
-       component={EmptyComponent}
-       options={{
-         title: 'Logout',
-         drawerIcon: ({ color }) => <Ionicons name="log-out-outline" size={22} color={color} />,
-       }}
-       listeners={{
-         drawerItemPress: () => {
-           handleLogout();
-           return false;
-         },
-       }}
-     />
-   </Drawer.Navigator>
- );
+  return (
+    <Tab.Navigator
+      initialRouteName="HomeStack"
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === 'HomeStack') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'TrainingStack') {
+            iconName = focused ? 'fitness' : 'fitness-outline';
+          } else if (route.name === 'StatsStack') {
+            iconName = focused ? 'analytics' : 'analytics-outline';
+          } else if (route.name === 'ProfileStack') {
+            iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'MoreStack') {
+            iconName = focused ? 'ellipsis-horizontal' : 'ellipsis-horizontal-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          paddingBottom: 5,
+          paddingTop: 5,
+          height: 60,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+          marginTop: 2,
+        },
+        headerShown: false,
+        tabBarHideOnKeyboard: true,
+      })}
+    >
+      <Tab.Screen
+        name="HomeStack"
+        component={HomeStack}
+        options={{
+          title: 'Home',
+          tabBarLabel: 'Home',
+        }}
+      />
+      <Tab.Screen
+        name="TrainingStack"
+        component={TrainingStack}
+        options={{
+          title: 'Training',
+          tabBarLabel: 'Training',
+        }}
+      />
+      <Tab.Screen
+        name="StatsStack"
+        component={StatsStack}
+        options={{
+          title: 'Stats',
+          tabBarLabel: 'Stats',
+        }}
+      />
+      <Tab.Screen
+        name="ProfileStack"
+        component={ProfileStack}
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+        }}
+      />
+      <Tab.Screen
+        name="MoreStack"
+        component={MoreStack}
+        options={{
+          title: 'More',
+          tabBarLabel: 'More',
+          // Add logout functionality to More tab
+        }}
+        listeners={{
+          tabPress: (e) => {
+            // You can add more options here or handle logout differently
+            // For now, we'll just navigate to More screen which includes settings
+          },
+        }}
+      />
+    </Tab.Navigator>
+  );
 };
 
 export default MainComponent;
