@@ -55,6 +55,7 @@ export default function ProfileScreen({ navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [recentWorkouts, setRecentWorkouts] = useState([]);
   const [userData, setUserData] = useState({
     name: 'User',
     bio: 'Fitness enthusiast',
@@ -71,8 +72,23 @@ export default function ProfileScreen({ navigation }) {
 
   useEffect(() => {
     loadProfileData();
+    loadRecentWorkouts();
     global.getSafeImageUri = getSafeImageUri;
   }, []);
+
+  const loadRecentWorkouts = async () => {
+    try {
+      // Load recent workouts from AsyncStorage
+      const workoutHistory = await AsyncStorage.getItem('workoutHistory');
+      if (workoutHistory) {
+        const workouts = JSON.parse(workoutHistory);
+        // Get the 3 most recent workouts
+        setRecentWorkouts(workouts.slice(0, 3));
+      }
+    } catch (error) {
+      console.error('Error loading recent workouts:', error);
+    }
+  };
 
   const loadProfileData = async () => {
     try {
@@ -230,6 +246,23 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  // Format workout duration
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    return `${mins}m`;
+  };
+
+  // Get workout icon
+  const getWorkoutIcon = (type) => {
+    const icons = {
+      'Swimming': 'water-outline',
+      'Running': 'walk-outline',
+      'Cycling': 'bicycle-outline',
+      'Gym': 'barbell-outline',
+    };
+    return icons[type] || 'fitness-outline';
+  };
+
   // Stat item component
   const StatItem = ({ label, value, onPress }) => (
     <TouchableOpacity 
@@ -241,6 +274,36 @@ export default function ProfileScreen({ navigation }) {
       </Text>
       <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
         {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // Recent Workout Item Component
+  const RecentWorkoutItem = ({ workout }) => (
+    <TouchableOpacity 
+      style={[styles.workoutItem, { 
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.border 
+      }]}
+      onPress={() => navigation.navigate('WorkoutDetail', { workout })}
+    >
+      <View style={[styles.workoutIcon, { backgroundColor: theme.colors.primary + '15' }]}>
+        <Ionicons 
+          name={getWorkoutIcon(workout.type)} 
+          size={20} 
+          color={theme.colors.primary} 
+        />
+      </View>
+      <View style={styles.workoutInfo}>
+        <Text style={[styles.workoutType, { color: theme.colors.text }]}>
+          {workout.type}
+        </Text>
+        <Text style={[styles.workoutDetails, { color: theme.colors.textSecondary }]}>
+          {formatDuration(workout.duration)} • {workout.calories || 0} cal
+        </Text>
+      </View>
+      <Text style={[styles.workoutDate, { color: theme.colors.textSecondary }]}>
+        {new Date(workout.date).toLocaleDateString()}
       </Text>
     </TouchableOpacity>
   );
@@ -306,6 +369,7 @@ export default function ProfileScreen({ navigation }) {
           <StatItem 
             label="Workouts" 
             value={userData.stats.workouts} 
+            onPress={() => navigation.navigate('WorkoutHistory')}
           />
           <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
           
@@ -327,6 +391,45 @@ export default function ProfileScreen({ navigation }) {
             label="Calories" 
             value={userData.stats.calories} 
           />
+        </View>
+
+        {/* Recent Activity Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              Recent Activity
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('WorkoutHistory')}>
+              <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>
+                View All
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {recentWorkouts.length > 0 ? (
+            <View style={styles.recentWorkouts}>
+              {recentWorkouts.map((workout, index) => (
+                <RecentWorkoutItem key={workout.id || index} workout={workout} />
+              ))}
+            </View>
+          ) : (
+            <View style={[styles.emptyState, { 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border 
+            }]}>
+              <Ionicons 
+                name="fitness-outline" 
+                size={48} 
+                color={theme.colors.textSecondary} 
+              />
+              <Text style={[styles.emptyStateText, { color: theme.colors.textSecondary }]}>
+                No workouts yet
+              </Text>
+              <Text style={[styles.emptyStateSubtext, { color: theme.colors.textSecondary }]}>
+                Start your first workout to see it here
+              </Text>
+            </View>
+          )}
         </View>
         
         {/* Action Buttons */}
@@ -354,6 +457,20 @@ export default function ProfileScreen({ navigation }) {
         
         {/* Menu Options */}
         <View style={styles.menuContainer}>
+          {/* Workout History */}
+          <TouchableOpacity 
+            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
+            onPress={() => navigation.navigate('WorkoutHistory')}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: theme.colors.primary + '20' }]}>
+                <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+              </View>
+              <Text style={[styles.menuText, { color: theme.colors.text }]}>Workout History</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+
           {/* Profile Settings */}
           <TouchableOpacity 
             style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
@@ -520,6 +637,73 @@ const styles = StyleSheet.create({
     width: 1,
     height: '70%',
     alignSelf: 'center',
+  },
+  sectionContainer: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  recentWorkouts: {
+    gap: 12,
+  },
+  workoutItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  workoutIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  workoutInfo: {
+    flex: 1,
+  },
+  workoutType: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  workoutDetails: {
+    fontSize: 14,
+  },
+  workoutDate: {
+    fontSize: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 32,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 12,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'center',
   },
   actionsContainer: {
     flexDirection: 'row',
