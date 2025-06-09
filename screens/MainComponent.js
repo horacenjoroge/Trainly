@@ -33,100 +33,109 @@ const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
 const HomeStack = () => {
- const theme = useTheme();
- const colors = theme.colors;
- 
- return (
-   <Stack.Navigator
-     screenOptions={{
-       headerStyle: {
-         backgroundColor: colors.surface,
-         elevation: 2,
-         shadowOpacity: 0.1,
-       },
-       headerTintColor: colors.text,
-       cardStyle: { backgroundColor: colors.background },
-     }}
-   >
-     <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-     <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
-     
-     {/* Enhanced Training Screens */}
-     <Stack.Screen 
-       name="RunningScreen" 
-       component={RunningScreen}
-       options={{ 
-         title: 'Running',
-         headerShown: false,
-       }} 
-     />
-     <Stack.Screen 
-       name="CyclingScreen" 
-       component={CyclingScreen}
-       options={{ 
-         title: 'Cycling',
-         headerShown: false,
-       }} 
-     />
-     <Stack.Screen 
-       name="SwimmingScreen" 
-       component={SwimmingScreen}
-       options={{ 
-         title: 'Swimming',
-         headerShown: false,
-       }} 
-     />
-     
-     {/* Workout Detail - accessible from multiple places */}
-     <Stack.Screen 
-       name="WorkoutDetail" 
-       component={WorkoutDetailScreen}
-       options={{ 
-         title: 'Workout Details',
-         presentation: 'modal',
-       }} 
-     />
-     
-     <Stack.Screen name="CreatePost" component={CreateProgressPostScreen} options={{ title: 'Share Progress', presentation: 'modal' }} />
-     <Stack.Screen name="EditStats" component={EditStatsScreen} options={{ title: 'Edit Progress', presentation: 'modal' }} />
-     <Stack.Screen
-       name="Comments"
-       component={CommentScreen}
-       options={{
-         title: 'Comments',
-         presentation: 'modal',
-         cardStyle: { backgroundColor: 'transparent' },
-         animationEnabled: true,
-         headerShown: false,
-       }}
-     />
-     <Stack.Screen
-       name="UserProfile"
-       component={UserProfile}
-       options={({ route }) => ({
-         title: 'User Profile',
-         headerShown: false,
-       })}
-     />
-     <Stack.Screen
-       name="UserFollowers"
-       component={FollowersList}
-       options={({ route }) => ({
-         title: 'Followers',
-         headerShown: true,
-       })}
-     />
-     <Stack.Screen
-       name="FollowingList"
-       component={FollowingList}
-       options={({ route }) => ({
-         title: 'Following',
-         headerShown: true,
-       })}
-     />
-   </Stack.Navigator>
- );
-};
+  const theme = useTheme();
+  const colors = theme.colors;
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.surface,
+          elevation: 2,
+          shadowOpacity: 0.1,
+        },
+        headerTintColor: colors.text,
+        cardStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
+      <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
+      
+      {/* Enhanced Training Screens */}
+      <Stack.Screen 
+        name="RunningScreen" 
+        component={RunningScreen}
+        options={{ 
+          title: 'Running',
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="CyclingScreen" 
+        component={CyclingScreen}
+        options={{ 
+          title: 'Cycling',
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="SwimmingScreen" 
+        component={SwimmingScreen}
+        options={{ 
+          title: 'Swimming',
+          headerShown: false,
+        }} 
+      />
+      {/* ADD THIS: GymWorkout screen to HomeStack */}
+      <Stack.Screen 
+        name="GymWorkout" 
+        component={GymWorkoutScreen} 
+        options={{ 
+          title: 'Gym Workout', 
+          headerShown: false 
+        }} 
+      />
+      
+      {/* Workout Detail - accessible from multiple places */}
+      <Stack.Screen 
+        name="WorkoutDetail" 
+        component={WorkoutDetailScreen}
+        options={{ 
+          title: 'Workout Details',
+          presentation: 'modal',
+        }} 
+      />
+      
+      <Stack.Screen name="CreatePost" component={CreateProgressPostScreen} options={{ title: 'Share Progress', presentation: 'modal' }} />
+      <Stack.Screen name="EditStats" component={EditStatsScreen} options={{ title: 'Edit Progress', presentation: 'modal' }} />
+      <Stack.Screen
+        name="Comments"
+        component={CommentScreen}
+        options={{
+          title: 'Comments',
+          presentation: 'modal',
+          cardStyle: { backgroundColor: 'transparent' },
+          animationEnabled: true,
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="UserProfile"
+        component={UserProfile}
+        options={({ route }) => ({
+          title: 'User Profile',
+          headerShown: false,
+        })}
+      />
+      <Stack.Screen
+        name="UserFollowers"
+        component={FollowersList}
+        options={({ route }) => ({
+          title: 'Followers',
+          headerShown: true,
+        })}
+      />
+      <Stack.Screen
+        name="FollowingList"
+        component={FollowingList}
+        options={({ route }) => ({
+          title: 'Following',
+          headerShown: true,
+        })}
+      />
+    </Stack.Navigator>
+  );
+ };
 
 const TrainingStack = () => {
   const theme = useTheme();
