@@ -199,11 +199,26 @@ export const workoutAPI = {
   formatWorkoutData: (activityType, trackerData, userPreferences = {}) => {
     console.log('formatWorkoutData input:', { activityType, trackerData });
     
+    // CRITICAL FIX: Extract and preserve sessionId and userId
+    const sessionId = trackerData.sessionId;
+    const userId = trackerData.userId;
+    
+    if (!sessionId) {
+      console.error('WARNING: sessionId is missing from trackerData');
+    }
+    
+    if (!userId) {
+      console.error('WARNING: userId is missing from trackerData');
+    }
+    
     // Check if trackerData already has the correct structure (from RunningTracker.prepareWorkoutData)
     if (trackerData.running || trackerData.cycling || trackerData.swimming || trackerData.gym) {
       console.log('Data already formatted by tracker, using as-is');
       return {
         ...trackerData,
+        // CRITICAL FIX: Ensure sessionId and userId are preserved
+        sessionId: sessionId,
+        userId: userId,
         // Only override privacy if not already set
         privacy: trackerData.privacy || userPreferences.privacy || 'public',
       };
@@ -222,6 +237,9 @@ export const workoutAPI = {
       notes: trackerData.notes || '',
       privacy: userPreferences.privacy || 'public',
       location: trackerData.location || null,
+      // CRITICAL FIX: Always preserve sessionId and userId at root level
+      sessionId: sessionId,
+      userId: userId,
     };
 
     // Add activity-specific data for legacy flat structure
@@ -349,6 +367,11 @@ export const workoutAPI = {
     try {
       console.log('saveWorkout called with:', { activityType, trackerData });
       
+      // CRITICAL: Validate required fields before processing
+      if (!trackerData.sessionId) {
+        throw new Error('sessionId is required for workout creation');
+      }
+      
       // Check if data already has userId (from tracker)
       if (!trackerData.userId) {
         // Get current user ID only if not provided by tracker
@@ -359,8 +382,19 @@ export const workoutAPI = {
         trackerData.userId = userId;
       }
 
-      // Format workout data (this now preserves existing structure)
+      // Format workout data (this now preserves existing structure including sessionId)
       const workoutData = workoutAPI.formatWorkoutData(activityType, trackerData, userPreferences);
+      
+      // CRITICAL FIX: Double-check that sessionId and userId are preserved
+      if (!workoutData.sessionId) {
+        console.error('CRITICAL ERROR: sessionId was lost during formatting!');
+        workoutData.sessionId = trackerData.sessionId;
+      }
+      
+      if (!workoutData.userId) {
+        console.error('CRITICAL ERROR: userId was lost during formatting!');
+        workoutData.userId = trackerData.userId;
+      }
       
       console.log('Final formatted workout data:', workoutData);
 
@@ -389,7 +423,20 @@ export const workoutAPI = {
       }
     } catch (error) {
       console.error('Error saving workout:', error);
-      throw error;
+      
+      // ENHANCED ERROR HANDLING: Provide more specific error messages
+      if (error.response?.data) {
+        console.error('API Error Details:', error.response.data);
+        return {
+          success: false,
+          error: error.response.data.message || error.message
+        };
+      }
+      
+      return {
+        success: false,
+        error: error.message || 'Failed to save workout'
+      };
     }
   },
 };
