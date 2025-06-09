@@ -1,4 +1,4 @@
-// screens/StatsScreen.js - Analytics dashboard
+// screens/StatsScreen.js - Enhanced Analytics Dashboard
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -28,6 +28,7 @@ const StatsScreen = ({ navigation }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [achievements, setAchievements] = useState([]);
+  const [debugInfo, setDebugInfo] = useState('');
 
   const periods = [
     { key: 'week', label: 'Week' },
@@ -35,6 +36,112 @@ const StatsScreen = ({ navigation }) => {
     { key: 'year', label: 'Year' },
     { key: 'all', label: 'All Time' },
   ];
+
+  // Enhanced loadStats with better API handling and debugging
+  // Fixed loadStats function - Replace your existing loadStats function with this
+
+const loadStats = async () => {
+  console.log('=== LOADING STATS DEBUG START ===');
+  setLoading(true);
+  
+  try {
+    // Try to load from API first
+    console.log('Attempting to load stats from API for period:', selectedPeriod);
+    
+    try {
+      const response = await workoutAPI.getWorkoutStats(selectedPeriod);
+      console.log('API Response:', response);
+      
+      if (response.status === 'success' && response.data) {
+        console.log('Successfully loaded stats from API');
+        
+        // FIXED: Better handling of API response
+        const apiStats = {
+          summary: response.data.summary || {
+            totalWorkouts: 0,
+            totalDuration: 0,
+            totalDistance: 0,
+            totalCalories: 0
+          },
+          stats: response.data.stats || [], // These should now have data
+          trends: response.data.trends || [], // These should now have data
+          personalBests: response.data.personalBests || {},
+          recentAchievements: response.data.recentAchievements || []
+        };
+        
+        console.log('Formatted API stats:', {
+          summaryValid: !!apiStats.summary,
+          statsCount: apiStats.stats.length,
+          trendsCount: apiStats.trends.length,
+          personalBestsKeys: Object.keys(apiStats.personalBests),
+          achievementsCount: apiStats.recentAchievements.length
+        });
+        
+        setStats(apiStats);
+        setDebugInfo(`API: ${apiStats.stats.length} types, ${apiStats.trends.length} trends`);
+        
+        // CRITICAL FIX: Set loading to false here
+        setLoading(false);
+        console.log('=== LOADING STATS DEBUG END (API SUCCESS) ===');
+        return; // Exit early on success
+      } else {
+        console.log('API response was not successful:', response);
+        setDebugInfo('API response failed');
+      }
+    } catch (apiError) {
+      console.log('API error, falling back to local data:', apiError.message);
+      setDebugInfo(`API Error: ${apiError.message}`);
+    }
+
+    // Fallback to local calculation
+    try {
+      const historyData = await AsyncStorage.getItem('workoutHistory');
+      if (historyData) {
+        const workouts = JSON.parse(historyData);
+        console.log('Calculating stats from local data:', workouts.length, 'workouts');
+        const calculatedStats = calculateStatsFromWorkouts(workouts, selectedPeriod);
+        setStats(calculatedStats);
+        setDebugInfo(`Local: ${workouts.length} workouts`);
+      } else {
+        // No data available
+        setStats({
+          summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
+          stats: [],
+          trends: [],
+          personalBests: {},
+          recentAchievements: []
+        });
+        setDebugInfo('No data found');
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      setDebugInfo(`Error: ${error.message}`);
+      // Set empty stats on error
+      setStats({
+        summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
+        stats: [],
+        trends: [],
+        personalBests: {},
+        recentAchievements: []
+      });
+    }
+  } catch (error) {
+    console.error('Unexpected error in loadStats:', error);
+    setDebugInfo(`Unexpected error: ${error.message}`);
+    // Set empty stats on error
+    setStats({
+      summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
+      stats: [],
+      trends: [],
+      personalBests: {},
+      recentAchievements: []
+    });
+  } finally {
+    // CRITICAL FIX: Always set loading to false in finally block
+    setLoading(false);
+    console.log('=== LOADING STATS DEBUG END ===');
+  }
+};
 
   // Load stats from AsyncStorage and API
   useEffect(() => {
@@ -46,6 +153,7 @@ const StatsScreen = ({ navigation }) => {
   // Add focus listener to refresh data
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Stats screen focused - refreshing data');
       loadStats();
       loadWorkoutHistory();
       loadAchievements();
@@ -55,13 +163,24 @@ const StatsScreen = ({ navigation }) => {
 
   const loadWorkoutHistory = async () => {
     try {
+      console.log('Loading workout history from AsyncStorage...');
       const historyData = await AsyncStorage.getItem('workoutHistory');
+      
       if (historyData) {
         const workouts = JSON.parse(historyData);
+        console.log('Loaded workout history:', {
+          count: workouts.length,
+          types: [...new Set(workouts.map(w => w.type))],
+          recentWorkout: workouts[workouts.length - 1]
+        });
         setWorkoutHistory(workouts);
+      } else {
+        console.log('No workout history found in AsyncStorage');
+        setWorkoutHistory([]);
       }
     } catch (error) {
       console.error('Error loading workout history:', error);
+      setWorkoutHistory([]);
     }
   };
 
@@ -92,45 +211,16 @@ const StatsScreen = ({ navigation }) => {
     }
   };
 
-  const loadStats = async () => {
-    setLoading(true);
-    try {
-      // Try to load from API first
-      try {
-        const response = await workoutAPI.getWorkoutStats(selectedPeriod);
-        if (response.status === 'success') {
-          setStats(response.data);
-          return;
-        }
-      } catch (apiError) {
-        console.log('API not available, calculating from local data');
-      }
-
-      // Calculate stats from AsyncStorage data
-      const historyData = await AsyncStorage.getItem('workoutHistory');
-      if (historyData) {
-        const workouts = JSON.parse(historyData);
-        const calculatedStats = calculateStatsFromWorkouts(workouts, selectedPeriod);
-        setStats(calculatedStats);
-      } else {
-        // No data available
-        setStats({
-          summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
-          stats: [],
-          trends: [],
-          personalBests: {},
-          recentAchievements: []
-        });
-      }
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Enhanced calculateStatsFromWorkouts with debugging
   const calculateStatsFromWorkouts = (workouts, period) => {
+    console.log('calculateStatsFromWorkouts called with:', {
+      workoutCount: workouts?.length || 0,
+      period,
+      sampleWorkout: workouts?.[0]
+    });
+
     if (!workouts || workouts.length === 0) {
+      console.log('No workouts to calculate stats from');
       return {
         summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
         stats: [],
@@ -143,7 +233,13 @@ const StatsScreen = ({ navigation }) => {
     // Filter workouts by period
     const now = new Date();
     const filteredWorkouts = workouts.filter(workout => {
-      const workoutDate = new Date(workout.date || workout.startTime);
+      const workoutDate = new Date(workout.date || workout.startTime || workout.endTime);
+      
+      if (isNaN(workoutDate.getTime())) {
+        console.warn('Invalid workout date found:', workout);
+        return false;
+      }
+
       switch (period) {
         case 'week':
           const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -159,15 +255,34 @@ const StatsScreen = ({ navigation }) => {
       }
     });
 
+    console.log('Filtered workouts:', {
+      originalCount: workouts.length,
+      filteredCount: filteredWorkouts.length,
+      period
+    });
+
     // Calculate summary
     const summary = {
       totalWorkouts: filteredWorkouts.length,
-      totalDuration: filteredWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0),
-      totalDistance: filteredWorkouts.reduce((sum, w) => {
-        return sum + (w.totalDistance || w.distance || 0);
+      totalDuration: filteredWorkouts.reduce((sum, w) => {
+        const duration = w.duration || 0;
+        return sum + duration;
       }, 0),
-      totalCalories: filteredWorkouts.reduce((sum, w) => sum + (w.calories || 0), 0)
+      totalDistance: filteredWorkouts.reduce((sum, w) => {
+        // Check multiple possible distance fields
+        const distance = w.totalDistance || w.distance || 
+                        (w.running?.distance) || 
+                        (w.cycling?.distance) || 
+                        (w.swimming?.distance) || 0;
+        return sum + distance;
+      }, 0),
+      totalCalories: filteredWorkouts.reduce((sum, w) => {
+        const calories = w.calories || 0;
+        return sum + calories;
+      }, 0)
     };
+
+    console.log('Calculated summary:', summary);
 
     // Calculate workout type distribution
     const typeStats = {};
@@ -175,6 +290,8 @@ const StatsScreen = ({ navigation }) => {
       const type = workout.type || 'Unknown';
       typeStats[type] = (typeStats[type] || 0) + 1;
     });
+
+    console.log('Type stats:', typeStats);
 
     const stats = Object.entries(typeStats).map(([type, count]) => ({
       _id: type,
@@ -186,7 +303,7 @@ const StatsScreen = ({ navigation }) => {
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dayWorkouts = workouts.filter(w => {
-        const workoutDate = new Date(w.date || w.startTime);
+        const workoutDate = new Date(w.date || w.startTime || w.endTime);
         return workoutDate.toDateString() === date.toDateString();
       });
       
@@ -197,6 +314,8 @@ const StatsScreen = ({ navigation }) => {
       });
     }
 
+    console.log('Calculated trends:', trends);
+
     // Calculate personal bests
     const personalBests = {};
     ['Swimming', 'Running', 'Cycling', 'Gym'].forEach(type => {
@@ -204,19 +323,27 @@ const StatsScreen = ({ navigation }) => {
       if (typeWorkouts.length > 0) {
         personalBests[type] = {
           longestDuration: Math.max(...typeWorkouts.map(w => w.duration || 0)),
-          longestDistance: Math.max(...typeWorkouts.map(w => w.totalDistance || w.distance || 0)),
+          longestDistance: Math.max(...typeWorkouts.map(w => {
+            return w.totalDistance || w.distance || 
+                   (w[type.toLowerCase()]?.distance) || 0;
+          })),
           mostCalories: Math.max(...typeWorkouts.map(w => w.calories || 0))
         };
       }
     });
 
-    return {
+    console.log('Personal bests:', personalBests);
+
+    const result = {
       summary,
       stats,
       trends,
       personalBests,
       recentAchievements: achievements.slice(0, 3)
     };
+
+    console.log('Final calculated stats:', result);
+    return result;
   };
 
   // Format duration
@@ -307,12 +434,50 @@ const StatsScreen = ({ navigation }) => {
     };
   };
 
+  // Debug component for development
+  const DebugSection = () => {
+    if (!__DEV__) return null;
+    
+    return (
+      <View style={[styles.debugContainer, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.debugTitle, { color: colors.text }]}>🐛 Debug Info</Text>
+        <Text style={[styles.debugText, { color: colors.textSecondary }]}>
+          Status: {debugInfo}
+        </Text>
+        <Text style={[styles.debugText, { color: colors.textSecondary }]}>
+          Workouts in history: {workoutHistory.length}
+        </Text>
+        <Text style={[styles.debugText, { color: colors.textSecondary }]}>
+          Stats loaded: {stats ? 'Yes' : 'No'}
+        </Text>
+        <Text style={[styles.debugText, { color: colors.textSecondary }]}>
+          Total workouts in stats: {stats?.summary?.totalWorkouts || 0}
+        </Text>
+        {stats?.stats?.length > 0 && (
+          <Text style={[styles.debugText, { color: colors.textSecondary }]}>
+            Types found: {stats.stats.map(s => `${s._id}(${s.count})`).join(', ')}
+          </Text>
+        )}
+        {stats?.trends?.length > 0 && (
+          <Text style={[styles.debugText, { color: colors.textSecondary }]}>
+            Trends: {stats.trends.filter(t => t.count > 0).length} active days
+          </Text>
+        )}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.text }]}>Loading stats...</Text>
+          {debugInfo && (
+            <Text style={[styles.debugText, { color: colors.textSecondary }]}>
+              Debug: {debugInfo}
+            </Text>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -335,6 +500,9 @@ const StatsScreen = ({ navigation }) => {
     }
   };
 
+  console.log('Current stats state:', stats);
+  console.log('Current workout history length:', workoutHistory.length);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -347,6 +515,9 @@ const StatsScreen = ({ navigation }) => {
           <Ionicons name="calendar-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
+
+      {/* DEBUG INFO - Remove in production */}
+      <DebugSection />
 
       {/* Period Selector */}
       <View style={styles.periodSelector}>
@@ -674,6 +845,22 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  debugContainer: {
+    padding: 12,
+    margin: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFA500',
+  },
+  debugTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  debugText: {
+    fontSize: 12,
+    marginBottom: 2,
   },
   loadingContainer: {
     flex: 1,
