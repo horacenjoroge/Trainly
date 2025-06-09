@@ -20,9 +20,13 @@ import UserProfile from '../screens/userProfileScreen';
 import FindFriends from '../screens/FindFriendsScreen';
 import GymWorkoutScreen from '../screens/GymWorkoutScreen';
 import { useTheme } from '../context/ThemeContext';
-import RunningScreen from '../screens/RunningScreen'; // Enhanced Running Screen
-import SwimmingScreen from '../screens/SwimmingScreen'; // Enhanced Swimming Screen
-import CyclingScreen from '../screens/CyclingScreen'; // Enhanced Cycling Screen
+import RunningScreen from '../screens/RunningScreen';
+import SwimmingScreen from '../screens/SwimmingScreen';
+import CyclingScreen from '../screens/CyclingScreen';
+// NEW IMPORTS
+import StatsScreen from '../screens/StatsScreen'; // Main stats dashboard
+import WorkoutHistoryScreen from '../screens/WorkoutHistoryScreen'; // Workout history
+import WorkoutDetailScreen from '../screens/WorkoutDetailScreen'; // Individual workout details
 import { authService } from '../services/api';
 
 const Drawer = createDrawerNavigator();
@@ -47,7 +51,7 @@ const HomeStack = () => {
      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
      <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
      
-     {/* ADD ENHANCED SCREENS TO HOMESTACK - THIS FIXES THE NAVIGATION */}
+     {/* Enhanced Training Screens */}
      <Stack.Screen 
        name="RunningScreen" 
        component={RunningScreen}
@@ -70,6 +74,16 @@ const HomeStack = () => {
        options={{ 
          title: 'Swimming',
          headerShown: false,
+       }} 
+     />
+     
+     {/* Workout Detail - accessible from multiple places */}
+     <Stack.Screen 
+       name="WorkoutDetail" 
+       component={WorkoutDetailScreen}
+       options={{ 
+         title: 'Workout Details',
+         presentation: 'modal',
        }} 
      />
      
@@ -130,14 +144,14 @@ const TrainingStack = () => {
         cardStyle: { backgroundColor: colors.background },
       }}
     >
-      {/* FIRST SCREEN: Your training selection - this should be the initial route */}
+      {/* Main Training Selection */}
       <Stack.Screen 
         name="TrainingSelection" 
         component={TrainingSelectionScreen} 
         options={{ title: 'Select Training' }} 
       />
       
-      {/* Enhanced Running Screen */}
+      {/* Enhanced Training Screens */}
       <Stack.Screen 
         name="RunningScreen" 
         component={RunningScreen}
@@ -146,8 +160,6 @@ const TrainingStack = () => {
           headerShown: false,
         }} 
       />
-      
-      {/* Enhanced Swimming Screen */}
       <Stack.Screen 
         name="SwimmingScreen" 
         component={SwimmingScreen}
@@ -156,8 +168,6 @@ const TrainingStack = () => {
           headerShown: false,
         }} 
       />
-      
-      {/* Enhanced Cycling Screen */}
       <Stack.Screen 
         name="CyclingScreen" 
         component={CyclingScreen}
@@ -166,8 +176,6 @@ const TrainingStack = () => {
           headerShown: false,
         }} 
       />
-      
-      {/* Your original training screen for other outdoor activities */}
       <Stack.Screen 
         name="Training" 
         component={TrainingScreen} 
@@ -176,14 +184,66 @@ const TrainingStack = () => {
           headerShown: false,
         }} 
       />
-      
-      {/* Your gym workout screen */}
       <Stack.Screen 
         name="GymWorkout" 
         component={GymWorkoutScreen} 
         options={{ 
           title: 'Gym Workout', 
           headerShown: false 
+        }} 
+      />
+      
+      {/* Workout Detail - accessible after training completion */}
+      <Stack.Screen 
+        name="WorkoutDetail" 
+        component={WorkoutDetailScreen}
+        options={{ 
+          title: 'Workout Summary',
+          presentation: 'modal',
+        }} 
+      />
+    </Stack.Navigator>
+  );
+};
+
+// NEW: Stats Stack with workout history
+const StatsStack = () => {
+  const theme = useTheme();
+  const colors = theme.colors;
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.surface,
+          elevation: 2,
+          shadowOpacity: 0.1,
+        },
+        headerTintColor: colors.text,
+        cardStyle: { backgroundColor: colors.background },
+      }}
+    >
+      {/* Main Stats Dashboard */}
+      <Stack.Screen 
+        name="StatsMain" 
+        component={StatsScreen} 
+        options={{ title: 'Your Stats' }} 
+      />
+      
+      {/* Workout History - accessible from stats */}
+      <Stack.Screen 
+        name="WorkoutHistory" 
+        component={WorkoutHistoryScreen} 
+        options={{ title: 'Workout History' }} 
+      />
+      
+      {/* Individual Workout Detail */}
+      <Stack.Screen 
+        name="WorkoutDetail" 
+        component={WorkoutDetailScreen}
+        options={{ 
+          title: 'Workout Details',
+          presentation: 'modal',
         }} 
       />
     </Stack.Navigator>
@@ -209,6 +269,24 @@ const ProfileStack = () => {
    >
      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
      <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ title: 'Personal Information', headerShown: true }} />
+     
+     {/* Workout History - accessible from profile */}
+     <Stack.Screen 
+       name="WorkoutHistory" 
+       component={WorkoutHistoryScreen} 
+       options={{ title: 'My Workouts', headerShown: true }} 
+     />
+     
+     {/* Workout Detail - accessible from profile workout history */}
+     <Stack.Screen 
+       name="WorkoutDetail" 
+       component={WorkoutDetailScreen}
+       options={{ 
+         title: 'Workout Details',
+         headerShown: true,
+       }} 
+     />
+     
      <Stack.Screen name="FollowersList" component={FollowersList} />
      <Stack.Screen name="FollowingList" component={FollowingList} />
      <Stack.Screen
@@ -353,21 +431,31 @@ const MainComponent = (props) => {
        }}
      />
      <Drawer.Screen
-       name="ProfileStack"
-       component={ProfileStack}
-       options={{
-         headerTitle: 'Profile',
-         title: 'Profile',
-         drawerIcon: ({ color }) => <Ionicons name="person-outline" size={22} color={color} />,
-       }}
-     />
-     <Drawer.Screen
        name="TrainingStack"
        component={TrainingStack}
        options={{
          headerTitle: 'Training',
          title: 'Training',
          drawerIcon: ({ color }) => <Ionicons name="fitness-outline" size={22} color={color} />,
+       }}
+     />
+     {/* NEW: Stats as a main drawer item */}
+     <Drawer.Screen
+       name="StatsStack"
+       component={StatsStack}
+       options={{
+         headerTitle: 'Stats',
+         title: 'Stats',
+         drawerIcon: ({ color }) => <Ionicons name="analytics-outline" size={22} color={color} />,
+       }}
+     />
+     <Drawer.Screen
+       name="ProfileStack"
+       component={ProfileStack}
+       options={{
+         headerTitle: 'Profile',
+         title: 'Profile',
+         drawerIcon: ({ color }) => <Ionicons name="person-outline" size={22} color={color} />,
        }}
      />
      <Drawer.Screen
