@@ -50,6 +50,21 @@ const HomeStack = () => {
       }}
     >
       <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
+      
+      {/* ADDED: Stats screen for quick access from HomeScreen progress card */}
+      <Stack.Screen 
+        name="Stats" 
+        component={StatsScreen} 
+        options={{ title: 'Your Stats' }} 
+      />
+      
+      {/* ADDED: Workout History accessible from Stats */}
+      <Stack.Screen 
+        name="WorkoutHistory" 
+        component={WorkoutHistoryScreen} 
+        options={{ title: 'Workout History' }} 
+      />
+      
       <Stack.Screen name="TrainingSelection" component={TrainingSelectionScreen} options={{ title: 'Select Training' }} />
       
       {/* Enhanced Training Screens */}
@@ -470,7 +485,6 @@ const MainComponent = (props) => {
         options={{
           title: 'More',
           tabBarLabel: 'More',
-          // Add logout functionality to More tab
         }}
         listeners={{
           tabPress: (e) => {
