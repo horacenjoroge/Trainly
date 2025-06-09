@@ -1,4 +1,4 @@
-// screens/WorkoutHistoryScreen.js - List all workouts
+// screens/WorkoutHistoryScreen.js - Enhanced workout history with proper API integration
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -10,10 +10,12 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import apiClient from '../services/api';
+import { workoutAPI } from '../services/workoutAPI';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WorkoutHistoryScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -27,75 +29,185 @@ const WorkoutHistoryScreen = ({ navigation }) => {
   const [filterType, setFilterType] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreData, setHasMoreData] = useState(true);
+  const [sortBy, setSortBy] = useState('startTime');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   const workoutTypes = ['All', 'Running', 'Cycling', 'Swimming', 'Gym', 'Walking', 'Hiking'];
 
-  // Load workouts
+  // Load workouts with proper API integration
   const loadWorkouts = useCallback(async (page = 1, type = filterType, isRefresh = false) => {
     if (loading && !isRefresh) return;
     
     setLoading(true);
     
     try {
+      // Prepare API parameters
       const params = {
         page,
         limit: 20,
-        sortBy: 'startTime',
-        sortOrder: 'desc',
+        sortBy,
+        sortOrder,
       };
 
+      // Add type filter if not 'All'
       if (type !== 'All') {
         params.type = type;
       }
 
-      const response = await apiClient.get('/workouts', { params });
-      
-      if (response.data.status === 'success') {
-        const newWorkouts = response.data.data.workouts;
-        
-        if (page === 1 || isRefresh) {
-          setWorkouts(newWorkouts);
-        } else {
-          setWorkouts(prev => [...prev, ...newWorkouts]);
-        }
-        
-        setHasMoreData(response.data.data.pagination.hasNextPage);
-        setCurrentPage(page);
+      // Add search query if exists
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
       }
+
+      console.log('Loading workouts with params:', params);
+
+      // Try API first
+      try {
+        const response = await workoutAPI.getWorkouts(params);
+        
+        if (response.status === 'success') {
+          const newWorkouts = response.data.workouts || [];
+          
+          if (page === 1 || isRefresh) {
+            setWorkouts(newWorkouts);
+          } else {
+            setWorkouts(prev => [...prev, ...newWorkouts]);
+          }
+          
+          // Update pagination info
+          setHasMoreData(response.data.pagination?.hasNextPage || false);
+          setCurrentPage(page);
+          
+          console.log(`Loaded ${newWorkouts.length} workouts from API`);
+          return;
+        }
+      } catch (apiError) {
+        console.log('API not available, falling back to local storage');
+      }
+
+      // Fallback to AsyncStorage
+      await loadWorkoutsFromStorage(page, type, isRefresh);
+      
     } catch (error) {
       console.error('Error loading workouts:', error);
-      Alert.alert('Error', 'Failed to load workouts');
+      Alert.alert('Error', 'Failed to load workouts. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filterType, loading]);
+  }, [filterType, loading, searchQuery, sortBy, sortOrder]);
 
-  // Initial load
+  // Fallback method to load from AsyncStorage
+  const loadWorkoutsFromStorage = async (page, type, isRefresh) => {
+    try {
+      const storedWorkouts = await AsyncStorage.getItem('workoutHistory');
+      if (storedWorkouts) {
+        let allWorkouts = JSON.parse(storedWorkouts);
+        
+        // Apply filters
+        if (type !== 'All') {
+          allWorkouts = allWorkouts.filter(w => w.type === type);
+        }
+        
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          allWorkouts = allWorkouts.filter(w =>
+            w.name?.toLowerCase().includes(query) ||
+            w.type.toLowerCase().includes(query) ||
+            w.notes?.toLowerCase().includes(query)
+          );
+        }
+        
+        // Sort workouts
+        allWorkouts.sort((a, b) => {
+          const dateA = new Date(a.startTime || a.date);
+          const dateB = new Date(b.startTime || b.date);
+          return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+        });
+        
+        // Paginate
+        const limit = 20;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedWorkouts = allWorkouts.slice(startIndex, endIndex);
+        
+        if (page === 1 || isRefresh) {
+          setWorkouts(paginatedWorkouts);
+        } else {
+          setWorkouts(prev => [...prev, ...paginatedWorkouts]);
+        }
+        
+        setHasMoreData(endIndex < allWorkouts.length);
+        setCurrentPage(page);
+        
+        console.log(`Loaded ${paginatedWorkouts.length} workouts from storage`);
+      } else {
+        setWorkouts([]);
+        setHasMoreData(false);
+      }
+    } catch (error) {
+      console.error('Error loading from storage:', error);
+      setWorkouts([]);
+    }
+  };
+
+  // Initial load and filter changes
   useEffect(() => {
+    setCurrentPage(1);
+    setWorkouts([]);
     loadWorkouts(1, filterType, true);
-  }, [filterType]);
+  }, [filterType, searchQuery, sortBy, sortOrder]);
 
-  // Refresh
+  // Focus listener for refresh
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      onRefresh();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Refresh handler
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setCurrentPage(1);
+    setWorkouts([]);
     loadWorkouts(1, filterType, true);
   }, [filterType, loadWorkouts]);
 
-  // Load more
+  // Load more handler
   const loadMore = useCallback(() => {
     if (hasMoreData && !loading) {
       loadWorkouts(currentPage + 1, filterType);
     }
   }, [currentPage, filterType, hasMoreData, loading, loadWorkouts]);
 
-  // Filter workouts based on search
-  const filteredWorkouts = workouts.filter(workout =>
-    workout.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    workout.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    workout.notes?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Delete workout handler
+  const handleDeleteWorkout = async (workoutId) => {
+    Alert.alert(
+      'Delete Workout',
+      'Are you sure you want to delete this workout? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await workoutAPI.deleteWorkout(workoutId);
+              
+              // Remove from local state
+              setWorkouts(prev => prev.filter(w => w._id !== workoutId));
+              
+              Alert.alert('Success', 'Workout deleted successfully');
+            } catch (error) {
+              console.error('Error deleting workout:', error);
+              Alert.alert('Error', 'Failed to delete workout');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Format duration
   const formatDuration = (seconds) => {
@@ -135,53 +247,67 @@ const WorkoutHistoryScreen = ({ navigation }) => {
     return icons[type] || 'fitness-outline';
   };
 
-  // Get workout distance
+  // Get workout distance with proper handling for different activity types
   const getWorkoutDistance = (workout) => {
-    switch (workout.type) {
-      case 'Running':
-        return workout.running?.distance || 0;
-      case 'Cycling':
-        return workout.cycling?.distance || 0;
-      case 'Swimming':
-        return workout.swimming?.distance || 0;
-      default:
-        return 0;
-    }
+    if (workout.running?.distance) return workout.running.distance;
+    if (workout.cycling?.distance) return workout.cycling.distance;
+    if (workout.swimming?.distance) return workout.swimming.distance;
+    return workout.distance || 0;
   };
 
-  // Render workout item
+  // Handle workout item press
+  const handleWorkoutPress = (workout) => {
+    navigation.navigate('WorkoutDetail', { 
+      workoutId: workout._id,
+      workout: workout // Pass workout data as backup
+    });
+  };
+
+  // Render workout item with enhanced UI
   const renderWorkoutItem = ({ item }) => {
     const distance = getWorkoutDistance(item);
-    const workoutDate = new Date(item.startTime);
+    const workoutDate = new Date(item.startTime || item.date);
+    const isToday = workoutDate.toDateString() === new Date().toDateString();
 
     return (
       <TouchableOpacity
         style={[styles.workoutItem, { backgroundColor: colors.surface }]}
-        onPress={() => navigation.navigate('WorkoutDetail', { workoutId: item._id })}
+        onPress={() => handleWorkoutPress(item)}
+        onLongPress={() => handleDeleteWorkout(item._id)}
       >
         <View style={styles.workoutHeader}>
           <View style={styles.workoutTitleRow}>
-            <Ionicons 
-              name={getWorkoutIcon(item.type)} 
-              size={24} 
-              color={colors.primary} 
-            />
+            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons 
+                name={getWorkoutIcon(item.type)} 
+                size={24} 
+                color={colors.primary} 
+              />
+            </View>
             <View style={styles.workoutTitleInfo}>
               <Text style={[styles.workoutTitle, { color: colors.text }]}>
                 {item.name || `${item.type} Session`}
               </Text>
-              <Text style={[styles.workoutDate, { color: colors.textSecondary }]}>
-                {workoutDate.toLocaleDateString()} • {workoutDate.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </Text>
+              <View style={styles.dateRow}>
+                <Text style={[styles.workoutDate, { color: colors.textSecondary }]}>
+                  {isToday ? 'Today' : workoutDate.toLocaleDateString()} • {workoutDate.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Text>
+                {item.privacy === 'private' && (
+                  <Ionicons name="lock-closed" size={14} color={colors.textSecondary} style={styles.privacyIcon} />
+                )}
+              </View>
             </View>
           </View>
           
-          {item.privacy === 'private' && (
-            <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
-          )}
+          <TouchableOpacity
+            onPress={() => handleDeleteWorkout(item._id)}
+            style={styles.deleteButton}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.workoutStats}>
@@ -229,6 +355,16 @@ const WorkoutHistoryScreen = ({ navigation }) => {
             {item.notes}
           </Text>
         )}
+
+        {/* Achievement indicator */}
+        {item.achievementsEarned && item.achievementsEarned.length > 0 && (
+          <View style={styles.achievementIndicator}>
+            <Ionicons name="trophy" size={16} color="#FFD700" />
+            <Text style={[styles.achievementText, { color: colors.text }]}>
+              {item.achievementsEarned.length} achievement{item.achievementsEarned.length > 1 ? 's' : ''} earned
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
@@ -255,6 +391,25 @@ const WorkoutHistoryScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  // Render sort options
+  const renderSortOptions = () => (
+    <View style={styles.sortContainer}>
+      <TouchableOpacity
+        style={[styles.sortButton, { backgroundColor: colors.surface }]}
+        onPress={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+      >
+        <Ionicons 
+          name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'} 
+          size={16} 
+          color={colors.primary} 
+        />
+        <Text style={[styles.sortText, { color: colors.text }]}>
+          {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -278,6 +433,11 @@ const WorkoutHistoryScreen = ({ navigation }) => {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Filters */}
@@ -292,11 +452,14 @@ const WorkoutHistoryScreen = ({ navigation }) => {
         />
       </View>
 
+      {/* Sort Options */}
+      {renderSortOptions()}
+
       {/* Workouts List */}
       <FlatList
-        data={filteredWorkouts}
+        data={workouts}
         renderItem={renderWorkoutItem}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item) => item._id || item.id || Math.random().toString()}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -306,12 +469,33 @@ const WorkoutHistoryScreen = ({ navigation }) => {
           <View style={styles.emptyContainer}>
             <Ionicons name="fitness-outline" size={64} color={colors.textSecondary} />
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No workouts found
+              {searchQuery ? 'No workouts match your search' : 'No workouts found'}
             </Text>
             <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-              Start your fitness journey by recording your first workout!
+              {searchQuery 
+                ? 'Try adjusting your search terms or filters' 
+                : 'Start your fitness journey by recording your first workout!'
+              }
             </Text>
+            {!searchQuery && (
+              <TouchableOpacity 
+                style={[styles.startWorkoutButton, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate('TrainingStack')}
+              >
+                <Text style={styles.startWorkoutButtonText}>Start First Workout</Text>
+              </TouchableOpacity>
+            )}
           </View>
+        }
+        ListFooterComponent={
+          loading && workouts.length > 0 ? (
+            <View style={styles.loadingFooter}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                Loading more workouts...
+              </Text>
+            </View>
+          ) : null
         }
         contentContainerStyle={styles.listContainer}
       />
@@ -372,6 +556,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  sortContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  sortText: {
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '500',
+  },
   listContainer: {
     padding: 16,
   },
@@ -388,13 +589,20 @@ const styles = StyleSheet.create({
   workoutHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
   workoutTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   workoutTitleInfo: {
     marginLeft: 12,
@@ -405,9 +613,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 2,
   },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   workoutDate: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  privacyIcon: {
+    marginLeft: 4,
+  },
+  deleteButton: {
+    padding: 4,
   },
   workoutStats: {
     flexDirection: 'row',
@@ -433,6 +651,19 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 8,
   },
+  achievementIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  achievementText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '500',
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -448,6 +679,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingHorizontal: 32,
+    marginBottom: 20,
+  },
+  startWorkoutButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  startWorkoutButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  loadingFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
   },
 });
 

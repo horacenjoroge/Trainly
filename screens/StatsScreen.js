@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useTheme } from '../context/ThemeContext';
-import apiClient from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { workoutAPI } from '../services/workoutAPI';
 
 const { width } = Dimensions.get('window');
 
@@ -24,7 +26,8 @@ const StatsScreen = ({ navigation }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [trends, setTrends] = useState([]);
+  const [workoutHistory, setWorkoutHistory] = useState([]);
+  const [achievements, setAchievements] = useState([]);
 
   const periods = [
     { key: 'week', label: 'Week' },
@@ -33,25 +36,187 @@ const StatsScreen = ({ navigation }) => {
     { key: 'all', label: 'All Time' },
   ];
 
-  // Load stats
+  // Load stats from AsyncStorage and API
   useEffect(() => {
     loadStats();
+    loadWorkoutHistory();
+    loadAchievements();
   }, [selectedPeriod]);
+
+  // Add focus listener to refresh data
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadStats();
+      loadWorkoutHistory();
+      loadAchievements();
+    });
+    return unsubscribe;
+  }, [navigation, selectedPeriod]);
+
+  const loadWorkoutHistory = async () => {
+    try {
+      const historyData = await AsyncStorage.getItem('workoutHistory');
+      if (historyData) {
+        const workouts = JSON.parse(historyData);
+        setWorkoutHistory(workouts);
+      }
+    } catch (error) {
+      console.error('Error loading workout history:', error);
+    }
+  };
+
+  const loadAchievements = async () => {
+    try {
+      // Try to load from API first
+      const achievementsData = await workoutAPI.getRecentAchievements(30);
+      if (achievementsData && achievementsData.length > 0) {
+        setAchievements(achievementsData);
+      } else {
+        // Fallback to local achievements
+        const localAchievements = await AsyncStorage.getItem('achievements');
+        if (localAchievements) {
+          setAchievements(JSON.parse(localAchievements));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading achievements:', error);
+      // Load from AsyncStorage as fallback
+      try {
+        const localAchievements = await AsyncStorage.getItem('achievements');
+        if (localAchievements) {
+          setAchievements(JSON.parse(localAchievements));
+        }
+      } catch (localError) {
+        console.error('Error loading local achievements:', localError);
+      }
+    }
+  };
 
   const loadStats = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get(`/workouts/stats/summary?period=${selectedPeriod}`);
-      
-      if (response.data.status === 'success') {
-        setStats(response.data.data);
-        setTrends(response.data.data.trends || []);
+      // Try to load from API first
+      try {
+        const response = await workoutAPI.getWorkoutStats(selectedPeriod);
+        if (response.status === 'success') {
+          setStats(response.data);
+          return;
+        }
+      } catch (apiError) {
+        console.log('API not available, calculating from local data');
+      }
+
+      // Calculate stats from AsyncStorage data
+      const historyData = await AsyncStorage.getItem('workoutHistory');
+      if (historyData) {
+        const workouts = JSON.parse(historyData);
+        const calculatedStats = calculateStatsFromWorkouts(workouts, selectedPeriod);
+        setStats(calculatedStats);
+      } else {
+        // No data available
+        setStats({
+          summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
+          stats: [],
+          trends: [],
+          personalBests: {},
+          recentAchievements: []
+        });
       }
     } catch (error) {
       console.error('Error loading stats:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateStatsFromWorkouts = (workouts, period) => {
+    if (!workouts || workouts.length === 0) {
+      return {
+        summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
+        stats: [],
+        trends: [],
+        personalBests: {},
+        recentAchievements: []
+      };
+    }
+
+    // Filter workouts by period
+    const now = new Date();
+    const filteredWorkouts = workouts.filter(workout => {
+      const workoutDate = new Date(workout.date || workout.startTime);
+      switch (period) {
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return workoutDate >= weekAgo;
+        case 'month':
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return workoutDate >= monthAgo;
+        case 'year':
+          const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          return workoutDate >= yearAgo;
+        default:
+          return true;
+      }
+    });
+
+    // Calculate summary
+    const summary = {
+      totalWorkouts: filteredWorkouts.length,
+      totalDuration: filteredWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0),
+      totalDistance: filteredWorkouts.reduce((sum, w) => {
+        return sum + (w.totalDistance || w.distance || 0);
+      }, 0),
+      totalCalories: filteredWorkouts.reduce((sum, w) => sum + (w.calories || 0), 0)
+    };
+
+    // Calculate workout type distribution
+    const typeStats = {};
+    filteredWorkouts.forEach(workout => {
+      const type = workout.type || 'Unknown';
+      typeStats[type] = (typeStats[type] || 0) + 1;
+    });
+
+    const stats = Object.entries(typeStats).map(([type, count]) => ({
+      _id: type,
+      count
+    }));
+
+    // Calculate trends (last 7 days)
+    const trends = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dayWorkouts = workouts.filter(w => {
+        const workoutDate = new Date(w.date || w.startTime);
+        return workoutDate.toDateString() === date.toDateString();
+      });
+      
+      trends.push({
+        _id: date.toISOString(),
+        count: dayWorkouts.length,
+        totalCalories: dayWorkouts.reduce((sum, w) => sum + (w.calories || 0), 0)
+      });
+    }
+
+    // Calculate personal bests
+    const personalBests = {};
+    ['Swimming', 'Running', 'Cycling', 'Gym'].forEach(type => {
+      const typeWorkouts = workouts.filter(w => w.type === type);
+      if (typeWorkouts.length > 0) {
+        personalBests[type] = {
+          longestDuration: Math.max(...typeWorkouts.map(w => w.duration || 0)),
+          longestDistance: Math.max(...typeWorkouts.map(w => w.totalDistance || w.distance || 0)),
+          mostCalories: Math.max(...typeWorkouts.map(w => w.calories || 0))
+        };
+      }
+    });
+
+    return {
+      summary,
+      stats,
+      trends,
+      personalBests,
+      recentAchievements: achievements.slice(0, 3)
+    };
   };
 
   // Format duration
@@ -77,7 +242,7 @@ const StatsScreen = ({ navigation }) => {
 
   // Prepare chart data
   const prepareWorkoutTypeData = () => {
-    if (!stats?.stats) return [];
+    if (!stats?.stats || stats.stats.length === 0) return [];
     
     const workoutColors = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'
@@ -93,7 +258,7 @@ const StatsScreen = ({ navigation }) => {
   };
 
   const prepareTrendsData = () => {
-    if (!trends || trends.length === 0) {
+    if (!stats?.trends || stats.trends.length === 0) {
       return {
         labels: ['No Data'],
         datasets: [{
@@ -104,7 +269,7 @@ const StatsScreen = ({ navigation }) => {
       };
     }
 
-    const labels = trends.slice(-7).map(trend => {
+    const labels = stats.trends.map(trend => {
       const date = new Date(trend._id);
       return `${date.getMonth() + 1}/${date.getDate()}`;
     });
@@ -113,7 +278,7 @@ const StatsScreen = ({ navigation }) => {
       labels,
       datasets: [
         {
-          data: trends.slice(-7).map(trend => trend.count),
+          data: stats.trends.map(trend => trend.count),
           color: (opacity = 1) => `rgba(70, 183, 209, ${opacity})`,
           strokeWidth: 2,
         }
@@ -122,7 +287,7 @@ const StatsScreen = ({ navigation }) => {
   };
 
   const prepareCaloriesData = () => {
-    if (!trends || trends.length === 0) {
+    if (!stats?.trends || stats.trends.length === 0) {
       return {
         labels: ['No Data'],
         datasets: [{
@@ -132,12 +297,12 @@ const StatsScreen = ({ navigation }) => {
     }
 
     return {
-      labels: trends.slice(-7).map(trend => {
+      labels: stats.trends.map(trend => {
         const date = new Date(trend._id);
         return `${date.getMonth() + 1}/${date.getDate()}`;
       }),
       datasets: [{
-        data: trends.slice(-7).map(trend => trend.totalCalories || 0),
+        data: stats.trends.map(trend => trend.totalCalories || 0),
       }]
     };
   };
@@ -146,6 +311,7 @@ const StatsScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.text }]}>Loading stats...</Text>
         </View>
       </SafeAreaView>
@@ -177,8 +343,8 @@ const StatsScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Workout Stats</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Achievements')}>
-          <Ionicons name="trophy" size={24} color={colors.primary} />
+        <TouchableOpacity onPress={() => navigation.navigate('WorkoutHistory')}>
+          <Ionicons name="calendar-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -209,7 +375,10 @@ const StatsScreen = ({ navigation }) => {
       <ScrollView style={styles.content}>
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
-          <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
+          <TouchableOpacity 
+            style={[styles.summaryCard, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate('WorkoutHistory')}
+          >
             <Ionicons name="fitness-outline" size={24} color={colors.primary} />
             <Text style={[styles.summaryValue, { color: colors.text }]}>
               {stats?.summary?.totalWorkouts || 0}
@@ -217,7 +386,7 @@ const StatsScreen = ({ navigation }) => {
             <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
               Workouts
             </Text>
-          </View>
+          </TouchableOpacity>
 
           <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
             <Ionicons name="time-outline" size={24} color={colors.primary} />
@@ -250,6 +419,25 @@ const StatsScreen = ({ navigation }) => {
           </View>
         </View>
 
+        {/* No Data Message */}
+        {(!stats?.summary?.totalWorkouts || stats.summary.totalWorkouts === 0) && (
+          <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+            <Ionicons name="bar-chart-outline" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+              No workout data yet
+            </Text>
+            <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
+              Complete your first workout to see statistics here
+            </Text>
+            <TouchableOpacity 
+              style={[styles.startWorkoutButton, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate('TrainingStack')}
+            >
+              <Text style={styles.startWorkoutButtonText}>Start First Workout</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Workout Types Chart */}
         {stats?.stats && stats.stats.length > 0 && (
           <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
@@ -270,7 +458,7 @@ const StatsScreen = ({ navigation }) => {
         )}
 
         {/* Activity Trends */}
-        {trends && trends.length > 0 && (
+        {stats?.trends && stats.trends.length > 0 && stats.trends.some(t => t.count > 0) && (
           <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
             <Text style={[styles.chartTitle, { color: colors.text }]}>
               Daily Activity (Last 7 Days)
@@ -287,7 +475,7 @@ const StatsScreen = ({ navigation }) => {
         )}
 
         {/* Calories Burned */}
-        {trends && trends.length > 0 && (
+        {stats?.trends && stats.trends.length > 0 && stats.trends.some(t => t.totalCalories > 0) && (
           <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
             <Text style={[styles.chartTitle, { color: colors.text }]}>
               Calories Burned (Last 7 Days)
@@ -303,7 +491,7 @@ const StatsScreen = ({ navigation }) => {
         )}
 
         {/* Personal Bests */}
-        {stats?.personalBests && (
+        {stats?.personalBests && Object.keys(stats.personalBests).length > 0 && (
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Personal Bests
@@ -312,7 +500,7 @@ const StatsScreen = ({ navigation }) => {
             {Object.entries(stats.personalBests).map(([activity, bests]) => (
               <View key={activity} style={styles.personalBestSection}>
                 <Text style={[styles.personalBestActivity, { color: colors.primary }]}>
-                  {activity.charAt(0).toUpperCase() + activity.slice(1)}
+                  {activity}
                 </Text>
                 
                 {Object.entries(bests).map(([metric, value]) => (
@@ -338,25 +526,25 @@ const StatsScreen = ({ navigation }) => {
         )}
 
         {/* Recent Achievements */}
-        {stats?.recentAchievements && stats.recentAchievements.length > 0 && (
+        {achievements && achievements.length > 0 && (
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Recent Achievements
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Achievements')}>
+              <TouchableOpacity>
                 <Text style={[styles.seeAllText, { color: colors.primary }]}>
                   See All
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {stats.recentAchievements.slice(0, 3).map((achievement, index) => (
+            {achievements.slice(0, 3).map((achievement, index) => (
               <View key={index} style={styles.achievementItem}>
-                <Text style={styles.achievementEmoji}>{achievement.emoji}</Text>
+                <Text style={styles.achievementEmoji}>{achievement.emoji || '🏆'}</Text>
                 <View style={styles.achievementInfo}>
                   <Text style={[styles.achievementTitle, { color: colors.text }]}>
-                    {achievement.title}
+                    {achievement.title || achievement.name}
                   </Text>
                   <Text style={[styles.achievementDescription, { color: colors.textSecondary }]}>
                     {achievement.description}
@@ -364,7 +552,7 @@ const StatsScreen = ({ navigation }) => {
                 </View>
                 <View style={[styles.achievementPoints, { backgroundColor: colors.primary + '20' }]}>
                   <Text style={[styles.achievementPointsText, { color: colors.primary }]}>
-                    +{achievement.points}
+                    +{achievement.points || 10}
                   </Text>
                 </View>
               </View>
@@ -438,6 +626,31 @@ const StatsScreen = ({ navigation }) => {
             </View>
           </View>
         </View>
+
+        {/* Quick Actions */}
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Quick Actions
+          </Text>
+          
+          <View style={styles.quickActions}>
+            <TouchableOpacity 
+              style={[styles.quickActionButton, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate('WorkoutHistory')}
+            >
+              <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.quickActionText}>View History</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.quickActionButton, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate('TrainingStack')}
+            >
+              <Ionicons name="add-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.quickActionText}>New Workout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -469,6 +682,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+    marginTop: 12,
   },
   periodSelector: {
     flexDirection: 'row',
@@ -519,6 +733,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     textTransform: 'uppercase',
+  },
+  emptyState: {
+    margin: 16,
+    padding: 32,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  startWorkoutButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  startWorkoutButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   chartContainer: {
     margin: 16,
@@ -607,8 +852,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   achievementDescription: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 14,
+    color: '#666',
   },
   achievementPoints: {
     paddingHorizontal: 8,
@@ -617,7 +862,7 @@ const styles = StyleSheet.create({
   },
   achievementPointsText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   goalItem: {
     marginBottom: 16,
@@ -634,7 +879,7 @@ const styles = StyleSheet.create({
   },
   goalProgress: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   progressBar: {
     height: 8,
@@ -644,6 +889,25 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 4,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  quickActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
