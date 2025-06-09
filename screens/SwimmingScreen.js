@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,189 +16,8 @@ import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TrainingHeader from '../components/Trainheader';
 
-// Temporary replacement hook to avoid the infinite loop
-const useSwimmingTrackerTemp = (userId) => {
-  const [duration, setDuration] = useState(0);
-  const [laps, setLaps] = useState([]);
-  const [totalDistance, setTotalDistance] = useState(0);
-  const [poolLength, setPoolLength] = useState(25);
-  const [strokeType, setStrokeType] = useState('Freestyle');
-  const [isActive, setIsActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isResting, setIsResting] = useState(false);
-  const [restTimeRemaining, setRestTimeRemaining] = useState(0);
-  const [intervalId, setIntervalId] = useState(null);
-  const [restIntervalId, setRestIntervalId] = useState(null);
-
-  // Timer effect for duration
-  useEffect(() => {
-    if (isActive && !isPaused && !isResting) {
-      const id = setInterval(() => {
-        setDuration(prev => prev + 1);
-      }, 1000);
-      setIntervalId(id);
-      return () => clearInterval(id);
-    } else if (intervalId) {
-      clearInterval(intervalId);
-      setIntervalId(null);
-    }
-  }, [isActive, isPaused, isResting]);
-
-  // Rest timer effect
-  useEffect(() => {
-    if (isResting && restTimeRemaining > 0) {
-      const id = setInterval(() => {
-        setRestTimeRemaining(prev => {
-          if (prev <= 1) {
-            setIsResting(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      setRestIntervalId(id);
-      return () => clearInterval(id);
-    } else if (restIntervalId) {
-      clearInterval(restIntervalId);
-      setRestIntervalId(null);
-    }
-  }, [isResting, restTimeRemaining]);
-
-  const tracker = useMemo(() => ({
-    start: async () => {
-      setIsActive(true);
-      setIsPaused(false);
-      return true;
-    },
-    pause: () => {
-      setIsPaused(true);
-    },
-    resume: () => {
-      setIsPaused(false);
-    },
-    stop: () => {
-      setIsActive(false);
-      setIsPaused(false);
-      if (intervalId) clearInterval(intervalId);
-      if (restIntervalId) clearInterval(restIntervalId);
-    },
-  }), [intervalId, restIntervalId]);
-
-  const completeLap = useCallback((strokeCount = 0) => {
-    const lapTime = 60 + Math.random() * 30; // Random lap time for demo
-    const newLap = {
-      lapNumber: laps.length + 1,
-      time: lapTime,
-      swolf: strokeCount + lapTime,
-      strokes: strokeCount,
-    };
-    setLaps(prev => [...prev, newLap]);
-    setTotalDistance(prev => prev + poolLength);
-    return newLap;
-  }, [laps.length, poolLength]);
-
-  const startRest = useCallback((seconds) => {
-    setIsResting(true);
-    setRestTimeRemaining(seconds);
-  }, []);
-
-  const skipRest = useCallback(() => {
-    setIsResting(false);
-    setRestTimeRemaining(0);
-  }, []);
-
-  const updatePoolLength = useCallback((length) => {
-    setPoolLength(length);
-    // Recalculate total distance
-    setTotalDistance(laps.length * length);
-  }, [laps.length]);
-
-  const updateStrokeType = useCallback((type) => {
-    setStrokeType(type);
-  }, []);
-
-  const getSwimmingStats = useCallback(() => {
-    if (laps.length === 0) return null;
-    
-    const totalTime = laps.reduce((sum, lap) => sum + lap.time, 0);
-    const totalStrokes = laps.reduce((sum, lap) => sum + lap.strokes, 0);
-    const avgSwolf = laps.reduce((sum, lap) => sum + lap.swolf, 0) / laps.length;
-    const pace100m = (totalTime / (totalDistance / 100));
-    const caloriesEstimate = totalDistance * 0.5; // Simple estimate
-    
-    return {
-      avgSwolf,
-      pace100m,
-      caloriesEstimate,
-      totalTime,
-      totalStrokes,
-    };
-  }, [laps, totalDistance]);
-
-  const formatTime = useCallback((seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }, []);
-
-  const formatDuration = useCallback((seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }, []);
-
-  const saveWorkout = useCallback(async () => {
-    try {
-      // Simulate saving workout
-      const workoutData = {
-        userId,
-        type: 'Swimming',
-        duration,
-        laps,
-        totalDistance,
-        poolLength,
-        strokeType,
-        date: new Date().toISOString(),
-      };
-      
-      console.log('Saving workout:', workoutData);
-      
-      return {
-        success: true,
-        workout: workoutData,
-        message: 'Swimming session saved successfully!',
-        achievements: [], // No achievements for now
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to save workout: ' + error.message,
-      };
-    }
-  }, [userId, duration, laps, totalDistance, poolLength, strokeType]);
-
-  return {
-    tracker,
-    duration,
-    laps,
-    totalDistance,
-    poolLength,
-    strokeType,
-    isActive,
-    isPaused,
-    isResting,
-    restTimeRemaining,
-    completeLap,
-    startRest,
-    skipRest,
-    updatePoolLength,
-    updateStrokeType,
-    getSwimmingStats,
-    formatTime,
-    formatDuration,
-    saveWorkout,
-  };
-};
+// Import the STABLE SwimmingTracker
+import { useSwimmingTracker } from '../components/training/SwimmingTracker';
 
 export default function SwimmingScreen({ navigation, route }) {
   const theme = useTheme();
@@ -207,6 +26,7 @@ export default function SwimmingScreen({ navigation, route }) {
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Get current user ID from AsyncStorage - STABLE VERSION
   useEffect(() => {
     const getCurrentUserId = async () => {
       try {
@@ -214,14 +34,15 @@ export default function SwimmingScreen({ navigation, route }) {
         if (userData) {
           const user = JSON.parse(userData);
           const currentUserId = user._id || user.id || user.userId;
+          console.log('SwimmingScreen - User ID loaded:', currentUserId);
           setUserId(currentUserId);
         } else {
           Alert.alert('Error', 'User not authenticated. Please login again.');
           navigation.goBack();
         }
       } catch (error) {
-        console.error('Error getting user ID:', error);
-        Alert.alert('Error', 'Authentication error.');
+        console.error('Error getting current user ID:', error);
+        Alert.alert('Error', 'Authentication error. Please login again.');
         navigation.goBack();
       } finally {
         setIsLoading(false);
@@ -229,18 +50,22 @@ export default function SwimmingScreen({ navigation, route }) {
     };
 
     getCurrentUserId();
-  }, [navigation]);
+  }, []); // Empty dependency array - only run once
 
+  // Show loading until we have userId
   if (isLoading || !userId) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.text }]}>Loading...</Text>
+          <Text style={[styles.loadingText, { color: colors.text }]}>
+            Loading...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // Render main content only when userId is ready
   return (
     <SwimmingScreenContent
       userId={userId}
@@ -252,128 +77,148 @@ export default function SwimmingScreen({ navigation, route }) {
   );
 }
 
+// SEPARATE COMPONENT to isolate the tracker usage
 function SwimmingScreenContent({ userId, navigation, colors, theme, activityType }) {
-  // Use the temp hook that works (defined above)
-  const {
-    tracker,
-    duration,
-    laps,
-    totalDistance,
-    poolLength,
-    strokeType,
-    isActive,
-    isPaused,
-    isResting,
-    restTimeRemaining,
-    completeLap,
-    startRest,
-    skipRest,
-    updatePoolLength,
-    updateStrokeType,
-    getSwimmingStats,
-    formatTime,
-    formatDuration,
-    saveWorkout,
-  } = useSwimmingTrackerTemp(userId);
+  // Use the STABLE SwimmingTracker hook
+  const swimming = useSwimmingTracker(userId);
 
+  // Local UI state - MINIMAL to prevent loops
   const [showPoolSetup, setShowPoolSetup] = useState(false);
   const [showLapModal, setShowLapModal] = useState(false);
   const [strokeCount, setStrokeCount] = useState('');
 
+  // Static data - won't cause re-renders
   const strokeTypes = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly', 'Mixed'];
   const poolLengths = [25, 50, 33.33];
 
+  // STABLE EVENT HANDLERS - No dependencies that change
   const handleStartPause = async () => {
     try {
-      if (!isActive) {
-        const started = await tracker.start();
-        if (!started) Alert.alert('Error', 'Could not start session.');
-      } else if (isPaused) {
-        tracker.resume();
+      if (!swimming.isActive) {
+        console.log('SwimmingScreen - Starting tracking...');
+        const started = await swimming.startTracking();
+        if (!started) {
+          Alert.alert('Error', 'Could not start swimming session.');
+        } else {
+          console.log('SwimmingScreen - Tracking started successfully');
+        }
+      } else if (swimming.isPaused) {
+        console.log('SwimmingScreen - Resuming tracking...');
+        swimming.resumeTracking();
       } else {
-        tracker.pause();
+        console.log('SwimmingScreen - Pausing tracking...');
+        swimming.pauseTracking();
       }
     } catch (error) {
-      console.error('Start/pause error:', error);
-      Alert.alert('Error', 'Could not start/pause session.');
+      console.error('Error in start/pause:', error);
+      Alert.alert('Error', 'Could not start/pause swimming session.');
     }
   };
 
   const handleCompleteLap = () => {
-    if (!isActive || isResting) return;
+    if (!swimming.isActive || swimming.isResting) return;
     setShowLapModal(true);
   };
 
   const saveLap = () => {
-    const lap = completeLap(parseInt(strokeCount, 10) || 0);
+    const lap = swimming.completeLap(parseInt(strokeCount, 10) || 0);
     setStrokeCount('');
     setShowLapModal(false);
-    startRest(30);
+    swimming.startRest(30);
+    
     if (lap) {
       Alert.alert(
         `🏊‍♂️ Lap ${lap.lapNumber}`,
-        `Distance: ${poolLength}m\nTime: ${formatTime(lap.time)}\nSWOLF: ${lap.swolf}`,
+        `Distance: ${swimming.poolLength}m\nTime: ${swimming.formatTime(lap.time)}\nSWOLF: ${lap.swolf}`,
         [{ text: 'Keep Swimming!' }],
         { cancelable: true }
       );
     }
   };
 
+  // SIMPLIFIED handleFinish - No complex state dependencies
   const handleFinish = async () => {
-    if (laps.length === 0) {
-      Alert.alert('No Laps', 'Complete at least one lap.');
+    console.log('=== SWIMMING WORKOUT FINISH DEBUG START ===');
+    console.log('Total Distance:', swimming.totalDistance, 'meters');
+    console.log('Duration:', swimming.duration, 'seconds');
+    console.log('Total Laps:', swimming.laps.length);
+
+    // Simple validation
+    if (swimming.laps.length === 0 && !__DEV__) {
+      Alert.alert('No Laps', 'Complete at least one lap to save your session.');
       return;
     }
+
+    // Duration fix
+    const MINIMUM_DURATION = 30;
+    if (swimming.duration < MINIMUM_DURATION && swimming.tracker) {
+      console.log(`Duration too short (${swimming.duration}s), adjusting to ${MINIMUM_DURATION}s`);
+      swimming.tracker.duration = MINIMUM_DURATION;
+      swimming.tracker.endTime = new Date(swimming.tracker.startTime.getTime() + (MINIMUM_DURATION * 1000));
+    }
+
     try {
-      tracker.stop();
-      const result = await saveWorkout();
-      if (result.success) {
-        if (result.achievements?.length > 0) {
+      console.log('SwimmingScreen - Stopping tracker...');
+      swimming.stopTracking();
+      
+      console.log('SwimmingScreen - About to save workout...');
+      const result = await swimming.saveWorkout();
+      
+      if (result && result.success) {
+        console.log('SwimmingScreen - Workout saved successfully!');
+        
+        if (result.achievements && result.achievements.length > 0) {
           Alert.alert(
             '🎉 New Achievement!',
-            `You earned: ${result.achievements.map((a) => a.title).join(', ')}`,
+            `You earned: ${result.achievements.map(a => a.title || a.name || 'Achievement').join(', ')}`,
             [{ text: 'Awesome!' }]
           );
         }
+        
         navigation.navigate('TrainingSelection', {
           newWorkout: result.workout,
           achievementsEarned: result.achievements,
-          message: result.message || 'Swimming session completed!',
+          message: result.message || 'Swimming session completed!'
         });
       } else {
-        throw new Error(result.message || 'Failed to save workout');
+        throw new Error(result?.message || 'Failed to save workout');
       }
     } catch (error) {
-      console.error('Finish error:', error);
+      console.error('SwimmingScreen - ERROR in handleFinish:', error.message);
       Alert.alert(
         'Save Error',
-        'Could not save session. Retry?',
+        `Could not save your swimming session: ${error.message}. Would you like to try again?`,
         [
           { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
-          { text: 'Retry', onPress: handleFinish },
+          { text: 'Retry', onPress: handleFinish }
         ]
       );
+    } finally {
+      console.log('=== SWIMMING WORKOUT FINISH DEBUG END ===');
     }
   };
 
   const shareSession = async () => {
     try {
-      if (laps.length === 0) {
+      if (swimming.laps.length === 0) {
         Alert.alert('No Data', 'Complete at least one lap to share.');
         return;
       }
-      const stats = getSwimmingStats();
-      const distanceKm = (totalDistance / 1000).toFixed(2);
-      const timeFormatted = formatDuration(duration);
-      const paceFormatted = stats ? formatTime(Math.round(stats.pace100m)) : '--:--';
+      
+      const stats = swimming.getSwimmingStats();
+      const distanceKm = (swimming.totalDistance / 1000).toFixed(2);
+      const timeFormatted = swimming.formatDuration(swimming.duration);
+      const paceFormatted = stats ? swimming.formatTime(Math.round(stats.pace100m)) : '--:--';
+      
       const message =
         `Completed a ${distanceKm}km swim in ${timeFormatted}! 🏊‍♂️\n\n` +
         `📊 Stats:\n` +
-        `• ${laps.length} laps\n` +
-        `• ${poolLength}m pool • ${strokeType}\n` +
+        `• ${swimming.laps.length} laps\n` +
+        `• ${swimming.poolLength}m pool • ${swimming.strokeType}\n` +
         `• Avg SWOLF: ${stats ? Math.round(stats.avgSwolf) : '--'}\n` +
         `• Pace/100m: ${paceFormatted}\n` +
         `• Calories: ${stats ? Math.round(stats.caloriesEstimate) : '--'}`;
+        
       await Share.share({
         message,
         title: `Swimming - ${distanceKm}km`,
@@ -383,17 +228,20 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
     }
   };
 
-  const stats = getSwimmingStats();
+  // Get stats once, don't recalculate constantly
+  const stats = swimming.getSwimmingStats();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <TrainingHeader
         activityType={activityType}
-        timer={duration}
+        timer={swimming.duration}
         theme={theme}
-        isPaused={isPaused}
+        isPaused={swimming.isPaused}
       />
+      
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Pool Setup Card */}
         <TouchableOpacity
           style={[styles.poolSetupCard, { backgroundColor: colors.surface }]}
           onPress={() => setShowPoolSetup(true)}
@@ -403,19 +251,20 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
             <Text style={[styles.cardTitle, { color: colors.text }]}>Pool Setup</Text>
           </View>
           <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-            {poolLength}m pool • {strokeType}
+            {swimming.poolLength}m pool • {swimming.strokeType}
           </Text>
         </TouchableOpacity>
         
+        {/* Swimming Stats Card */}
         <View style={[styles.statsCard, { backgroundColor: colors.surface }]}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>🏊‍♂️ Swimming Stats</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>{laps.length}</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{swimming.laps.length}</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Laps</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>{totalDistance}m</Text>
+              <Text style={[styles.statNumber, { color: colors.primary }]}>{swimming.totalDistance}m</Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Distance</Text>
             </View>
             <View style={styles.statItem}>
@@ -426,7 +275,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
             </View>
             <View style={styles.statItem}>
               <Text style={[styles.statNumber, { color: colors.primary }]}>
-                {stats ? formatTime(Math.round(stats.pace100m)) : '--:--'}
+                {stats ? swimming.formatTime(Math.round(stats.pace100m)) : '--:--'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pace / 100m</Text>
             </View>
@@ -439,21 +288,43 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
           </View>
         </View>
 
+        {/* Rest Status */}
+        {swimming.isResting && (
+          <View style={[styles.restCard, { backgroundColor: colors.warning + '20', borderColor: colors.warning }]}>
+            <View style={styles.restHeader}>
+              <Ionicons name="pause-circle" size={24} color={colors.warning} />
+              <Text style={[styles.restTitle, { color: colors.warning }]}>Rest Period</Text>
+            </View>
+            <Text style={[styles.restTime, { color: colors.warning }]}>
+              {swimming.restTimeRemaining}s remaining
+            </Text>
+          </View>
+        )}
+
+        {/* Action Buttons */}
         <View style={styles.buttonsRow}>
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+            style={[styles.primaryButton, { 
+              backgroundColor: !swimming.isActive ? colors.primary : swimming.isPaused ? colors.primary : colors.error 
+            }]}
             onPress={handleStartPause}
           >
-            <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
-              {!isActive ? 'Start' : isPaused ? 'Resume' : 'Pause'}
+            <Ionicons 
+              name={!swimming.isActive ? "play" : swimming.isPaused ? "play" : "pause"} 
+              size={20} 
+              color="#FFFFFF" 
+            />
+            <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>
+              {!swimming.isActive ? 'Start' : swimming.isPaused ? 'Resume' : 'Pause'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.secondaryButton, { borderColor: colors.primary }]}
             onPress={handleCompleteLap}
-            disabled={!isActive || isResting}
+            disabled={!swimming.isActive || swimming.isResting}
           >
+            <Ionicons name="flag-outline" size={20} color={colors.primary} />
             <Text style={[styles.buttonText, { color: colors.primary }]}>Lap + Rest</Text>
           </TouchableOpacity>
         </View>
@@ -461,51 +332,79 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
         <View style={styles.buttonsRow}>
           <TouchableOpacity
             style={[styles.secondaryButton, { borderColor: colors.primary }]}
-            onPress={skipRest}
-            disabled={!isResting}
+            onPress={() => swimming.skipRest()}
+            disabled={!swimming.isResting}
           >
+            <Ionicons name="play-skip-forward" size={20} color={colors.primary} />
             <Text style={[styles.buttonText, { color: colors.primary }]}>
-              Skip Rest ({restTimeRemaining}s)
+              Skip Rest ({swimming.restTimeRemaining}s)
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.secondaryButton, { borderColor: colors.primary }]}
             onPress={shareSession}
-            disabled={laps.length === 0}
+            disabled={swimming.laps.length === 0}
           >
+            <Ionicons name="share-outline" size={20} color={colors.primary} />
             <Text style={[styles.buttonText, { color: colors.primary }]}>Share</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Finish Button */}
         <TouchableOpacity
-          style={[styles.finishButton, { backgroundColor: colors.primary }]}
+          style={[styles.finishButton, { backgroundColor: colors.success || '#4CAF50' }]}
           onPress={handleFinish}
-          disabled={laps.length === 0}
+          disabled={!swimming.isActive && swimming.laps.length === 0 && !__DEV__}
         >
-          <Text style={[styles.buttonText, { color: colors.onPrimary }]}>Finish Session</Text>
+          <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+          <Text style={[styles.buttonText, { color: "#FFFFFF", marginLeft: 8 }]}>
+            Finish Session
+          </Text>
         </TouchableOpacity>
+
+        {/* Recent Laps Display */}
+        {swimming.laps.length > 0 && (
+          <View style={[styles.lapsCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Recent Laps</Text>
+            {swimming.laps.slice(-3).reverse().map((lap) => (
+              <View key={lap.lapNumber} style={styles.lapItem}>
+                <Text style={[styles.lapNumber, { color: colors.primary }]}>
+                  Lap {lap.lapNumber}
+                </Text>
+                <Text style={[styles.lapTime, { color: colors.text }]}>
+                  {swimming.formatTime(lap.time)}
+                </Text>
+                <Text style={[styles.lapSwolf, { color: colors.textSecondary }]}>
+                  SWOLF: {lap.swolf}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       {/* Pool Setup Modal */}
       <Modal visible={showPoolSetup} animationType="slide" transparent={true}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.modalBackground }]}>
+        <View style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Pool Setup</Text>
+            
             <Text style={[styles.modalLabel, { color: colors.text }]}>Pool Length (meters)</Text>
             {poolLengths.map((length) => (
               <TouchableOpacity
                 key={length}
                 style={[
                   styles.optionButton,
-                  poolLength === length && { backgroundColor: colors.primary },
+                  { borderColor: colors.primary },
+                  swimming.poolLength === length && { backgroundColor: colors.primary },
                 ]}
-                onPress={() => updatePoolLength(length)}
+                onPress={() => swimming.updatePoolLength(length)}
               >
                 <Text
                   style={[
                     styles.optionText,
-                    poolLength === length ? { color: colors.onPrimary } : { color: colors.text },
+                    swimming.poolLength === length ? { color: '#FFFFFF' } : { color: colors.text },
                   ]}
                 >
                   {length} m
@@ -519,14 +418,15 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
                 key={type}
                 style={[
                   styles.optionButton,
-                  strokeType === type && { backgroundColor: colors.primary },
+                  { borderColor: colors.primary },
+                  swimming.strokeType === type && { backgroundColor: colors.primary },
                 ]}
-                onPress={() => updateStrokeType(type)}
+                onPress={() => swimming.updateStrokeType(type)}
               >
                 <Text
                   style={[
                     styles.optionText,
-                    strokeType === type ? { color: colors.onPrimary } : { color: colors.text },
+                    swimming.strokeType === type ? { color: '#FFFFFF' } : { color: colors.text },
                   ]}
                 >
                   {type}
@@ -538,7 +438,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
               style={[styles.closeButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowPoolSetup(false)}
             >
-              <Text style={[styles.buttonText, { color: colors.onPrimary }]}>Close</Text>
+              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -546,7 +446,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
 
       {/* Lap Stroke Count Modal */}
       <Modal visible={showLapModal} animationType="fade" transparent={true}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.modalBackground }]}>
+        <View style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>Enter Stroke Count</Text>
             <TextInput
@@ -572,7 +472,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
                 style={[styles.primaryButton, { backgroundColor: colors.primary, flex: 1, marginLeft: 5 }]}
                 onPress={saveLap}
               >
-                <Text style={[styles.buttonText, { color: colors.onPrimary }]}>Save</Text>
+                <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -592,7 +492,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '500',
   },
   content: {
     padding: 16,
@@ -601,6 +502,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -619,6 +525,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -638,19 +549,48 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 13,
     marginTop: 4,
+    textAlign: 'center',
+  },
+  restCard: {
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  restHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  restTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  restTime: {
+    fontSize: 24,
+    fontWeight: '700',
   },
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+    gap: 12,
   },
   primaryButton: {
     paddingVertical: 12,
-    paddingHorizontal: 25,
+    paddingHorizontal: 20,
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
+    flexDirection: 'row',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   secondaryButton: {
     paddingVertical: 12,
@@ -660,27 +600,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
+    flexDirection: 'row',
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   finishButton: {
     paddingVertical: 15,
     borderRadius: 25,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 15,
+    marginBottom: 20,
+    flexDirection: 'row',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  lapsCard: {
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  lapItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  lapNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  lapTime: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  lapSwolf: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 25,
-    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     borderRadius: 15,
     padding: 20,
     elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   modalTitle: {
     fontSize: 20,
@@ -692,6 +680,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 10,
+    marginTop: 15,
   },
   optionButton: {
     paddingVertical: 10,
@@ -703,6 +692,7 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 16,
     textAlign: 'center',
+    fontWeight: '500',
   },
   closeButton: {
     marginTop: 15,
@@ -717,6 +707,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 15,
     fontSize: 18,
+    textAlign: 'center',
   },
   modalButtonsRow: {
     flexDirection: 'row',
