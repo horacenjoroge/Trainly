@@ -7,6 +7,10 @@ class RunningTracker extends BaseTracker {
   constructor(userId) {
     super('Running', userId);
     
+    // CRITICAL FIX: Ensure userId is properly stored
+    this.userId = userId;
+    console.log('RunningTracker constructor - userId:', this.userId);
+    
     // Running-specific data
     this.distance = 0; // meters
     this.currentPace = 0; // min/km
@@ -49,6 +53,8 @@ class RunningTracker extends BaseTracker {
   // Override start to initialize GPS tracking
   async start() {
     try {
+      console.log('RunningTracker start - userId before start:', this.userId);
+      
       // Request location permissions
       const hasPermission = await this.requestLocationPermission();
       if (!hasPermission) {
@@ -62,6 +68,8 @@ class RunningTracker extends BaseTracker {
         // Get initial location for elevation baseline
         await this.setInitialLocation();
       }
+      
+      console.log('RunningTracker start - userId after start:', this.userId);
       return started;
     } catch (error) {
       console.error('Failed to start running tracker:', error);
@@ -71,10 +79,12 @@ class RunningTracker extends BaseTracker {
 
   // Override stop to clean up GPS tracking
   stop() {
+    console.log('RunningTracker stop - userId before stop:', this.userId);
     const stopped = super.stop();
     if (stopped) {
       this.stopGPSTracking();
     }
+    console.log('RunningTracker stop - userId after stop:', this.userId);
     return stopped;
   }
 
@@ -240,7 +250,7 @@ class RunningTracker extends BaseTracker {
     this.calculateAverages();
     
     // Trigger callback for UI updates
-    this.onGPSUpdate(gpsPoint);
+    this.onGPSUpdate && this.onGPSUpdate(gpsPoint);
   }
 
   // Calculate distance using Haversine formula
@@ -341,7 +351,7 @@ class RunningTracker extends BaseTracker {
     if (!this.isPaused) {
       this.pause();
       this.pausedDueToSpeed = true;
-      this.onAutoPause();
+      this.onAutoPause && this.onAutoPause();
     }
   }
 
@@ -350,7 +360,7 @@ class RunningTracker extends BaseTracker {
     if (this.isPaused && this.pausedDueToSpeed) {
       this.resume();
       this.pausedDueToSpeed = false;
-      this.onAutoResume();
+      this.onAutoResume && this.onAutoResume();
     }
   }
 
@@ -400,6 +410,7 @@ class RunningTracker extends BaseTracker {
 
   // Override enhanceSessionData to include running data
   async enhanceSessionData(sessionData) {
+    console.log('enhanceSessionData - userId:', this.userId);
     const baseData = await super.enhanceSessionData(sessionData);
     const stats = this.getRunningStats();
     
@@ -418,39 +429,97 @@ class RunningTracker extends BaseTracker {
     };
   }
 
-  // Override prepareWorkoutData for final workout
+  // CRITICAL FIX: Override prepareWorkoutData with better error handling
   async prepareWorkoutData(sessionData) {
-    const baseWorkout = await super.prepareWorkoutData(sessionData);
-    const stats = this.getRunningStats();
+    console.log('prepareWorkoutData - userId at start:', this.userId);
     
-    return {
-      ...baseWorkout,
-      name: `Running Session ${new Date().toISOString().split('T')[0]}`,
+    // Ensure we have a valid userId
+    if (!this.userId) {
+      console.error('ERROR: userId is null/undefined in prepareWorkoutData');
+      throw new Error('User ID is required for workout data preparation');
+    }
+
+    // Calculate best pace safely
+    let bestPace = this.averagePace;
+    if (this.splits && this.splits.length > 0) {
+      const validPaces = this.splits.map(s => s.pace).filter(pace => pace > 0 && pace !== Infinity);
+      if (validPaces.length > 0) {
+        bestPace = Math.min(...validPaces);
+      }
+    }
+
+    const workoutData = {
+      // Core required fields
+      type: 'Running',
+      userId: this.userId,  // Explicitly ensure userId is set
+      sessionId: this.sessionId,  // CRITICAL FIX: Add required sessionId
+      startTime: this.startTime.toISOString(),
+      endTime: this.endTime.toISOString(),
       duration: this.duration,
       calories: this.calculateCalories(),
-      startTime: new Date(Date.now() - this.duration * 1000).toISOString(),
-      endTime: new Date().toISOString(),
-      distance: this.distance,
-      distanceKm: this.distance / 1000,
-      averagePace: this.averagePace,
-      currentPace: this.currentPace,
-      averageSpeed: this.averageSpeed,
-      maxSpeed: this.maxSpeed,
-      route: {
-        gpsPoints: this.gpsPoints,
-        polyline: this.compressRoute(),
+      
+      // Running-specific data
+      running: {
+        distance: this.distance,
+        pace: {
+          average: this.averagePace || 0,
+          best: bestPace || 0,
+          current: this.currentPace || 0,
+        },
+        speed: {
+          average: this.averageSpeed || 0,
+          max: this.maxSpeed || 0,
+          current: this.currentSpeed || 0,
+        },
+        elevation: {
+          ...this.elevation,
+          gain: this.elevation.gain || 0,
+          loss: this.elevation.loss || 0,
+          current: this.elevation.current || 0,
+          max: this.elevation.max || 0,
+          min: this.elevation.min || 0,
+        },
+        splits: this.splits || [],
+        route: {
+          gpsPoints: this.gpsPoints || [],
+          totalPoints: (this.gpsPoints || []).length,
+          polyline: this.compressRoute(),
+          boundingBox: null,
+        },
+        heartRate: {},
+        performance: {
+          averageMovingSpeed: this.averageSpeed || 0,
+          movingTime: this.duration,
+          stoppedTime: 0,
+          maxPace: 0,
+          minPace: 0,
+        },
       },
-      splits: this.splits,
-      elevation: this.elevation,
-      stats: stats,
-      activitySubtype: 'Outdoor Running',
-      enhanced: true,
-      gpsTracked: true,
+      
+      // Optional fields
+      name: `Running Session`,
+      notes: '',
+      privacy: 'public',
     };
+
+    console.log('prepareWorkoutData - final userId:', workoutData.userId);
+    console.log('prepareWorkoutData - workout data structure:', {
+      type: workoutData.type,
+      userId: workoutData.userId,
+      duration: workoutData.duration,
+      distance: workoutData.running.distance,
+      hasGpsPoints: workoutData.running.route.gpsPoints.length > 0
+    });
+
+    return workoutData;
   }
 
   // Compress GPS route for storage
   compressRoute() {
+    if (!this.gpsPoints || this.gpsPoints.length === 0) {
+      return '';
+    }
+    
     // Simple compression - take every Nth point
     const compressionRatio = Math.max(1, Math.floor(this.gpsPoints.length / 500));
     return this.gpsPoints
@@ -506,7 +575,7 @@ class RunningTracker extends BaseTracker {
 
 // React Hook for using RunningTracker
 const useRunningTracker = (userId) => {
-  const [tracker] = useState(() => new RunningTracker(userId));
+  const [tracker, setTracker] = useState(null);
   const [duration, setDuration] = useState(0);
   const [distance, setDistance] = useState(0);
   const [currentPace, setCurrentPace] = useState(0);
@@ -520,7 +589,34 @@ const useRunningTracker = (userId) => {
   const [isPaused, setIsPaused] = useState(false);
   const [gpsPoints, setGpsPoints] = useState([]);
 
+  // Create or update tracker when userId changes
   useEffect(() => {
+    if (userId) {
+      console.log('useRunningTracker - Creating/updating tracker with userId:', userId);
+      const newTracker = new RunningTracker(userId);
+      setTracker(newTracker);
+      
+      // Reset all state when creating new tracker
+      setDuration(0);
+      setDistance(0);
+      setCurrentPace(0);
+      setAveragePace(0);
+      setCurrentSpeed(0);
+      setAverageSpeed(0);
+      setMaxSpeed(0);
+      setSplits([]);
+      setElevation({ gain: 0, loss: 0, current: 0 });
+      setIsActive(false);
+      setIsPaused(false);
+      setGpsPoints([]);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!tracker) return;
+    
+    console.log('useRunningTracker useEffect - tracker userId:', tracker.userId);
+    
     // Override callbacks for running-specific updates
     tracker.onDurationUpdate = (newDuration) => {
       setDuration(newDuration);
@@ -545,55 +641,92 @@ const useRunningTracker = (userId) => {
     tracker.onStart = () => {
       setIsActive(true);
       setIsPaused(false);
-      originalStart.call(tracker);
+      if (originalStart) originalStart.call(tracker);
     };
 
     const originalPause = tracker.onPause;
     tracker.onPause = () => {
       setIsPaused(true);
-      originalPause.call(tracker);
+      if (originalPause) originalPause.call(tracker);
     };
 
     const originalResume = tracker.onResume;
     tracker.onResume = () => {
       setIsPaused(false);
-      originalResume.call(tracker);
+      if (originalResume) originalResume.call(tracker);
     };
 
     const originalStop = tracker.onStop;
     tracker.onStop = () => {
       setIsActive(false);
       setIsPaused(false);
-      originalStop.call(tracker);
+      if (originalStop) originalStop.call(tracker);
     };
 
     return () => {
-      tracker.cleanup();
+      if (tracker) {
+        tracker.cleanup();
+      }
     };
   }, [tracker]);
 
   // Update state when tracker changes
   useEffect(() => {
+    if (!tracker) return;
+    
     const updateInterval = setInterval(() => {
-      const stats = tracker.getRunningStats();
-      setDistance(tracker.distance);
-      setCurrentSpeed(tracker.currentSpeed);
-      setAverageSpeed(tracker.averageSpeed);
-      setMaxSpeed(tracker.maxSpeed);
-      setCurrentPace(tracker.currentPace);
-      setAveragePace(tracker.averagePace);
-      setElevation({ ...tracker.elevation });
-      setSplits([...tracker.splits]);
+      if (tracker.isActive) {
+        const stats = tracker.getRunningStats();
+        setDistance(tracker.distance);
+        setCurrentSpeed(tracker.currentSpeed);
+        setAverageSpeed(tracker.averageSpeed);
+        setMaxSpeed(tracker.maxSpeed);
+        setCurrentPace(tracker.currentPace);
+        setAveragePace(tracker.averagePace);
+        setElevation({ ...tracker.elevation });
+        setSplits([...tracker.splits]);
+      }
     }, 1000);
 
     return () => clearInterval(updateInterval);
   }, [tracker]);
 
   const recordManualSplit = () => {
+    if (!tracker) return null;
     const split = tracker.recordManualSplit();
     setSplits([...tracker.splits]);
     return split;
   };
+
+  // Return null functions if tracker not ready
+  if (!tracker) {
+    return {
+      tracker: null,
+      duration: 0,
+      distance: 0,
+      currentPace: 0,
+      averagePace: 0,
+      currentSpeed: 0,
+      averageSpeed: 0,
+      maxSpeed: 0,
+      splits: [],
+      elevation: { gain: 0, loss: 0, current: 0 },
+      gpsPoints: [],
+      isActive: false,
+      isPaused: false,
+      formattedDuration: '00:00',
+      recordManualSplit: () => null,
+      getRunningStats: () => ({}),
+      formatPace: () => '0:00',
+      formatSpeed: () => '0.0 km/h',
+      formatDistance: () => '0m',
+      startTracking: async () => false,
+      pauseTracking: () => false,
+      resumeTracking: () => false,
+      stopTracking: () => false,
+      saveWorkout: async () => ({ success: false, message: 'Tracker not ready' }),
+    };
+  }
 
   return {
     tracker,
