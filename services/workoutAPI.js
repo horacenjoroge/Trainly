@@ -1,4 +1,4 @@
-// services/workoutAPI.js - Complete Workout API Service
+// services/workoutAPI.js - Complete Workout API Service (FIXED)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from './api'; // Your existing API client
 
@@ -12,6 +12,17 @@ export const workoutAPI = {
       return response.data;
     } catch (error) {
       console.error('Error creating workout:', error);
+      
+      // ADD THIS - Log the full error response
+      if (error.response) {
+        console.error('API Error Details:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers,
+        });
+      }
+      
       throw error;
     }
   },
@@ -184,8 +195,23 @@ export const workoutAPI = {
     }
   },
 
-  // Helper method to format workout data for different activity types
+  // FIXED: Helper method to format workout data for different activity types
   formatWorkoutData: (activityType, trackerData, userPreferences = {}) => {
+    console.log('formatWorkoutData input:', { activityType, trackerData });
+    
+    // Check if trackerData already has the correct structure (from RunningTracker.prepareWorkoutData)
+    if (trackerData.running || trackerData.cycling || trackerData.swimming || trackerData.gym) {
+      console.log('Data already formatted by tracker, using as-is');
+      return {
+        ...trackerData,
+        // Only override privacy if not already set
+        privacy: trackerData.privacy || userPreferences.privacy || 'public',
+      };
+    }
+
+    // Legacy format support - convert flat structure to nested
+    console.log('Converting legacy flat structure to nested format');
+    
     const baseWorkout = {
       type: activityType,
       name: trackerData.name || `${activityType} Session`,
@@ -198,7 +224,7 @@ export const workoutAPI = {
       location: trackerData.location || null,
     };
 
-    // Add activity-specific data
+    // Add activity-specific data for legacy flat structure
     switch (activityType) {
       case 'Running':
         return {
@@ -318,17 +344,25 @@ export const workoutAPI = {
     return Math.round(baseCalories * (weight / 70));
   },
 
-  // Helper to save workout with proper user authentication
+  // FIXED: Helper to save workout with proper user authentication
   saveWorkout: async (activityType, trackerData, userPreferences = {}) => {
     try {
-      // Get current user ID
-      const userId = await workoutAPI.getCurrentUserId();
-      if (!userId) {
-        throw new Error('User not authenticated. Please login again.');
+      console.log('saveWorkout called with:', { activityType, trackerData });
+      
+      // Check if data already has userId (from tracker)
+      if (!trackerData.userId) {
+        // Get current user ID only if not provided by tracker
+        const userId = await workoutAPI.getCurrentUserId();
+        if (!userId) {
+          throw new Error('User not authenticated. Please login again.');
+        }
+        trackerData.userId = userId;
       }
 
-      // Format workout data
+      // Format workout data (this now preserves existing structure)
       const workoutData = workoutAPI.formatWorkoutData(activityType, trackerData, userPreferences);
+      
+      console.log('Final formatted workout data:', workoutData);
 
       // Add location if available
       if (trackerData.currentLocation) {
