@@ -15,6 +15,9 @@ class BaseTracker {
     this.timerInterval = null;
     this.autosaveInterval = null;
     this.sessionId = null;
+    
+    // CRITICAL FIX: Store callback reference to prevent recreating
+    this.onDurationUpdateCallback = null;
   }
 
   // Generate unique session ID
@@ -22,7 +25,7 @@ class BaseTracker {
     return `${this.activityType.toLowerCase()}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // Start the tracking session
+  // FIXED: Start the tracking session with stable timer
   start() {
     if (this.isActive) return false;
 
@@ -31,11 +34,20 @@ class BaseTracker {
     this.isActive = true;
     this.isPaused = false;
     
-    // Start timer
+    // CRITICAL FIX: Only start timer if we have a stable callback
     this.timerInterval = setInterval(() => {
       if (!this.isPaused) {
         this.duration = Math.floor((new Date() - this.startTime) / 1000);
-        this.onDurationUpdate(this.duration);
+        
+        // CRITICAL FIX: Only call callback if it exists and is stable
+        if (this.onDurationUpdateCallback && typeof this.onDurationUpdateCallback === 'function') {
+          // Use try-catch to prevent any callback errors from breaking the timer
+          try {
+            this.onDurationUpdateCallback(this.duration);
+          } catch (error) {
+            console.warn('Duration update callback error:', error);
+          }
+        }
       }
     }, 1000);
 
@@ -92,6 +104,11 @@ class BaseTracker {
     return true;
   }
 
+  // CRITICAL FIX: Method to set stable duration callback
+  setDurationCallback(callback) {
+    this.onDurationUpdateCallback = callback;
+  }
+
   // Get current session data
   getSessionData() {
     return {
@@ -107,17 +124,24 @@ class BaseTracker {
     };
   }
 
-  // Auto-save session data
+  // FIXED: Auto-save session data - prevent infinite loops
   async autoSave() {
     if (!this.isActive) return;
 
     try {
+      // CRITICAL FIX: Use basic session data for autosave, don't call enhanceSessionData
+      // enhanceSessionData might trigger state updates that cause infinite loops
       const sessionData = this.getSessionData();
-      const enhancedData = await this.enhanceSessionData(sessionData);
       
+      // Save basic session data only - no enhanced data that might trigger re-renders
       await AsyncStorage.setItem(
         `active_session_${this.sessionId}`,
-        JSON.stringify(enhancedData)
+        JSON.stringify({
+          ...sessionData,
+          // Add basic calories calculation without calling methods that might cause loops
+          calories: Math.round((this.duration / 60) * this.getActivityCalorieRate()),
+          lastAutoSave: new Date().toISOString(),
+        })
       );
       
       console.log(`Auto-saved ${this.activityType} session`);
@@ -343,8 +367,10 @@ class BaseTracker {
     Vibration.vibrate([100, 100, 100]);
   }
 
+  // DEPRECATED: Keep for backward compatibility but don't use
   onDurationUpdate(duration) {
-    // Override in specific trackers for real-time updates
+    // This method is deprecated - use setDurationCallback instead
+    console.warn('onDurationUpdate is deprecated, use setDurationCallback instead');
   }
 
   async enhanceSessionData(sessionData) {
@@ -380,53 +406,64 @@ class BaseTracker {
     if (this.autosaveInterval) {
       clearInterval(this.autosaveInterval);
     }
+    // Clear the callback reference
+    this.onDurationUpdateCallback = null;
   }
 }
 
-// React Hook for using BaseTracker
+// FIXED: React Hook for using BaseTracker with stable callbacks
 export const useBaseTracker = (activityType, userId) => {
   const [tracker] = useState(() => new BaseTracker(activityType, userId));
   const [duration, setDuration] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
+  // Use useRef to create stable callback references
+  const durationCallbackRef = useRef();
+  const startCallbackRef = useRef();
+  const pauseCallbackRef = useRef();
+  const resumeCallbackRef = useRef();
+  const stopCallbackRef = useRef();
+
   useEffect(() => {
-    // Override duration update callback
-    tracker.onDurationUpdate = (newDuration) => {
+    // Create stable callback references
+    durationCallbackRef.current = (newDuration) => {
       setDuration(newDuration);
     };
 
-    // Override state change callbacks
-    const originalStart = tracker.onStart;
-    tracker.onStart = () => {
+    startCallbackRef.current = () => {
       setIsActive(true);
       setIsPaused(false);
-      originalStart.call(tracker);
+      console.log(`${activityType} session started`);
     };
 
-    const originalPause = tracker.onPause;
-    tracker.onPause = () => {
+    pauseCallbackRef.current = () => {
       setIsPaused(true);
-      originalPause.call(tracker);
+      console.log(`${activityType} session paused`);
     };
 
-    const originalResume = tracker.onResume;
-    tracker.onResume = () => {
+    resumeCallbackRef.current = () => {
       setIsPaused(false);
-      originalResume.call(tracker);
+      console.log(`${activityType} session resumed`);
     };
 
-    const originalStop = tracker.onStop;
-    tracker.onStop = () => {
+    stopCallbackRef.current = () => {
       setIsActive(false);
       setIsPaused(false);
-      originalStop.call(tracker);
+      console.log(`${activityType} session stopped`);
     };
+
+    // CRITICAL FIX: Set the stable callback on the tracker
+    tracker.setDurationCallback(durationCallbackRef.current);
+    tracker.onStart = startCallbackRef.current;
+    tracker.onPause = pauseCallbackRef.current;
+    tracker.onResume = resumeCallbackRef.current;
+    tracker.onStop = stopCallbackRef.current;
 
     return () => {
       tracker.cleanup();
     };
-  }, [tracker]);
+  }, []); // Empty dependency array - only run once
 
   const startTracking = () => tracker.start();
   const pauseTracking = () => tracker.pause();
