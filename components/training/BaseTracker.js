@@ -126,40 +126,80 @@ class BaseTracker {
     }
   }
 
-  // Save final workout data
+  // FIXED: Save final workout data
   async saveWorkout() {
+    let trackerData = null;
+    
     try {
+      // 1. Prepare workout data first
       const sessionData = this.getSessionData();
-      const trackerData = await this.prepareWorkoutData(sessionData);
+      trackerData = await this.prepareWorkoutData(sessionData);
       
-      // Save to workout history
-      const existingWorkouts = JSON.parse(
-        await AsyncStorage.getItem('workoutHistory') || '[]'
-      );
-      existingWorkouts.unshift(trackerData);
-      await AsyncStorage.setItem('workoutHistory', JSON.stringify(existingWorkouts));
-
-      // Clear active session
-      await AsyncStorage.removeItem(`active_session_${this.sessionId}`);
-
-      // Sync with backend using workoutAPI
+      console.log('Saving workout:', trackerData);
+      
+      // 2. Try to save to API first
       const response = await workoutAPI.saveWorkout(this.activityType, trackerData);
       
-      if (!response.success) {
-        // Add to sync queue for retry
-        await this.addToSyncQueue(trackerData);
-        throw new Error(response.message || 'Failed to sync workout');
-      }
+      if (response.success) {
+        // 3. API success - save to local storage
+        const existingWorkouts = JSON.parse(
+          await AsyncStorage.getItem('workoutHistory') || '[]'
+        );
+        existingWorkouts.unshift(trackerData);
+        await AsyncStorage.setItem('workoutHistory', JSON.stringify(existingWorkouts));
 
-      return response; // { success, workout, achievements, message }
+        // 4. Clear active session
+        await AsyncStorage.removeItem(`active_session_${this.sessionId}`);
+
+        console.log(`${this.activityType} workout saved successfully to API and local storage`);
+        
+        return {
+          success: true,
+          workout: response.workout || trackerData,
+          achievements: response.achievements || [],
+          message: response.message || `${this.activityType} session saved successfully!`
+        };
+      } else {
+        throw new Error(response.message || 'API save failed');
+      }
+      
     } catch (error) {
-      console.error(`Error saving ${this.activityType} workout:`, error);
-      // Add to sync queue for offline scenarios
-      await this.addToSyncQueue(trackerData);
-      return {
-        success: false,
-        message: error.message || `Failed to save ${this.activityType} session`,
-      };
+      console.error(`Error saving ${this.activityType} workout to API:`, error);
+      
+      // Fallback: save locally and add to sync queue
+      try {
+        if (trackerData) {
+          // Save to local storage as fallback
+          const existingWorkouts = JSON.parse(
+            await AsyncStorage.getItem('workoutHistory') || '[]'
+          );
+          existingWorkouts.unshift(trackerData);
+          await AsyncStorage.setItem('workoutHistory', JSON.stringify(existingWorkouts));
+
+          // Add to sync queue for later retry
+          await this.addToSyncQueue(trackerData);
+
+          // Clear active session
+          await AsyncStorage.removeItem(`active_session_${this.sessionId}`);
+
+          console.log(`${this.activityType} workout saved locally (offline mode)`);
+          
+          return {
+            success: true,
+            workout: trackerData,
+            achievements: [],
+            message: `${this.activityType} session saved locally. Will sync when online.`
+          };
+        } else {
+          throw new Error('Failed to prepare workout data');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback save failed:', fallbackError);
+        return {
+          success: false,
+          message: `Failed to save ${this.activityType} session: ${fallbackError.message}`,
+        };
+      }
     }
   }
 
@@ -169,10 +209,64 @@ class BaseTracker {
       const syncQueue = JSON.parse(
         await AsyncStorage.getItem('workout_sync_queue') || '[]'
       );
-      syncQueue.push({ ...workoutData, needsSync: true });
+      syncQueue.push({ 
+        ...workoutData, 
+        needsSync: true,
+        syncAttempts: 0,
+        lastSyncAttempt: new Date().toISOString()
+      });
       await AsyncStorage.setItem('workout_sync_queue', JSON.stringify(syncQueue));
+      console.log('Added workout to sync queue');
     } catch (error) {
       console.error('Failed to add to sync queue:', error);
+    }
+  }
+
+  // BONUS: Method to sync pending workouts
+  static async syncPendingWorkouts() {
+    try {
+      const syncQueue = JSON.parse(
+        await AsyncStorage.getItem('workout_sync_queue') || '[]'
+      );
+      
+      if (syncQueue.length === 0) return { synced: 0, failed: 0 };
+      
+      let synced = 0;
+      let failed = 0;
+      const remainingQueue = [];
+      
+      for (const workout of syncQueue) {
+        try {
+          const response = await workoutAPI.saveWorkout(workout.type, workout);
+          if (response.success) {
+            synced++;
+            console.log(`Synced pending workout: ${workout.type}`);
+          } else {
+            failed++;
+            workout.syncAttempts = (workout.syncAttempts || 0) + 1;
+            workout.lastSyncAttempt = new Date().toISOString();
+            if (workout.syncAttempts < 3) {
+              remainingQueue.push(workout);
+            }
+          }
+        } catch (error) {
+          failed++;
+          workout.syncAttempts = (workout.syncAttempts || 0) + 1;
+          workout.lastSyncAttempt = new Date().toISOString();
+          if (workout.syncAttempts < 3) {
+            remainingQueue.push(workout);
+          }
+          console.error('Sync failed for workout:', error);
+        }
+      }
+      
+      // Update sync queue
+      await AsyncStorage.setItem('workout_sync_queue', JSON.stringify(remainingQueue));
+      
+      return { synced, failed, remaining: remainingQueue.length };
+    } catch (error) {
+      console.error('Error syncing pending workouts:', error);
+      return { synced: 0, failed: 0, error: error.message };
     }
   }
 
@@ -267,10 +361,14 @@ class BaseTracker {
     return {
       ...enhancedData,
       id: `workout_${Date.now()}`,
-      name: `${this.activityType} Session ${new Date().toISOString().split('T')[0]}`,
+      sessionId: this.sessionId,  // CRITICAL FIX: Add required sessionId
+      name: `${this.activityType} Session`,
       type: this.activityType,
       date: this.startTime?.toISOString(),
+      startTime: this.startTime?.toISOString(),
+      endTime: this.endTime?.toISOString(),
       completed: true,
+      privacy: 'public',
     };
   }
 
