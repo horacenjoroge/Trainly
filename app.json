@@ -2,6 +2,11 @@
   "expo": {
     "name": "Trainly",
     "slug": "Trainly",
+    "splash": {
+  "backgroundColor": "#120B42",
+  "resizeMode": "contain"
+},
+    
     "sdkVersion": "53.0.0",
     "version": "1.0.0",
     "assetBundlePatterns": [
