@@ -1,4 +1,4 @@
-// App.js - Fixed Version - No Multiple Renders
+// App.js - Force Early Native Splash Hide
 import './global.js';
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -12,9 +12,10 @@ import MainComponent from './screens/MainComponent';
 import AuthScreen from './screens/AuthScreen';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text } from 'react-native';
 
-// Prevent the splash screen from auto-hiding
-SplashScreen.preventAutoHideAsync();
+// IMMEDIATELY hide the native splash screen to prevent conflicts
+SplashScreen.hideAsync().catch(console.warn);
 
 global.getSafeImageUri = (uri) => {
   if (uri === null || uri === undefined) return '';
@@ -114,7 +115,13 @@ const AppContent = () => {
   const [appIsReady, setAppIsReady] = useState(false);
   const [preparationStarted, setPreparationStarted] = useState(false);
   
-  console.log('AppContent render - Auth state:', { isAuthenticated, isLoading, authStateVersion });
+  console.log('📱 AppContent render - Auth state:', { 
+    isAuthenticated, 
+    isLoading, 
+    authStateVersion,
+    appIsReady,
+    preparationStarted
+  });
 
   useEffect(() => {
     async function prepare() {
@@ -124,10 +131,11 @@ const AppContent = () => {
         return;
       }
       
+      console.log('🚀 Starting app preparation...');
       setPreparationStarted(true);
       
       try {
-        console.log('🚀 App preparation started (SINGLE EXECUTION)');
+        console.log('🧹 Cleaning AsyncStorage...');
         
         // Diagnose AsyncStorage
         const keys = await AsyncStorage.getAllKeys();
@@ -151,26 +159,26 @@ const AppContent = () => {
         }
 
         // Simulate loading time for a better user experience
-        console.log('⏱️ Starting 3 second loading simulation (SINGLE)');
+        console.log('⏱️ Starting 3 second loading simulation...');
         await new Promise(resolve => setTimeout(resolve, 3000));
-        console.log('✅ 3 second loading completed (SINGLE)');
+        console.log('✅ 3 second loading completed');
         
       } catch (error) {
-        console.error('App preparation error:', error);
+        console.error('❌ App preparation error:', error);
       } finally {
-        console.log('🏁 App preparation finished, setting appIsReady to true (SINGLE)');
+        console.log('🏁 App preparation finished, setting appIsReady to true');
         setAppIsReady(true);
       }
     }
 
     prepare();
-  }, []); // EMPTY DEPENDENCY ARRAY - NO MORE MULTIPLE EXECUTIONS
+  }, []);
 
   useEffect(() => {
     global.onLogout = async () => {
-      console.log('Global logout handler triggered');
-      setAppIsReady(false);  // Reset app state on logout
-      setPreparationStarted(false); // Allow preparation to run again
+      console.log('🚪 Global logout handler triggered');
+      setAppIsReady(false);
+      setPreparationStarted(false);
       await refreshAuth();
     };
     
@@ -179,23 +187,19 @@ const AppContent = () => {
     };
   }, [refreshAuth]);
 
-  const onLayoutRootView = useCallback(async () => {
-    if (appIsReady) {
-      console.log('🎬 Hiding native splash screen');
-      // Hide the splash screen once the app is ready
-      await SplashScreen.hideAsync();
-    }
-  }, [appIsReady]);
+  // Determine if we should show splash
+  const shouldShowSplash = !appIsReady || isLoading;
+  const splashReason = !appIsReady ? 'App not ready' : isLoading ? 'Auth loading' : 'Ready';
 
-  // DEBUG: Add extensive logging
-  console.log('=== SPLASH DEBUG ===');
-  console.log('appIsReady:', appIsReady);
-  console.log('isLoading:', isLoading);
-  console.log('preparationStarted:', preparationStarted);
-  console.log('Will show splash?', (!appIsReady || isLoading));
+  console.log('🎭 SPLASH DECISION:', {
+    shouldShowSplash,
+    reason: splashReason,
+    appIsReady,
+    isLoading
+  });
 
   // Show custom splash screen while app is loading
-  if (!appIsReady || isLoading) {
+  if (shouldShowSplash) {
     console.log('🎨 SHOWING CUSTOM SPLASH SCREEN');
     return <SplashScreenComponent />;
   }
@@ -206,7 +210,7 @@ const AppContent = () => {
   return (
     <>
       <StatusBar style="auto" />
-      <NavigationContainer theme={theme} onReady={onLayoutRootView}>
+      <NavigationContainer theme={theme}>
         <RootStack.Navigator screenOptions={{ headerShown: false }}>
           {isAuthenticated ? (
             <RootStack.Screen 
