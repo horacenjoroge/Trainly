@@ -20,17 +20,28 @@ export default function FollowingList({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
-        const data = await AsyncStorage.getItem('userData');
+        // Try userData first
+        let data = await AsyncStorage.getItem('userData');
+        if (!data) {
+          // Fallback to @user_data
+          data = await AsyncStorage.getItem('@user_data');
+        }
+        
         if (data) {
           const user = JSON.parse(data);
-          setCurrentUserId(user._id || user.id);
+          const foundUserId = user._id || user.id;
+          setCurrentUserId(foundUserId);
+          console.log('✅ FollowingList: Found current user ID:', foundUserId);
+        } else {
+          console.warn('⚠️ FollowingList: No user data found in storage');
         }
       } catch (error) {
-        console.error('Error getting current user:', error);
+        console.error('❌ FollowingList: Error getting current user:', error);
       }
     };
     
@@ -38,18 +49,28 @@ export default function FollowingList({ route, navigation }) {
   }, []);
 
   useEffect(() => {
+    console.log('🔄 FollowingList: Params userId:', userId);
+    
     if (userId) {
       loadFollowing();
+    } else {
+      setError('No user ID provided');
+      setLoading(false);
     }
   }, [userId]);
 
   const loadFollowing = async () => {
     try {
       setLoading(true);
+      setError(null);
+      console.log('🔄 FollowingList: Loading following for userId:', userId);
+      
       const response = await userService.getFollowing(userId);
+      console.log('✅ FollowingList: Loaded following data:', response?.length || 0, 'users');
       setFollowing(response || []);
     } catch (error) {
-      console.error('Error loading following:', error);
+      console.error('❌ FollowingList: Error loading following:', error);
+      setError('Failed to load following list');
     } finally {
       setLoading(false);
     }
@@ -76,7 +97,7 @@ export default function FollowingList({ route, navigation }) {
         onPress={() => navigation.navigate('UserProfile', { userId: item._id })}
       >
         <Image
-          source={{ uri: global.getSafeImageUri(item.avatar || 'https://via.placeholder.com/50') }}
+          source={global.getSafeImageUri(item.avatar || 'https://via.placeholder.com/50')}
           style={styles.avatar}
         />
         <View style={styles.nameContainer}>
@@ -115,6 +136,35 @@ export default function FollowingList({ route, navigation }) {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+            Loading following list...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !userId) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Following</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={60} color={theme.colors.textSecondary} />
+          <Text style={[styles.emptyText, { color: theme.colors.text }]}>
+            {error || 'No user ID provided'}
+          </Text>
+          <TouchableOpacity 
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -150,6 +200,7 @@ export default function FollowingList({ route, navigation }) {
           renderItem={renderFollowingItem}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </SafeAreaView>
@@ -176,6 +227,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
   },
   listContainer: {
     padding: 16,
@@ -234,5 +289,16 @@ const styles = StyleSheet.create({
   emptySubText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
