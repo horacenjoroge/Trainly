@@ -15,7 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { userService, postService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+
+const USER_DATA_KEY = '@user_data';
 
 export default function UserProfile({ route, onLogout }) {
  const { userId } = route?.params || {};
@@ -36,15 +38,22 @@ export default function UserProfile({ route, onLogout }) {
  const [isCurrentUserLoaded, setIsCurrentUserLoaded] = useState(false);
  const [error, setError] = useState(null);
 
- // Load data only once with memoized callbacks
+ // Load current user data from AsyncStorage
  const loadCurrentUser = useCallback(async () => {
    try {
-     const data = await AsyncStorage.getItem('userData');
+     // Try userData first (new format)
+     let data = await AsyncStorage.getItem('userData');
+     if (!data) {
+       // Fallback to USER_DATA_KEY (personal info format)
+       data = await AsyncStorage.getItem(USER_DATA_KEY);
+     }
+     
      if (data) {
        const user = JSON.parse(data);
        const userId = user._id || user.id;
        if (userId) {
          setCurrentUserId(userId);
+         console.log('✅ UserProfile: Loaded current user ID:', userId);
        } else {
          throw new Error('User data missing ID field');
        }
@@ -53,7 +62,7 @@ export default function UserProfile({ route, onLogout }) {
        if (onLogout) onLogout();
      }
    } catch (error) {
-     console.error('Error loading current user:', error.message);
+     console.error('❌ UserProfile: Error loading current user:', error.message);
      setError('Failed to load user data');
      if (onLogout) onLogout();
    } finally {
@@ -61,24 +70,92 @@ export default function UserProfile({ route, onLogout }) {
    }
  }, [onLogout]);
 
+ // Load user profile with dynamic bio support
  const loadUserProfile = useCallback(async () => {
    try {
+     console.log('🔄 UserProfile: Loading profile for userId:', userId);
+     
+     // ALWAYS load from API first to get the user's actual data
      const profileData = await userService.getUserById(userId);
      profileData.stats = profileData.stats || { workouts: 0, hours: 0, calories: 0 };
-     setUserData(profileData);
+     
+     let finalUserData = {
+       name: profileData.name || 'User',
+       bio: profileData.bio || 'Fitness enthusiast',
+       avatar: profileData.avatar || 'https://via.placeholder.com/150',
+       stats: profileData.stats,
+       followers: profileData.followers || 0,
+       following: profileData.following || 0,
+     };
+     
+     // If bio is empty or default, try to generate one from available data
+     if (!finalUserData.bio || finalUserData.bio === 'Fitness enthusiast') {
+       // For other users, we can only use API data to generate bio
+       if (profileData.fitnessLevel || profileData.height || profileData.weight) {
+         let bioParts = [];
+         
+         if (profileData.fitnessLevel) {
+           bioParts.push(`${profileData.fitnessLevel} fitness enthusiast`);
+         } else {
+           bioParts.push('Fitness enthusiast');
+         }
+         
+         if (profileData.height && profileData.weight) {
+           const heightM = parseFloat(profileData.height) / 100;
+           const bmi = (parseFloat(profileData.weight) / (heightM * heightM)).toFixed(1);
+           bioParts.push(`BMI: ${bmi}`);
+         }
+         
+         finalUserData.bio = bioParts.join(' • ');
+       }
+     }
+     
+     // ONLY if this is the current user, check for updated bio in AsyncStorage
+     if (currentUserId === userId) {
+       console.log('📱 UserProfile: This is current user, checking for updated bio in AsyncStorage');
+       
+       try {
+         const localData = await AsyncStorage.getItem(USER_DATA_KEY);
+         if (localData) {
+           const parsedData = JSON.parse(localData);
+           console.log('✅ UserProfile: Found local data for current user');
+           
+           // Only update specific fields, don't overwrite everything
+           if (parsedData.bio) {
+             finalUserData.bio = parsedData.bio;
+             console.log('✅ UserProfile: Updated bio from local storage:', parsedData.bio);
+           }
+           
+           if (parsedData.fullName) {
+             finalUserData.name = parsedData.fullName;
+             console.log('✅ UserProfile: Updated name from local storage:', parsedData.fullName);
+           }
+           
+           // Keep API data for stats, followers, following
+           // Don't overwrite these with local data
+         }
+       } catch (localError) {
+         console.log('⚠️ UserProfile: No local data found, using API data only');
+       }
+     }
+     
+     console.log('🌐 UserProfile: Final user data:', finalUserData);
+     setUserData(finalUserData);
 
+     // Check follow status if different user
      if (currentUserId && currentUserId !== userId) {
        const followingData = await userService.getFollowing(currentUserId);
        setIsFollowing(Array.isArray(followingData) && followingData.some(user => user._id === userId || user.id === userId));
      }
    } catch (error) {
-     console.error('Error loading user profile:', error.message);
+     console.error('❌ UserProfile: Error loading user profile:', error.message);
      setError('Failed to load user profile');
    }
  }, [userId, currentUserId]);
 
  const fetchUserPosts = useCallback(async () => {
    try {
+     console.log('📝 UserProfile: Fetching posts for userId:', userId);
      const allPosts = await postService.getPosts();
      if (allPosts && allPosts.length > 0) {
        const filteredPosts = allPosts.filter(post => {
@@ -89,36 +166,41 @@ export default function UserProfile({ route, onLogout }) {
          return false;
        });
        setUserPosts(filteredPosts);
+       console.log('✅ UserProfile: Found', filteredPosts.length, 'posts for user');
      } else {
        setUserPosts([]);
      }
    } catch (error) {
-     console.error('Error fetching user posts:', error.message);
+     console.error('❌ UserProfile: Error fetching user posts:', error.message);
      setUserPosts([]);
    }
  }, [userId]);
 
- useEffect(() => {
-   if (userId) {
-     const loadData = async () => {
-       setLoading(true);
-       try {
-         await loadCurrentUser();
-         await Promise.all([loadUserProfile(), fetchUserPosts()]);
-       } catch (error) {
-         console.error('Error loading data:', error.message);
-         setError('Failed to load profile data');
-         if (onLogout) onLogout();
-       } finally {
-         setLoading(false);
-       }
-     };
-     loadData();
-   } else {
-     setLoading(false);
-     setError('No user ID provided');
-   }
- }, [userId, loadCurrentUser, loadUserProfile, fetchUserPosts, onLogout]);
+ // Use useFocusEffect to reload data when screen comes into focus
+ useFocusEffect(
+   React.useCallback(() => {
+     if (userId) {
+       console.log('🎯 UserProfile: Screen focused, refreshing data for userId:', userId);
+       const loadData = async () => {
+         setLoading(true);
+         try {
+           await loadCurrentUser();
+           await Promise.all([loadUserProfile(), fetchUserPosts()]);
+         } catch (error) {
+           console.error('❌ UserProfile: Error loading data:', error.message);
+           setError('Failed to load profile data');
+           if (onLogout) onLogout();
+         } finally {
+           setLoading(false);
+         }
+       };
+       loadData();
+     } else {
+       setLoading(false);
+       setError('No user ID provided');
+     }
+   }, [userId, loadCurrentUser, loadUserProfile, fetchUserPosts, onLogout])
+ );
 
  const handleFollowToggle = async () => {
    if (!currentUserId || !isCurrentUserLoaded || currentUserId === userId) {
@@ -149,7 +231,7 @@ export default function UserProfile({ route, onLogout }) {
        }
      }
    } catch (error) {
-     console.error('Error toggling follow:', error);
+     console.error('❌ UserProfile: Error toggling follow:', error);
      // Revert UI changes
      setIsFollowing(!isFollowing);
      setUserData(prev => ({
@@ -254,7 +336,9 @@ export default function UserProfile({ route, onLogout }) {
        <TouchableOpacity onPress={() => navigation.goBack()}>
          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
        </TouchableOpacity>
-       <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Profile</Text>
+       <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+         {currentUserId === userId ? 'My Profile' : 'Profile'}
+       </Text>
        <View style={{ width: 24 }} />
      </View>
 
@@ -269,7 +353,22 @@ export default function UserProfile({ route, onLogout }) {
          <Text style={[styles.bio, { color: theme.colors.textSecondary }]}>
            {userData.bio || 'Fitness enthusiast'}
          </Text>
-         {isCurrentUserLoaded && currentUserId && currentUserId !== userId && (
+         
+         {/* Show edit button for current user, follow button for others */}
+         {isCurrentUserLoaded && currentUserId === userId ? (
+           <TouchableOpacity
+             style={[styles.editButton, { backgroundColor: theme.colors.primary }]}
+             onPress={() => {
+               // Navigate to PersonalInfo and specify return destination
+               navigation.navigate('PersonalInfo', { 
+                 returnTo: 'UserProfile',
+                 userId: userId 
+               });
+             }}
+           >
+             <Text style={styles.editButtonText}>Edit Profile</Text>
+           </TouchableOpacity>
+         ) : currentUserId && currentUserId !== userId ? (
            <TouchableOpacity
              style={[
                styles.followButton,
@@ -289,7 +388,7 @@ export default function UserProfile({ route, onLogout }) {
                {isFollowing ? 'Following' : 'Follow'}
              </Text>
            </TouchableOpacity>
-         )}
+         ) : null}
        </View>
 
        <View style={[styles.statsRow, { backgroundColor: theme.colors.surface }]}>
@@ -430,7 +529,25 @@ const styles = StyleSheet.create({
    borderColor: '#E57C0B',
  },
  name: { fontSize: 24, fontWeight: 'bold', marginTop: 16 },
- bio: { fontSize: 16, marginTop: 8, fontStyle: 'italic', textAlign: 'center' },
+ bio: { 
+   fontSize: 16, 
+   marginTop: 8, 
+   fontStyle: 'italic', 
+   textAlign: 'center',
+   paddingHorizontal: 20,
+   lineHeight: 22,
+ },
+ editButton: {
+   marginTop: 16,
+   paddingVertical: 8,
+   paddingHorizontal: 24,
+   borderRadius: 20,
+ },
+ editButtonText: { 
+   fontSize: 16, 
+   fontWeight: '600', 
+   color: '#fff' 
+ },
  followButton: {
    marginTop: 16,
    paddingVertical: 8,
