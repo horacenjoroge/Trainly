@@ -1,4 +1,4 @@
-// HomeScreen.js - Complete with Simplified Progress Integration
+// HomeScreen.js - Fixed Bio Sync Issue
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService, postService } from '../services/api';
 import { workoutAPI } from '../services/workoutAPI';
 import { useTheme } from '../context/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Replace with your actual backend URL
 const API_URL = 'http://192.168.100.88:3000';
@@ -361,6 +362,35 @@ const HomeScreen = ({ navigation }) => {
     global.getSafeImageUri = getSafeImageUri;
   }, []);
 
+  // Load user name and bio from AsyncStorage (FIXED FUNCTION)
+  const loadUserNameAndBio = async () => {
+    try {
+      const localUserData = await AsyncStorage.getItem(USER_DATA_KEY);
+      if (localUserData) {
+        const parsedData = JSON.parse(localUserData);
+        console.log('🔄 HomeScreen: Loading fresh user data from AsyncStorage');
+        
+        // Update user name if available
+        if (parsedData.fullName) {
+          setUserName(parsedData.fullName);
+          console.log('✅ HomeScreen: Updated userName to:', parsedData.fullName);
+        }
+        
+        // Update user profile if we have it
+        if (userProfile) {
+          setUserProfile(prev => ({
+            ...prev,
+            name: parsedData.fullName || prev.name,
+            bio: parsedData.bio || prev.bio
+          }));
+          console.log('✅ HomeScreen: Updated userProfile bio to:', parsedData.bio);
+        }
+      }
+    } catch (error) {
+      console.error('❌ HomeScreen: Error loading user data from AsyncStorage:', error);
+    }
+  };
+
   // Simplified progress fetching - just get basic summary
   const fetchProgressData = async () => {
     setProgressLoading(true);
@@ -521,18 +551,8 @@ const HomeScreen = ({ navigation }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       
-      // Check for updated user name in local storage
-      try {
-        const localUserData = await AsyncStorage.getItem(USER_DATA_KEY);
-        if (localUserData) {
-          const parsedData = JSON.parse(localUserData);
-          if (parsedData.fullName) {
-            setUserName(parsedData.fullName);
-          }
-        }
-      } catch (localError) {
-        console.error('Error reading local user data:', localError);
-      }
+      // ALWAYS load fresh user data from AsyncStorage first
+      await loadUserNameAndBio();
       
       if (!token) {
         // If no data from API yet, use sample data
@@ -581,9 +601,23 @@ const HomeScreen = ({ navigation }) => {
           setUserName(profileData.name);
         }
         
+        // Also load fresh data from AsyncStorage for bio
+        const cachedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
+        let dynamicBio = 'Fitness enthusiast';
+        
+        if (cachedUserData) {
+          const parsedData = JSON.parse(cachedUserData);
+          if (parsedData.bio) {
+            dynamicBio = parsedData.bio;
+          }
+        }
+        
         setUserProfile({
           name: profileData.name || userName,
+          bio: profileData.bio || dynamicBio, // Use fresh bio from AsyncStorage
         });
+        
+        console.log('🔄 HomeScreen: Profile updated with bio:', profileData.bio || dynamicBio);
       } catch (error) {
         console.error('Error fetching profile from service:', error);
         
@@ -601,8 +635,20 @@ const HomeScreen = ({ navigation }) => {
             setUserName(profileRes.data.name);
           }
           
+          // Also load fresh bio from AsyncStorage
+          const cachedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
+          let dynamicBio = 'Fitness enthusiast';
+          
+          if (cachedUserData) {
+            const parsedData = JSON.parse(cachedUserData);
+            if (parsedData.bio) {
+              dynamicBio = parsedData.bio;
+            }
+          }
+          
           setUserProfile({
             name: profileRes.data.name || userName,
+            bio: profileRes.data.bio || dynamicBio,
           });
         } catch (axiosError) {
           console.error('Error fetching profile with axios:', axiosError);
@@ -722,15 +768,14 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  // Add a listener for focus events to refresh data
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+  // FIXED: Use useFocusEffect to reload data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🎯 HomeScreen: Screen focused, refreshing data');
       fetchData();
       fetchProgressData();
-    });
-
-    return unsubscribe;
-  }, [navigation]);
+    }, [])
+  );
 
   // Handle pull-to-refresh
   const onRefresh = () => {
@@ -809,12 +854,6 @@ const HomeScreen = ({ navigation }) => {
   const handleViewFullStats = () => {
     navigation.navigate('Stats'); // Assuming you have a Stats screen
   };
-
-  // Fetch data on component mount
-  useEffect(() => {
-    fetchData();
-    fetchProgressData();
-  }, []);
 
   if (loading && !refreshing) {
     return (
