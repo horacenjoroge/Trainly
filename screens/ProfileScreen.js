@@ -1,4 +1,4 @@
-// screens/ProfileScreen.js
+// screens/ProfileScreen.js - Redesigned
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -323,13 +323,9 @@ export default function ProfileScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.colors.background }]}>
-          <TouchableOpacity 
-            style={styles.editProfileBtn}
-            onPress={() => navigation.navigate('PersonalInfo')}
-          >
-            <Ionicons name="pencil-outline" size={20} color={theme.colors.primary} />
-            <Text style={[styles.editText, { color: theme.colors.primary }]}>Edit</Text>
-          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Profile
+          </Text>
         </View>
         
         {/* Profile Info */}
@@ -393,6 +389,27 @@ export default function ProfileScreen({ navigation }) {
           />
         </View>
 
+        {/* Action Buttons Row */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.primaryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => navigation.navigate('TrainingStack')}
+          >
+            <Ionicons name="fitness-outline" size={20} color="#FFFFFF" />
+            <Text style={[styles.actionButtonText, styles.primaryButtonText]}>Start Workout</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.secondaryButton, { 
+              borderColor: theme.colors.primary,
+            }]}
+            onPress={() => navigation.navigate('PersonalInfo')}
+          >
+            <Ionicons name="create-outline" size={20} color={theme.colors.primary} />
+            <Text style={[styles.actionButtonText, { color: theme.colors.primary }]}>Edit Profile</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Recent Activity Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
@@ -428,90 +445,69 @@ export default function ProfileScreen({ navigation }) {
               <Text style={[styles.emptyStateSubtext, { color: theme.colors.textSecondary }]}>
                 Start your first workout to see it here
               </Text>
+              <TouchableOpacity 
+                style={[styles.emptyStateButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => navigation.navigate('TrainingStack')}
+              >
+                <Text style={styles.emptyStateButtonText}>Start Training</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
         
-        {/* Action Buttons */}
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
-            onPress={() => navigation.navigate('TrainingStack')}
-          >
-            <Ionicons name="fitness-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>Start Workout</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, { 
-              backgroundColor: 'transparent',
-              borderColor: theme.colors.primary,
-              borderWidth: 1
-            }]}
-            onPress={() => navigation.navigate('FindFriends')}
-          >
-            <Ionicons name="people-outline" size={24} color={theme.colors.primary} />
-            <Text style={[styles.actionButtonText, { color: theme.colors.primary }]}>Find Friends</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {/* Menu Options */}
+        {/* Quick Access Menu */}
         <View style={styles.menuContainer}>
+          <Text style={[styles.menuSectionTitle, { color: theme.colors.text }]}>
+            Quick Access
+          </Text>
+          
           {/* Workout History */}
           <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
+            style={[styles.menuItem, { 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border 
+            }]}
             onPress={() => navigation.navigate('WorkoutHistory')}
           >
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIcon, { backgroundColor: theme.colors.primary + '20' }]}>
                 <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
               </View>
-              <Text style={[styles.menuText, { color: theme.colors.text }]}>Workout History</Text>
+              <View>
+                <Text style={[styles.menuText, { color: theme.colors.text }]}>Workout History</Text>
+                <Text style={[styles.menuSubtext, { color: theme.colors.textSecondary }]}>
+                  View all your past workouts
+                </Text>
+              </View>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
           </TouchableOpacity>
 
-          {/* Profile Settings */}
+          {/* Find Friends */}
           <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
-            onPress={() => navigation.navigate('SettingsStack')}
+            style={[styles.menuItem, { 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border 
+            }]}
+            onPress={() => navigation.navigate('FindFriends')}
           >
             <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: theme.colors.primary + '20' }]}>
-                <Ionicons name="settings-outline" size={20} color={theme.colors.primary} />
+              <View style={[styles.menuIcon, { backgroundColor: '#10B98120' }]}>
+                <Ionicons name="people-outline" size={20} color="#10B981" />
               </View>
-              <Text style={[styles.menuText, { color: theme.colors.text }]}>Settings</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-          
-          {/* Emergency Services */}
-          <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
-            onPress={() => navigation.navigate('EmergencyStack')}
-          >
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: '#EB445A20' }]}>
-                <Ionicons name="alert-circle-outline" size={20} color="#EB445A" />
+              <View>
+                <Text style={[styles.menuText, { color: theme.colors.text }]}>Find Friends</Text>
+                <Text style={[styles.menuSubtext, { color: theme.colors.textSecondary }]}>
+                  Connect with other fitness enthusiasts
+                </Text>
               </View>
-              <Text style={[styles.menuText, { color: theme.colors.text }]}>Emergency Services</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-          
-          {/* Help & Support */}
-          <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomColor: theme.colors.border }]}
-          >
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: '#4A90E220' }]}>
-                <Ionicons name="help-circle-outline" size={20} color="#4A90E2" />
-              </View>
-              <Text style={[styles.menuText, { color: theme.colors.text }]}>Help & Support</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </View>
+
+        {/* Bottom Padding */}
+        <View style={{ height: 30 }} />
       </ScrollView>
 
       {/* Image picker modal */}
@@ -564,17 +560,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 10,
-    alignItems: 'flex-end',
+    paddingBottom: 10,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   editProfileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  editText: {
-    marginLeft: 4,
-    fontWeight: '500',
+    // Removed - no longer needed
   },
   profileInfo: {
     alignItems: 'center',
@@ -617,7 +615,7 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: 16,
     borderWidth: 1,
-    padding: 12,
+    padding: 16,
     justifyContent: 'space-between',
   },
   statItem: {
@@ -632,15 +630,47 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
+    fontWeight: '500',
   },
   statDivider: {
     width: 1,
     height: '70%',
     alignSelf: 'center',
   },
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 32,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flex: 1,
+  },
+  primaryButton: {
+    // backgroundColor set dynamically
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+  },
+  actionButtonText: {
+    fontWeight: '600',
+    marginLeft: 6,
+    fontSize: 14,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+  },
   sectionContainer: {
     marginHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -704,54 +734,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     textAlign: 'center',
+    marginBottom: 16,
   },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 24,
+  emptyStateButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 30,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    width: '48%',
-  },
-  actionButtonText: {
+  emptyStateButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    marginLeft: 8,
+    fontSize: 14,
   },
   menuContainer: {
-    margin: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
+  menuSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   menuIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   menuText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  menuSubtext: {
+    fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
