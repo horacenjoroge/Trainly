@@ -63,6 +63,7 @@ export default function ProfileScreen({ navigation }) {
     followers: 0,
     following: 0
   });
+  const [currentUserId, setCurrentUserId] = useState(null);
   
   // Add a listener for focus events to refresh data
   useEffect(() => {
@@ -94,6 +95,19 @@ export default function ProfileScreen({ navigation }) {
     try {
       setLoading(true);
       
+      // Load current user ID first
+      try {
+        const userDataFromStorage = await AsyncStorage.getItem('userData');
+        if (userDataFromStorage) {
+          const parsedUserData = JSON.parse(userDataFromStorage);
+          const userId = parsedUserData._id || parsedUserData.id;
+          setCurrentUserId(userId);
+          console.log('✅ ProfileScreen: Loaded current user ID:', userId);
+        }
+      } catch (error) {
+        console.error('❌ ProfileScreen: Error loading user ID:', error);
+      }
+      
       // Try to get profile data from API
       try {
         const profileData = await userService.getUserProfile();
@@ -106,10 +120,22 @@ export default function ProfileScreen({ navigation }) {
         const followersCount = followersData?.length || 0;
         const followingCount = followingData?.length || 0;
         
+        // Load additional data from AsyncStorage for bio
+        const cachedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
+        let dynamicBio = 'Fitness enthusiast'; // Default bio
+        
+        if (cachedUserData) {
+          const parsedData = JSON.parse(cachedUserData);
+          // Use the saved bio if it exists, otherwise keep the default
+          if (parsedData.bio) {
+            dynamicBio = parsedData.bio;
+          }
+        }
+        
         // Update user data
         setUserData({
           name: profileData.name || 'User',
-          bio: profileData.bio || 'Fitness enthusiast',
+          bio: profileData.bio || dynamicBio, // Use API bio or dynamic bio
           stats: {
             workouts: profileData.stats?.workouts || 0,
             hours: profileData.stats?.hours || 0,
@@ -132,7 +158,7 @@ export default function ProfileScreen({ navigation }) {
           const parsedData = JSON.parse(cachedUserData);
           setUserData({
             name: parsedData.fullName || parsedData.name || 'User',
-            bio: parsedData.bio || 'Fitness enthusiast',
+            bio: parsedData.bio || 'Fitness enthusiast', // Use dynamic bio from cache
             stats: parsedData.stats || { workouts: 0, hours: 0, calories: 0 },
             followers: parsedData.followers || 0,
             following: parsedData.following || 0
@@ -372,14 +398,26 @@ export default function ProfileScreen({ navigation }) {
           <StatItem 
             label="Followers" 
             value={userData.followers} 
-            onPress={() => navigation.navigate('FollowersList')}
+            onPress={() => {
+              if (currentUserId) {
+                navigation.navigate('FollowersList', { userId: currentUserId });
+              } else {
+                console.warn('No current user ID available for followers navigation');
+              }
+            }}
           />
           <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
           
           <StatItem 
             label="Following" 
             value={userData.following} 
-            onPress={() => navigation.navigate('FollowingList')}
+            onPress={() => {
+              if (currentUserId) {
+                navigation.navigate('FollowingList', { userId: currentUserId });
+              } else {
+                console.warn('No current user ID available for following navigation');
+              }
+            }}
           />
           <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
           
