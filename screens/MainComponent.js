@@ -311,6 +311,24 @@ const ProfileStack = () => {
         }} 
       />
       
+      {/* ADD EMERGENCY SERVICES TO PROFILE STACK */}
+      <Stack.Screen 
+        name="EmergencyServices" 
+        component={EmergencyServicesScreen} 
+        options={{ title: 'Emergency Services', headerShown: true }} 
+      />
+      <Stack.Screen
+        name="EmergencyContacts"
+        component={ContactsScreen}
+        options={{
+          title: 'Emergency Contacts',
+          headerShown: true,
+          headerRight: () => (
+            <Ionicons name="person-add-outline" size={24} color={colors.text} style={{ marginRight: 16 }} />
+          ),
+        }}
+      />
+      
       <Stack.Screen name="FollowersList" component={FollowersList} />
       <Stack.Screen name="FollowingList" component={FollowingList} />
       <Stack.Screen
