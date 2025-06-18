@@ -368,6 +368,7 @@ const MoreStack = () => {
       }}
     >
       <Stack.Screen name="SettingsMain" component={SettingsScreen} options={{ title: 'Settings' }} />
+      <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} options={{ title: 'Personal Information' }} />
       <Stack.Screen name="SecuritySettings" component={PersonalInfoScreen} options={{ title: 'Security Settings' }} />
       <Stack.Screen name="LanguageSettings" component={PersonalInfoScreen} options={{ title: 'Language Settings' }} />
       <Stack.Screen name="HeartRateZones" component={PersonalInfoScreen} options={{ title: 'Heart Rate Zones' }} />
