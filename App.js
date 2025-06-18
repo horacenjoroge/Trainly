@@ -1,4 +1,4 @@
-// App.js - Force Early Native Splash Hide
+// App.js - Fixed Logout Issue
 import './global.js';
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -12,7 +12,6 @@ import MainComponent from './screens/MainComponent';
 import AuthScreen from './screens/AuthScreen';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text } from 'react-native';
 
 // IMMEDIATELY hide the native splash screen to prevent conflicts
 SplashScreen.hideAsync().catch(console.warn);
@@ -152,7 +151,7 @@ const AppContent = () => {
           }
           console.log('Removed all numeric keys');
           
-          // Force a clean slate
+          // Force a clean slate if corrupted
           await AsyncStorage.removeItem('userData');
           await AsyncStorage.removeItem('token');
           await AsyncStorage.removeItem('refreshToken');
@@ -172,13 +171,14 @@ const AppContent = () => {
     }
 
     prepare();
-  }, []);
+  }, []); // EMPTY DEPENDENCY ARRAY - NO MORE MULTIPLE EXECUTIONS
 
   useEffect(() => {
     global.onLogout = async () => {
       console.log('🚪 Global logout handler triggered');
-      setAppIsReady(false);
-      setPreparationStarted(false);
+      // DON'T reset appIsReady on logout - this causes the infinite splash
+      // setAppIsReady(false);  // REMOVED THIS LINE
+      // setPreparationStarted(false); // REMOVED THIS LINE
       await refreshAuth();
     };
     
@@ -188,14 +188,17 @@ const AppContent = () => {
   }, [refreshAuth]);
 
   // Determine if we should show splash
-  const shouldShowSplash = !appIsReady || isLoading;
-  const splashReason = !appIsReady ? 'App not ready' : isLoading ? 'Auth loading' : 'Ready';
+  // FIXED: Don't show splash after logout if app is ready
+  const shouldShowSplash = !appIsReady || (isLoading && isAuthenticated);
+  const splashReason = !appIsReady ? 'App not ready' : 
+                      (isLoading && isAuthenticated) ? 'Auth loading' : 'Ready';
 
   console.log('🎭 SPLASH DECISION:', {
     shouldShowSplash,
     reason: splashReason,
     appIsReady,
-    isLoading
+    isLoading,
+    isAuthenticated
   });
 
   // Show custom splash screen while app is loading
