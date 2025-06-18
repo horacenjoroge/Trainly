@@ -1,5 +1,5 @@
 // screens/SettingsScreen.js - Modern Redesign
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -17,6 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
+import { useFocusEffect } from '@react-navigation/native';
 
 const USER_DATA_KEY = '@user_data';
 
@@ -70,7 +71,7 @@ const SettingsScreen = ({ navigation }) => {
   const [userData, setUserData] = useState({});
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // Load user profile from storage
+  // Load user profile from storage - ORIGINAL CODE
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -115,8 +116,41 @@ const SettingsScreen = ({ navigation }) => {
     
     loadProfile();
   }, [user]);
+
+  // ONLY FIX: Simple focus refresh without dependencies to prevent infinite loop
+  useFocusEffect(
+    useCallback(() => {
+      const refreshProfile = async () => {
+        try {
+          // Load from AsyncStorage first
+          const localData = await AsyncStorage.getItem(USER_DATA_KEY);
+          if (localData) {
+            const parsedData = JSON.parse(localData);
+            setDisplayName(parsedData.fullName || parsedData.name || 'User');
+            setUserEmail(parsedData.email || '');
+            setProfileImage(parsedData.avatar);
+            setUserData(parsedData);
+          }
+          
+          // Load from regular userData storage
+          const userData = await AsyncStorage.getItem('userData');
+          if (userData) {
+            const parsedData = JSON.parse(userData);
+            setDisplayName(prev => parsedData.name || prev || 'User');
+            setUserEmail(prev => parsedData.email || prev || '');
+            setProfileImage(prev => parsedData.avatar || prev);
+            setUserData(prev => ({...prev, ...parsedData}));
+          }
+        } catch (error) {
+          console.error('Error refreshing profile:', error);
+        }
+      };
+      
+      refreshProfile();
+    }, []) // Empty dependency array prevents infinite loop
+  );
   
-  // Handle logout with proper cleanup and navigation
+  // Handle logout with proper cleanup and navigation - ORIGINAL CODE
   const handleLogout = async () => {
     Alert.alert(
       'Sign Out',
@@ -171,7 +205,7 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
-  // Safely get image URI
+  // Safely get image URI - ORIGINAL CODE
   const getSafeImageUri = (imageSource) => {
     if (typeof imageSource !== 'string') {
       return imageSource;
