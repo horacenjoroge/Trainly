@@ -25,7 +25,9 @@ const loadWorkout = async () => {
   } finally {
     setLoading(false);
   }
-};alert// screens/WorkoutDetailScreen.js - Clean workout detail view
+};
+
+// screens/WorkoutDetailScreen.js - Clean workout detail view
 import React, { useState, useEffect } from 'react';
 import {
 View,
@@ -36,8 +38,6 @@ TouchableOpacity,
 Alert,
 Share,
 SafeAreaView,
-Modal,
-TextInput,
 ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,15 +56,9 @@ const actualWorkoutId = workoutId || initialWorkout?._id || initialWorkout?.id;
 
 const [workout, setWorkout] = useState(initialWorkout);
 const [loading, setLoading] = useState(!initialWorkout);
-const [liked, setLiked] = useState(false);
-const [showEditModal, setShowEditModal] = useState(false);
-const [editName, setEditName] = useState('');
-const [editNotes, setEditNotes] = useState('');
-const [editPrivacy, setEditPrivacy] = useState('public');
 
 useEffect(() => {
   if (!workout) loadWorkout();
-  else initializeData();
 }, []);
 
 const loadWorkout = async () => {
@@ -89,50 +83,10 @@ const loadWorkout = async () => {
   }
 };
 
-const initializeData = () => {
-  if (workout) {
-    setEditName(workout.name || '');
-    setEditNotes(workout.notes || '');
-    setEditPrivacy(workout.privacy || 'public');
-  }
-};
-
-const toggleLike = async () => {
-  if (!actualWorkoutId) {
-    Alert.alert('Error', 'Workout ID not found');
-    return;
-  }
-  try {
-    await workoutAPI.toggleLike(actualWorkoutId);
-    setLiked(!liked);
-  } catch (error) {
-    Alert.alert('Error', 'Failed to update like');
-  }
-};
-
 const shareWorkout = async () => {
   const distance = getWorkoutDistance();
   const message = `${workout.type} Workout!\n${formatDuration(workout.duration)} • ${formatDistance(distance)} • ${workout.calories || 0} calories`;
   Share.share({ message, title: `${workout.type} Workout` });
-};
-
-const updateWorkout = async () => {
-  if (!actualWorkoutId) {
-    Alert.alert('Error', 'Workout ID not found');
-    return;
-  }
-  try {
-    await workoutAPI.updateWorkout(actualWorkoutId, {
-      name: editName.trim(),
-      notes: editNotes.trim(),
-      privacy: editPrivacy
-    });
-    setWorkout(prev => ({ ...prev, name: editName, notes: editNotes, privacy: editPrivacy }));
-    setShowEditModal(false);
-    Alert.alert('Success', 'Workout updated');
-  } catch (error) {
-    Alert.alert('Error', 'Failed to update workout');
-  }
 };
 
 const deleteWorkout = () => {
@@ -206,9 +160,7 @@ return (
         <Ionicons name="arrow-back" size={24} color={colors.text} />
       </TouchableOpacity>
       <Text style={[styles.headerTitle, { color: colors.text }]}>Workout Details</Text>
-      <TouchableOpacity onPress={() => setShowEditModal(true)}>
-        <Ionicons name="create-outline" size={24} color={colors.primary} />
-      </TouchableOpacity>
+      <View style={{ width: 24 }} />
     </View>
 
     <ScrollView style={styles.content}>
@@ -226,10 +178,6 @@ return (
             </Text>
           </View>
           <View style={styles.actions}>
-            <TouchableOpacity onPress={toggleLike} style={styles.actionBtn}>
-              <Ionicons name={liked ? "heart" : "heart-outline"} size={24} 
-                color={liked ? colors.error : colors.textSecondary} />
-            </TouchableOpacity>
             <TouchableOpacity onPress={shareWorkout} style={styles.actionBtn}>
               <Ionicons name="share-outline" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -321,64 +269,6 @@ return (
         <Text style={[styles.deleteBtnText, { color: colors.error }]}>Delete Workout</Text>
       </TouchableOpacity>
     </ScrollView>
-
-    {/* Edit Modal */}
-    <Modal visible={showEditModal} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modal, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Workout</Text>
-          
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Name:</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-            value={editName}
-            onChangeText={setEditName}
-            placeholder="Workout name"
-            placeholderTextColor={colors.textSecondary}
-          />
-          
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Notes:</Text>
-          <TextInput
-            style={[styles.input, styles.textArea, { backgroundColor: colors.background, color: colors.text }]}
-            value={editNotes}
-            onChangeText={setEditNotes}
-            placeholder="Notes"
-            placeholderTextColor={colors.textSecondary}
-            multiline
-          />
-          
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Privacy:</Text>
-          <View style={styles.privacyBtns}>
-            <TouchableOpacity
-              style={[styles.privacyBtn, editPrivacy === 'public' && { backgroundColor: colors.primary }]}
-              onPress={() => setEditPrivacy('public')}
-            >
-              <Text style={[styles.privacyBtnText, { color: editPrivacy === 'public' ? '#FFF' : colors.text }]}>
-                Public
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.privacyBtn, editPrivacy === 'private' && { backgroundColor: colors.primary }]}
-              onPress={() => setEditPrivacy('private')}
-            >
-              <Text style={[styles.privacyBtnText, { color: editPrivacy === 'private' ? '#FFF' : colors.text }]}>
-                Private
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.modalBtns}>
-            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.textSecondary + '20' }]} 
-              onPress={() => setShowEditModal(false)}>
-              <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalBtn, { backgroundColor: colors.primary }]} onPress={updateWorkout}>
-              <Text style={styles.modalBtnText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
   </SafeAreaView>
 );
 };
@@ -438,30 +328,6 @@ deleteBtn: {
   borderWidth: 1,
 },
 deleteBtnText: { fontSize: 16, fontWeight: '600', marginLeft: 8 },
-modalOverlay: {
-  flex: 1,
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-},
-modal: { width: '90%', padding: 20, borderRadius: 16 },
-modalTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 20 },
-label: { fontSize: 14, fontWeight: '500', marginBottom: 8, marginTop: 16 },
-input: { borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)', borderRadius: 8, padding: 12, fontSize: 16 },
-textArea: { height: 80, textAlignVertical: 'top' },
-privacyBtns: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-privacyBtn: {
-  flex: 1,
-  paddingVertical: 12,
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: 'rgba(0,0,0,0.1)',
-  alignItems: 'center',
-},
-privacyBtnText: { fontSize: 14, fontWeight: '600' },
-modalBtns: { flexDirection: 'row', gap: 12, marginTop: 20 },
-modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-modalBtnText: { color: '#FFF', fontSize: 16, fontWeight: '600' },
 });
 
 export default WorkoutDetailScreen;
