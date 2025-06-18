@@ -1,4 +1,4 @@
-// screens/SettingsScreen.js
+// screens/SettingsScreen.js - Modern Redesign
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -18,29 +18,22 @@ import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
 
-// Setting section component
-const SettingSection = ({ title, children, theme }) => (
-  <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
-    <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
-      {title}
-    </Text>
-    {children}
-  </View>
-);
+const USER_DATA_KEY = '@user_data';
 
-// Individual setting item component
-const SettingItem = ({ icon, title, description, type, value, onValueChange, onPress, theme }) => {
+// Modern setting item component
+const SettingItem = ({ icon, title, description, type, value, onValueChange, onPress, theme, iconColor, showChevron = true }) => {
   return (
     <TouchableOpacity 
       style={[
         styles.settingItem, 
-        { borderBottomColor: theme.colors.border }
+        { backgroundColor: theme.colors.surface }
       ]} 
       onPress={type === 'chevron' ? onPress : null}
       disabled={type !== 'chevron'}
+      activeOpacity={0.7}
     >
-      <View style={styles.settingIcon}>
-        <Ionicons name={icon} size={24} color={theme.colors.primary} />
+      <View style={[styles.settingIcon, { backgroundColor: iconColor + '15' }]}>
+        <Ionicons name={icon} size={22} color={iconColor || theme.colors.primary} />
       </View>
       <View style={styles.settingContent}>
         <Text style={[styles.settingTitle, { color: theme.colors.text }]}>{title}</Text>
@@ -54,13 +47,13 @@ const SettingItem = ({ icon, title, description, type, value, onValueChange, onP
         <Switch 
           value={value} 
           onValueChange={onValueChange} 
-          trackColor={{ false: theme.colors.border, true: theme.colors.primary + '80' }}
+          trackColor={{ false: theme.colors.border, true: theme.colors.primary + '60' }}
           thumbColor={value ? theme.colors.primary : '#f4f3f4'}
           ios_backgroundColor={theme.colors.border}
         />
       )}
-      {type === 'chevron' && (
-        <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
+      {type === 'chevron' && showChevron && (
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
       )}
     </TouchableOpacity>
   );
@@ -71,89 +64,105 @@ const SettingsScreen = ({ navigation }) => {
   const { logout, user } = useAuth();
   
   // State for various settings
-  const [pushNotifications, setPushNotifications] = useState(true);
   const [profileImage, setProfileImage] = useState(null);
   const [displayName, setDisplayName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const [userData, setUserData] = useState({});
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
-  // Load user profile and settings from storage
+  // Load user profile from storage
   useEffect(() => {
-    const loadProfileAndSettings = async () => {
-      // Load settings
+    const loadProfile = async () => {
       try {
-        const pushSetting = await AsyncStorage.getItem('settings_push_notifications');
-        
-        if (pushSetting !== null) setPushNotifications(pushSetting === 'true');
-        
-        // Load user profile data
-        const userData = await AsyncStorage.getItem('userData');
-        if (userData) {
-          const parsedData = JSON.parse(userData);
-          setDisplayName(parsedData.name || 'User');
+        // Load from AsyncStorage first
+        const localData = await AsyncStorage.getItem(USER_DATA_KEY);
+        if (localData) {
+          const parsedData = JSON.parse(localData);
+          setDisplayName(parsedData.fullName || parsedData.name || 'User');
+          setUserEmail(parsedData.email || '');
           setProfileImage(parsedData.avatar);
           setUserData(parsedData);
         }
         
-        // Try to get profile from API
+        // Load from regular userData storage
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const parsedData = JSON.parse(userData);
+          setDisplayName(prev => parsedData.name || prev || 'User');
+          setUserEmail(prev => parsedData.email || prev || '');
+          setProfileImage(prev => parsedData.avatar || prev);
+          setUserData(prev => ({...prev, ...parsedData}));
+        }
+        
+        // Try to get profile from API for latest data
         if (user) {
           try {
             const profileData = await userService.getUserProfile();
             if (profileData) {
-              setDisplayName(profileData.name || user.name || 'User');
-              setProfileImage(profileData.avatar);
+              setDisplayName(profileData.name || displayName || 'User');
+              setUserEmail(profileData.email || userEmail || '');
+              setProfileImage(profileData.avatar || profileImage);
               setUserData(prev => ({...prev, ...profileData}));
-              
-              // Save updated profile data to AsyncStorage
-              await AsyncStorage.setItem('userData', JSON.stringify({
-                ...userData,  // Use the current userData state
-                ...profileData
-              }));
             }
           } catch (apiError) {
-            console.error('Error fetching profile from API:', apiError);
+            console.log('Using cached profile data');
           }
         }
       } catch (error) {
-        console.error('Error loading profile and settings:', error);
+        console.error('Error loading profile:', error);
       }
     };
     
-    loadProfileAndSettings();
+    loadProfile();
   }, [user]);
   
-  // Save setting to AsyncStorage
-  const saveSetting = async (key, value) => {
-    try {
-      await AsyncStorage.setItem(key, String(value));
-    } catch (error) {
-      console.error(`Error saving ${key}:`, error);
-    }
-  };
-  
-  // Handle setting toggles
-  const handlePushNotificationsToggle = (value) => {
-    setPushNotifications(value);
-    saveSetting('settings_push_notifications', value);
-  };
-  
-  // Handle logout
+  // Handle logout with proper cleanup and navigation
   const handleLogout = async () => {
     Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
+      'Sign Out',
+      'Are you sure you want to sign out?',
       [
         {
           text: 'Cancel',
           style: 'cancel'
         },
         {
-          text: 'Log Out',
+          text: 'Sign Out',
           onPress: async () => {
+            setIsLoggingOut(true);
             try {
+              console.log('🚪 Starting logout process from Settings...');
+              
+              // Clear user data and preferences first
+              await AsyncStorage.multiRemove([
+                'userData',
+                USER_DATA_KEY,
+                'token',
+                'refreshToken',
+                'settings_push_notifications'
+              ]);
+              
+              console.log('🧹 Cleared local storage');
+              
+              // Call the auth logout function
               await logout();
+              
+              console.log('✅ Settings logout completed successfully');
+              
+              // Force navigation to auth screen immediately
+              // Don't rely on the auth context navigation
+              setTimeout(() => {
+                console.log('🔄 Force navigating to Auth screen');
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Auth' }],
+                });
+              }, 100);
+              
             } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Error', 'Failed to log out. Please try again.');
+              console.error('❌ Settings logout error:', error);
+              setIsLoggingOut(false);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           },
           style: 'destructive'
@@ -172,6 +181,10 @@ const SettingsScreen = ({ navigation }) => {
       return require('../assets/images/bike.jpg');
     }
     
+    if (imageSource.startsWith('/uploads/')) {
+      return { uri: `http://192.168.100.88:3000${imageSource}` };
+    }
+    
     if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {
       return { uri: imageSource };
     }
@@ -181,172 +194,186 @@ const SettingsScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView>
-        {/* User Profile Section */}
-        <View style={[styles.profileSection, { backgroundColor: theme.colors.surface }]}>
-          <TouchableOpacity 
-            style={styles.profileImageContainer}
-            onPress={() => navigation.navigate('ProfileStack')}
-          >
-            <Image 
-              source={getSafeImageUri(profileImage)}
-              style={styles.profileImage}
-            />
-            <View style={[styles.editButton, { backgroundColor: theme.colors.primary }]}>
-              <Ionicons name="pencil" size={16} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-          
-          <Text style={[styles.profileName, { color: theme.colors.text }]}>
-            {displayName}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
+            Settings
           </Text>
-          
-          <TouchableOpacity
-            style={[styles.viewProfileButton, { borderColor: theme.colors.primary }]}
-            onPress={() => navigation.navigate('ProfileStack')}
-          >
-            <Text style={[styles.viewProfileText, { color: theme.colors.primary }]}>
-              View Profile
+        </View>
+
+        {/* User Profile Card */}
+        <View 
+          style={[styles.profileCard, { backgroundColor: theme.colors.surface }]}
+        >
+          <Image 
+            source={getSafeImageUri(profileImage)}
+            style={styles.profileImage}
+          />
+          <View style={styles.profileInfo}>
+            <Text style={[styles.profileName, { color: theme.colors.text }]}>
+              {displayName}
             </Text>
+            <Text style={[styles.profileEmail, { color: theme.colors.textSecondary }]}>
+              {userEmail || 'Fitness enthusiast'}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('PersonalInfo')}
+            style={styles.editProfileButton}
+          >
+            <Ionicons name="create-outline" size={20} color={theme.colors.primary} />
           </TouchableOpacity>
         </View>
 
-        {/* App Settings Section */}
-        <SettingSection title="App Settings" theme={theme}>
-          <SettingItem
-            icon="notifications-outline"
-            title="Push Notifications"
-            description="Get updates about your workouts"
-            type="switch"
-            value={pushNotifications}
-            onValueChange={handlePushNotificationsToggle}
-            theme={theme}
-          />
+        {/* App Preferences */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Preferences
+          </Text>
+          
           <SettingItem
             icon="moon-outline"
             title="Dark Mode"
-            description="Switch to dark theme"
+            description={theme.isDarkMode ? "Dark theme enabled" : "Light theme enabled"}
             type="switch"
             value={theme.isDarkMode}
             onValueChange={theme.toggleDarkMode}
             theme={theme}
+            iconColor="#6366f1"
           />
-        </SettingSection>
+        </View>
 
-        {/* Account Section */}
-        <SettingSection title="Account" theme={theme}>
+        {/* Health & Safety */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Safety
+          </Text>
+          
+          <SettingItem
+            icon="shield-outline"
+            title="Emergency Contacts"
+            description="Manage emergency contacts and services"
+            type="chevron"
+            onPress={() => navigation.navigate('EmergencyServices')}
+            theme={theme}
+            iconColor="#ef4444"
+          />
+        </View>
+
+        {/* Account Management */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Account
+          </Text>
+          
           <SettingItem
             icon="lock-closed-outline"
             title="Security"
-            description="Change password and security settings"
+            description="Password and security settings"
             type="chevron"
             onPress={() => navigation.navigate('SecuritySettings')}
             theme={theme}
+            iconColor="#f59e0b"
           />
-          <SettingItem
-            icon="globe-outline"
-            title="Language"
-            description="English (US)"
-            type="chevron"
-            onPress={() => navigation.navigate('LanguageSettings')}
-            theme={theme}
-          />
-        </SettingSection>
-
-        {/* Health & Safety */}
-        <SettingSection title="Health & Safety" theme={theme}>
-          <SettingItem
-            icon="alert-circle-outline"
-            title="Emergency Services"
-            description="Set up emergency contacts and alerts"
-            type="chevron"
-            onPress={() => navigation.navigate('EmergencyStack', { screen: 'EmergencyServices' })}
-            theme={theme}
-          />
-          <SettingItem
-            icon="heart-outline"
-            title="Heart Rate Zones"
-            description="Configure your training zones"
-            type="chevron"
-            onPress={() => navigation.navigate('HeartRateZones')}
-            theme={theme}
-          />
-        </SettingSection>
-
-        {/* Privacy & Sharing */}
-        <SettingSection title="Privacy & Sharing" theme={theme}>
-          <SettingItem
-            icon="share-social-outline"
-            title="Social Sharing"
-            description="Manage sharing preferences"
-            type="chevron"
-            onPress={() => navigation.navigate('SocialSharing')}
-            theme={theme}
-          />
+          
           <SettingItem
             icon="people-outline"
             title="Find Friends"
-            description="Connect with other fitness enthusiasts"
+            description="Connect with other users"
             type="chevron"
             onPress={() => navigation.navigate('FindFriends')}
             theme={theme}
+            iconColor="#10b981"
           />
-          <SettingItem
-            icon="shield-outline"
-            title="Privacy Settings"
-            description="Control who can see your activities"
-            type="chevron"
-            onPress={() => navigation.navigate('PrivacySettings')}
-            theme={theme}
-          />
-        </SettingSection>
+        </View>
 
-        {/* Support Section */}
-        <SettingSection title="Support" theme={theme}>
+        {/* Support & Legal */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Support
+          </Text>
+          
           <SettingItem
             icon="help-circle-outline"
             title="Help Center"
             description="Get help and support"
             type="chevron"
-            onPress={() => {/* Navigate to Help Center */}}
+            onPress={() => {
+              Alert.alert('Help Center', 'Contact support at: support@trainlyapp.com');
+            }}
             theme={theme}
+            iconColor="#8b5cf6"
           />
+          
           <SettingItem
             icon="document-text-outline"
             title="Terms of Service"
             type="chevron"
-            onPress={() => {/* Show Terms of Service */}}
+            onPress={() => {
+              Alert.alert('Terms of Service', 'Terms of Service will be available soon.');
+            }}
             theme={theme}
+            iconColor="#6b7280"
           />
+          
           <SettingItem
             icon="shield-checkmark-outline"
             title="Privacy Policy"
             type="chevron"
-            onPress={() => {/* Show Privacy Policy */}}
+            onPress={() => {
+              Alert.alert('Privacy Policy', 'Privacy Policy will be available soon.');
+            }}
             theme={theme}
+            iconColor="#6b7280"
           />
+          
           <SettingItem
             icon="information-circle-outline"
-            title="About"
+            title="About Trainly"
             description="Version 1.0.0"
             type="chevron"
-            onPress={() => {/* Show About Screen */}}
+            onPress={() => {
+              Alert.alert(
+                'About Trainly', 
+                'Trainly v1.0.0\n\nYour personal fitness companion designed to help you achieve your health and fitness goals.\n\nDeveloped with ❤️ for fitness enthusiasts.',
+                [{ text: 'OK' }]
+              );
+            }}
             theme={theme}
+            iconColor="#64748b"
+            showChevron={false}
           />
-        </SettingSection>
+        </View>
 
-        {/* Logout Button */}
+        {/* Sign Out Button */}
         <TouchableOpacity 
-          style={[styles.logoutButton, { backgroundColor: theme.colors.error || '#ff3b30' }]}
+          style={[styles.signOutButton, { 
+            backgroundColor: theme.colors.error || '#ef4444',
+            opacity: isLoggingOut ? 0.6 : 1
+          }]}
           onPress={handleLogout}
+          disabled={isLoggingOut}
+          activeOpacity={0.8}
         >
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.signOutText}>
+            {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+          </Text>
         </TouchableOpacity>
 
-        {/* Version */}
-        <Text style={[styles.version, { color: theme.colors.textSecondary }]}>
-          Version 1.0.0
-        </Text>
+        {/* App Info */}
+        <View style={styles.appInfo}>
+          <Text style={[styles.appVersion, { color: theme.colors.textSecondary }]}>
+            Trainly • Version 1.0.0
+          </Text>
+          <Text style={[styles.appCopyright, { color: theme.colors.textSecondary }]}>
+            © 2025 Trainly. All rights reserved.
+          </Text>
+        </View>
+
+        {/* Bottom Padding */}
+        <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -356,101 +383,120 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  profileSection: {
-    alignItems: 'center',
-    padding: 20,
-    margin: 16,
-    borderRadius: 16,
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
-  profileImageContainer: {
-    position: 'relative',
-    marginBottom: 15,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: 20,
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#E57C0B',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 16,
   },
-  editButton: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+  profileInfo: {
+    flex: 1,
   },
   profileName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  viewProfileButton: {
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  viewProfileText: {
+  profileEmail: {
     fontSize: 14,
-    fontWeight: '500',
   },
-  section: {
-    marginTop: 16,
-    marginHorizontal: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
+  editProfileButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(229, 124, 11, 0.1)',
+  },
+  sectionContainer: {
+    marginHorizontal: 20,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    fontWeight: '600',
+    marginBottom: 12,
+    marginLeft: 4,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   settingIcon: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
   },
   settingContent: {
     flex: 1,
-    marginRight: 10,
   },
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
+    marginBottom: 2,
   },
   settingDescription: {
-    fontSize: 14,
-    marginTop: 2,
+    fontSize: 13,
   },
-  logoutButton: {
-    margin: 20,
-    padding: 15,
-    borderRadius: 10,
+  signOutButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    margin: 20,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  logoutText: {
-    color: '#fff',
+  signOutText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    marginLeft: 8,
   },
-  version: {
-    textAlign: 'center',
+  appInfo: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  appVersion: {
     fontSize: 14,
-    marginBottom: 20,
+    marginBottom: 4,
+  },
+  appCopyright: {
+    fontSize: 12,
   },
 });
 

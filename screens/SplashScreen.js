@@ -94,7 +94,7 @@ const SplashScreenComponent = () => {
     <View style={styles.container}>
       <StatusBar style="light" />
       
-      {/* DEBUG OVERLAY - Remove this in production */}
+     
      
       
       {/* Background gradient effect */}
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     // Add a subtle shadow/glow effect
-    shadowColor: '#E91E63',
+    shadowColor: '#FF7D2C',
     shadowOffset: {
       width: 0,
       height: 0,
@@ -220,11 +220,11 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 42,
     fontWeight: 'bold',
-    color: '#E91E63', // Match the pink color from your image
+    color: '#FF7D2C', // Changed to orange
     marginBottom: 12,
     letterSpacing: 2,
     textAlign: 'center',
-    textShadowColor: 'rgba(233, 30, 99, 0.3)',
+    textShadowColor: 'rgba(255, 125, 44, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 10,
   },
@@ -252,9 +252,9 @@ const styles = StyleSheet.create({
   },
   loadingFill: {
     height: '100%',
-    backgroundColor: '#E91E63', // Match the pink theme
+    backgroundColor: '#FF7D2C', // Changed to orange
     borderRadius: 3,
-    shadowColor: '#E91E63',
+    shadowColor: '#FF7D2C',
     shadowOffset: {
       width: 0,
       height: 0,
