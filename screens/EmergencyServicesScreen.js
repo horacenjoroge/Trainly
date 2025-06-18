@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,88 +15,132 @@ import {
 import * as Location from 'expo-location';
 import { Accelerometer } from 'expo-sensors';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SMS from 'expo-sms';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import EmergencyMap from '../components/EmergencyMap';
-import { authService } from '../services/api';
+import { debounce } from 'lodash';
 
-const CONTACTS_URL = '/api/contacts';
+const EMERGENCY_CONTACTS_KEY = '@emergency_contacts';
 
 export default function EmergencyServicesScreen({ navigation }) {
   const theme = useTheme();
-  const { isAuthenticated, isLoading: authLoading, user, refreshAuth } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [emergencyContacts, setEmergencyContacts] = useState([]);
-  const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
   const [fallDetectionActive, setFallDetectionActive] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationSubscription, setLocationSubscription] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingSOS, setIsSendingSOS] = useState(false);
+  const [locationTrackingActive, setLocationTrackingActive] = useState(false);
+  const [fallCountdown, setFallCountdown] = useState(0);
   const accelerometerSubscription = useRef(null);
+  const lastFallDetected = useRef(0);
+  const lastUpdate = useRef(0);
+  const fallTimerRef = useRef(null);
 
-  // State for adding/updating contacts
   const [modalVisible, setModalVisible] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [newContactName, setNewContactName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
 
+  const debouncedSetCurrentLocation = useCallback(
+    debounce((newLocation) => {
+      setCurrentLocation({ latitude: newLocation.coords.latitude, longitude: newLocation.coords.longitude });
+    }, 500),
+    []
+  );
+
   useEffect(() => {
     const initializeServices = async () => {
-      await setupLocation();
-      if (isAuthenticated) {
-        await loadContacts();
-      }
+      await loadContacts();
       setIsLoading(false);
     };
     initializeServices();
+
     return () => {
       stopFallDetection();
-      if (locationSubscription) {
-        locationSubscription.remove();
+      stopLocationTracking();
+      if (fallTimerRef.current) {
+        clearInterval(fallTimerRef.current);
+        fallTimerRef.current = null;
+        console.log('Cleaned up fall timer on unmount');
       }
     };
-  }, [isAuthenticated]);
+  }, []);
 
   const setupLocation = async () => {
     try {
-      console.log('Requesting location permission...');
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location permission is required');
-        return;
+        console.log('Location permission denied');
+        setLocationTrackingActive(false);
+        return false;
       }
-      console.log('Fetching initial location...');
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      const initialLocation = { latitude: location.coords.latitude, longitude: location.coords.longitude };
-      setCurrentLocation(initialLocation);
-      console.log('Location fetched:', initialLocation);
+      setCurrentLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
       const subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, timeInterval: 1000, distanceInterval: 1 },
-        (newLocation) => {
-          const updatedLocation = { latitude: newLocation.coords.latitude, longitude: newLocation.coords.longitude };
-          setCurrentLocation(updatedLocation);
-          console.log('Location updated:', updatedLocation);
-        }
+        debouncedSetCurrentLocation
       );
       setLocationSubscription(subscription);
+      setLocationTrackingActive(true);
+      console.log('Location tracking enabled');
+      return true;
     } catch (error) {
       console.error('Location setup error:', error);
-      Alert.alert('Error', 'Failed to access location services');
+      setLocationTrackingActive(false);
+      return false;
+    }
+  };
+
+  const stopLocationTracking = () => {
+    if (locationSubscription) {
+      locationSubscription.remove();
+      setLocationSubscription(null);
+    }
+    setLocationTrackingActive(false);
+    setCurrentLocation(null);
+    console.log('Location tracking stopped');
+  };
+
+  const toggleLocationTracking = async () => {
+    if (locationTrackingActive) {
+      stopLocationTracking();
+    } else {
+      await setupLocation();
     }
   };
 
   const loadContacts = async () => {
     try {
-      console.log('Sending request to GET /api/contacts...');
-      const response = await authService.getContacts();
-      console.log('Received response from GET /api/contacts:', response);
-      setEmergencyContacts(response || []);
+      const savedContacts = await AsyncStorage.getItem(EMERGENCY_CONTACTS_KEY);
+      if (savedContacts) {
+        const contacts = JSON.parse(savedContacts);
+        setEmergencyContacts(Array.isArray(contacts) ? contacts : []);
+      } else {
+        setEmergencyContacts([]);
+      }
     } catch (error) {
       console.error('Error loading contacts:', error);
       setEmergencyContacts([]);
-      Alert.alert('Error', 'Failed to load contacts. Please log in again.');
-      if (!authLoading && !isAuthenticated) navigation.navigate('Auth');
+      Alert.alert('Error', 'Failed to load contacts');
     }
+  };
+
+  const saveContacts = async (contacts) => {
+    try {
+      await AsyncStorage.setItem(EMERGENCY_CONTACTS_KEY, JSON.stringify(contacts));
+    } catch (error) {
+      console.error('Error saving contacts:', error);
+      Alert.alert('Error', 'Failed to save contacts');
+    }
+  };
+
+  const validatePhoneNumber = (phoneNumber) => {
+    const phoneRegex = /^\+\d{10,}$/;
+    return phoneRegex.test(phoneNumber);
   };
 
   const addOrUpdateContact = async () => {
@@ -104,42 +148,52 @@ export default function EmergencyServicesScreen({ navigation }) {
       Alert.alert('Error', 'Name and phone number are required');
       return;
     }
+
+    if (!validatePhoneNumber(newContactPhone)) {
+      Alert.alert('Invalid Phone Number', 'Phone number must start with a country code (e.g., +254) and have at least 10 digits');
+      return;
+    }
+
     try {
+      let updatedContacts;
       if (editingContact) {
-        // Update existing contact
-        console.log('Sending request to PUT /api/contacts/:id...', { id: editingContact._id, name: newContactName, phoneNumber: newContactPhone });
-        const response = await authService.updateContact(editingContact._id, { name: newContactName, phoneNumber: newContactPhone });
-        console.log('Received response from PUT /api/contacts/:id:', response);
-        setEmergencyContacts(emergencyContacts.map(c => (c._id === editingContact._id ? response : c)));
+        updatedContacts = emergencyContacts.map(c =>
+          c.id === editingContact.id
+            ? { ...c, name: newContactName, phoneNumber: newContactPhone }
+            : c
+        );
         Alert.alert('Success', 'Contact updated');
       } else {
-        // Add new contact
-        console.log('Sending request to POST /api/contacts...', { name: newContactName, phoneNumber: newContactPhone });
-        const response = await authService.addContact({ name: newContactName, phoneNumber: newContactPhone });
-        console.log('Received response from POST /api/contacts:', response);
-        setEmergencyContacts([...emergencyContacts, response]);
+        const newContact = {
+          id: Date.now().toString(),
+          name: newContactName,
+          phoneNumber: newContactPhone,
+        };
+        updatedContacts = [...emergencyContacts, newContact];
         Alert.alert('Success', 'Contact added');
       }
+
+      setEmergencyContacts(updatedContacts);
+      await saveContacts(updatedContacts);
       setModalVisible(false);
       setNewContactName('');
       setNewContactPhone('');
       setEditingContact(null);
     } catch (error) {
       console.error('Error adding/updating contact:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to save contact');
+      Alert.alert('Error', 'Failed to save contact');
     }
   };
 
   const deleteContact = async (contactId) => {
     try {
-      console.log('Sending request to DELETE /api/contacts/:id...', { id: contactId });
-      await authService.deleteContact(contactId);
-      console.log('Contact deleted:', contactId);
-      setEmergencyContacts(emergencyContacts.filter(c => c._id !== contactId));
+      const updatedContacts = emergencyContacts.filter(c => c.id !== contactId);
+      setEmergencyContacts(updatedContacts);
+      await saveContacts(updatedContacts);
       Alert.alert('Success', 'Contact deleted');
     } catch (error) {
       console.error('Error deleting contact:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to delete contact');
+      Alert.alert('Error', 'Failed to delete contact');
     }
   };
 
@@ -150,101 +204,226 @@ export default function EmergencyServicesScreen({ navigation }) {
     setModalVisible(true);
   };
 
-  const sendSOSMessage = async () => {
-    if (isSendingSOS || !isAuthenticated) return;
+  const sendSOSMessage = async (skipLocationCheck = false, isAutoSOS = false) => {
+    if (isSendingSOS) {
+      console.log('SOS already in progress, skipping');
+      return;
+    }
     setIsSendingSOS(true);
+    console.log('Attempting to send SOS', { skipLocationCheck, isAutoSOS, locationTrackingActive, hasLocation: !!currentLocation });
+
     try {
-      if (!currentLocation) {
-        Alert.alert('Location not available', 'Please wait for location access');
-        return;
+      // For auto-SOS, attempt to get location if not available
+      let finalLocation = currentLocation;
+      if (!skipLocationCheck && (!locationTrackingActive || !currentLocation)) {
+        if (isAutoSOS) {
+          console.log('Auto-SOS: Attempting to fetch location');
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            finalLocation = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+            console.log('Auto-SOS: Location fetched', finalLocation);
+          } else {
+            console.log('Auto-SOS: Location permission denied');
+          }
+        } else {
+          console.log('Manual SOS: Location check failed, prompting user');
+          setIsSendingSOS(false);
+          Alert.alert(
+            'Location Required',
+            'Location tracking must be enabled to send emergency alerts with your location.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Enable Location',
+                onPress: async () => {
+                  const success = await setupLocation();
+                  if (success) {
+                    setTimeout(() => {
+                      if (currentLocation) {
+                        sendSOSMessage(false);
+                      } else {
+                        Alert.alert('Error', 'Unable to get current location.');
+                      }
+                    }, 2000);
+                  }
+                },
+              },
+              { text: 'Send Without Location', onPress: () => sendSOSMessage(true) },
+            ]
+          );
+          return;
+        }
       }
-      if (emergencyContacts.length === 0) {
+
+      const validContacts = emergencyContacts
+        .filter(contact => contact && validatePhoneNumber(contact.phoneNumber || contact.phone))
+        .map(contact => (contact.phoneNumber || contact.phone).trim());
+
+      console.log('Valid contacts:', validContacts.length);
+      if (validContacts.length === 0) {
+        console.log('No valid contacts found');
         Alert.alert('No Contacts', 'No emergency contacts found. Please add contacts.', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Add Contact', onPress: () => openContactModal() },
         ]);
+        setIsSendingSOS(false);
         return;
       }
-      const mapsUrl = `https://www.google.com/maps?q=${currentLocation.latitude},${currentLocation.longitude}`;
-      console.log('Sending request to POST /send-sos with location:', currentLocation);
-      const response = await authService.sendSOS({ locationUrl: mapsUrl });
-      console.log('Received response from POST /send-sos:', response);
-      const results = response.data;
-      let successCount = 0;
-      let errorMessages = [];
-      Object.entries(results).forEach(([phone, result]) => {
-        if (result.startsWith('Sent')) successCount++;
-        else errorMessages.push(`${phone}: ${result}`);
-      });
-      if (successCount === emergencyContacts.length) {
-        Alert.alert('SOS Sent', 'Emergency alerts have been sent to all contacts');
-      } else {
-        Alert.alert('SOS Partially Sent', `Sent to ${successCount} of ${emergencyContacts.length} contacts.\n\nErrors:\n${errorMessages.join('\n')}`);
+
+      const isAvailable = await SMS.isAvailableAsync();
+      if (!isAvailable) {
+        console.log('SMS service not available');
+        Alert.alert('Error', 'SMS service not available on this device');
+        setIsSendingSOS(false);
+        return;
       }
+
+      let sosMessage;
+      if (finalLocation) {
+        const mapsUrl = `https://www.google.com/maps?q=${finalLocation.latitude},${finalLocation.longitude}`;
+        sosMessage = `EMERGENCY ALERT! I need help. My location: ${mapsUrl}`;
+      } else {
+        sosMessage = `EMERGENCY ALERT! I need help. Location not available - please call me immediately!`;
+      }
+
+      console.log('Sending SOS message:', sosMessage);
+      await Promise.all(
+        validContacts.map(async number => {
+          try {
+            await SMS.sendSMSAsync([number], sosMessage);
+            console.log(`SOS sent to ${number}`);
+          } catch (err) {
+            console.error(`Failed to send to ${number}:`, err);
+          }
+        })
+      );
+
+      Alert.alert('SOS Sent', 'Emergency alerts have been sent to your contacts');
     } catch (error) {
       console.error('SOS Error:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to send emergency messages');
+      Alert.alert('Error', 'Failed to send emergency messages');
     } finally {
       setIsSendingSOS(false);
+      console.log('SOS sending completed');
     }
   };
 
   const initializeFallDetection = async () => {
     try {
-      console.log('Initializing fall detection...');
-      setFallDetectionActive(true);
-      await Accelerometer.setUpdateInterval(200);
+      const isAvailable = await Accelerometer.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Error', 'Accelerometer not available on this device');
+        setFallDetectionActive(false);
+        return;
+      }
+
+      if (accelerometerSubscription.current) {
+        accelerometerSubscription.current.remove();
+        accelerometerSubscription.current = null;
+      }
+
+      await Accelerometer.setUpdateInterval(300);
       accelerometerSubscription.current = Accelerometer.addListener(data => {
-        setAccelerometerData(data);
-        detectFall(data);
+        try {
+          if (!fallDetectionActive) return;
+
+          const now = Date.now();
+          if (now - lastUpdate.current < 600) return;
+          lastUpdate.current = now;
+
+          detectFall(data);
+        } catch (error) {
+          console.error('Accelerometer listener error:', error);
+        }
       });
+
+      setFallDetectionActive(true);
+      console.log('Fall detection initialized');
     } catch (error) {
-      console.error('Fall detection error:', error);
+      console.error('Fall detection initialization error:', error);
       Alert.alert('Error', 'Failed to start fall detection');
       setFallDetectionActive(false);
     }
   };
 
-  const detectFall = (data) => {
+  const detectFall = async (data) => {
+    const now = Date.now();
+    if (now - lastFallDetected.current < 5000) return;
+
     const acceleration = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
-    if (acceleration > 2.5 && !isSendingSOS && isAuthenticated) {
+    if (acceleration > 2.5 && !isSendingSOS && fallCountdown === 0) {
+      lastFallDetected.current = now;
       Vibration.vibrate([500, 500, 500]);
-      Alert.alert('Fall Detected', 'Emergency contacts will be notified', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Send Alert', onPress: () => sendSOSMessage() },
-      ], { onDismiss: () => Vibration.cancel() });
+      console.log('Fall detected, starting countdown');
+
+      // Attempt to enable location tracking if not active
+      if (!locationTrackingActive || !currentLocation) {
+        console.log('Attempting to enable location for fall detection');
+        await setupLocation();
+      }
+
+      setFallCountdown(10);
+
+      fallTimerRef.current = setInterval(() => {
+        setFallCountdown(prev => {
+          console.log('Countdown tick:', prev - 1);
+          if (prev <= 1) {
+            clearInterval(fallTimerRef.current);
+            fallTimerRef.current = null;
+            console.log('Countdown complete, sending SOS');
+            sendSOSMessage(false, true); // Respect location check, mark as auto-SOS
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      Alert.alert(
+        'Fall Detected',
+        'SOS will be sent in 10 seconds. Tap "Cancel" to stop.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              if (fallTimerRef.current) {
+                clearInterval(fallTimerRef.current);
+                fallTimerRef.current = null;
+              }
+              setFallCountdown(0);
+              Vibration.cancel();
+              console.log('Fall countdown canceled');
+            },
+          },
+        ],
+        { cancelable: true }
+      );
     }
   };
 
   const stopFallDetection = () => {
-    console.log('Stopping fall detection...');
     if (accelerometerSubscription.current) {
       accelerometerSubscription.current.remove();
       accelerometerSubscription.current = null;
+      console.log('Fall detection stopped');
+    }
+    if (fallTimerRef.current) {
+      clearInterval(fallTimerRef.current);
+      fallTimerRef.current = null;
+      console.log('Fall timer cleared');
     }
     setFallDetectionActive(false);
+    setFallCountdown(0);
     Vibration.cancel();
   };
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.text }]}>Setting up emergency services...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: theme.colors.text }]}>Please log in to access emergency services.</Text>
-          <TouchableOpacity style={[styles.authButton, { backgroundColor: theme.colors.primary }]} onPress={() => navigation.navigate('Auth')}>
-            <Text style={styles.authButtonText}>Go to Login</Text>
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -262,10 +441,30 @@ export default function EmergencyServicesScreen({ navigation }) {
 
       <ScrollView style={styles.scrollView}>
         <View style={styles.contentContainer}>
-          {/* SOS Button */}
+          {fallCountdown > 0 && (
+            <View style={[styles.countdownBanner, { backgroundColor: theme.colors.error || '#FF3B30' }]}>
+              <Text style={styles.countdownText}>
+                Fall detected! Sending SOS in {fallCountdown} seconds...
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (fallTimerRef.current) {
+                    clearInterval(fallTimerRef.current);
+                    fallTimerRef.current = null;
+                  }
+                  setFallCountdown(0);
+                  Vibration.cancel();
+                  console.log('Countdown banner canceled');
+                }}
+              >
+                <Text style={styles.countdownCancel}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           <TouchableOpacity
             style={[styles.sosButton, { backgroundColor: theme.colors.error || '#FF3B30' }]}
-            onPress={sendSOSMessage}
+            onPress={() => sendSOSMessage(false)}
             disabled={isSendingSOS}
           >
             {isSendingSOS ? (
@@ -279,10 +478,48 @@ export default function EmergencyServicesScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
-          {/* Location Map */}
           <EmergencyMap currentLocation={currentLocation} theme={theme} />
 
-          {/* Contacts Section */}
+          <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleContainer}>
+                <Ionicons name="location" size={24} color={locationTrackingActive ? theme.colors.primary : theme.colors.text} />
+                <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Location Tracking</Text>
+              </View>
+              {locationTrackingActive && (
+                <View style={styles.statusBadge}>
+                  <View style={[styles.statusDot, { backgroundColor: theme.colors.primary }]} />
+                  <Text style={[styles.statusText, { color: theme.colors.primary }]}>ACTIVE</Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={[styles.cardDescription, { color: theme.colors.textSecondary }]}>
+              Enable location tracking to share your exact location during emergencies.
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.toggleButton,
+                {
+                  backgroundColor: locationTrackingActive ? theme.colors.primary : theme.colors.surface,
+                  borderColor: theme.colors.border,
+                  borderWidth: locationTrackingActive ? 0 : 1,
+                },
+              ]}
+              onPress={toggleLocationTracking}
+            >
+              <Text
+                style={[
+                  styles.toggleButtonText,
+                  { color: locationTrackingActive ? 'white' : theme.colors.text },
+                ]}
+              >
+                {locationTrackingActive ? 'Disable Location Tracking' : 'Enable Location Tracking'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleContainer}>
@@ -301,7 +538,7 @@ export default function EmergencyServicesScreen({ navigation }) {
                 </Text>
               ) : (
                 emergencyContacts.map((contact) => (
-                  <View key={contact._id} style={styles.contactItem}>
+                  <View key={contact.id} style={styles.contactItem}>
                     <Ionicons name="person-circle-outline" size={20} color={theme.colors.textSecondary} style={styles.contactIcon} />
                     <Text style={[styles.contactText, { color: theme.colors.text }]}>
                       {contact.name} - {contact.phoneNumber}
@@ -310,7 +547,7 @@ export default function EmergencyServicesScreen({ navigation }) {
                       <TouchableOpacity onPress={() => openContactModal(contact)}>
                         <Ionicons name="pencil" size={20} color={theme.colors.primary} style={styles.actionIcon} />
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => deleteContact(contact._id)}>
+                      <TouchableOpacity onPress={() => deleteContact(contact.id)}>
                         <Ionicons name="trash" size={20} color={theme.colors.error || '#FF3B30'} style={styles.actionIcon} />
                       </TouchableOpacity>
                     </View>
@@ -320,7 +557,6 @@ export default function EmergencyServicesScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Fall Detection Section */}
           <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardTitleContainer}>
@@ -336,7 +572,7 @@ export default function EmergencyServicesScreen({ navigation }) {
             </View>
 
             <Text style={[styles.cardDescription, { color: theme.colors.textSecondary }]}>
-              Automatically detect falls and send alerts to your emergency contacts. This feature uses your phone's motion sensors.
+              Automatically detect falls and send alerts to your emergency contacts.
             </Text>
 
             <TouchableOpacity
@@ -350,12 +586,12 @@ export default function EmergencyServicesScreen({ navigation }) {
               ]}
               onPress={fallDetectionActive ? stopFallDetection : initializeFallDetection}
             >
-              <Text
-                style={[
-                  styles.toggleButtonText,
-                  { color: fallDetectionActive ? 'white' : theme.colors.text },
-                ]}
-              >
+             <Text
+  style={[
+    styles.toggleButtonText,
+    { color: fallDetectionActive ? 'white' : theme.colors.text },
+  ]}
+>
                 {fallDetectionActive ? 'Disable Fall Detection' : 'Enable Fall Detection'}
               </Text>
             </TouchableOpacity>
@@ -363,7 +599,6 @@ export default function EmergencyServicesScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* Modal for Adding/Updating Contacts */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
           <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
@@ -379,7 +614,7 @@ export default function EmergencyServicesScreen({ navigation }) {
             />
             <TextInput
               style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text }]}
-              placeholder="Phone Number (e.g., +1234567890)"
+              placeholder="Phone Number (e.g., +254123456789)"
               placeholderTextColor={theme.colors.textSecondary}
               value={newContactPhone}
               onChangeText={setNewContactPhone}
@@ -422,12 +657,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(229, 124, 11, 0.2)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   headerTitle: { fontSize: 18, fontWeight: 'bold' },
   backButton: { padding: 4 },
   scrollView: { flex: 1 },
   contentContainer: { padding: 16, paddingBottom: 40 },
+  countdownBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 16,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  countdownText: { color: 'white', fontSize: 16, fontWeight: 'bold', flex: 1 },
+  countdownCancel: { color: 'white', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
   sosButton: {
     width: '100%',
     height: 160,
@@ -476,8 +726,6 @@ const styles = StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0, 122, 255, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
   statusText: { fontSize: 10, fontWeight: 'bold' },
-  authButton: { height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 20 },
-  authButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
   modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
   modalContent: { width: '80%', padding: 20, borderRadius: 12, elevation: 5 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
