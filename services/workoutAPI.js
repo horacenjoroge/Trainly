@@ -7,7 +7,7 @@ export const workoutAPI = {
   createWorkout: async (workoutData) => {
     try {
       console.log('Creating workout with data:', workoutData);
-      const response = await apiClient.post('/workouts', workoutData);
+      const response = await apiClient.post('/api/workouts', workoutData);
       console.log('Workout created successfully:', response.data);
       return response.data;
     } catch (error) {
@@ -31,7 +31,7 @@ export const workoutAPI = {
   getWorkouts: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
-      const response = await apiClient.get(`/workouts${queryString ? `?${queryString}` : ''}`);
+      const response = await apiClient.get(`/api/workouts${queryString ? `?${queryString}` : ''}`);
       console.log('Workouts fetched:', response.data);
       return response.data;
     } catch (error) {
@@ -43,7 +43,7 @@ export const workoutAPI = {
   // Get single workout by ID
   getWorkout: async (id) => {
     try {
-      const response = await apiClient.get(`/workouts/${id}`);
+      const response = await apiClient.get(`/api/workouts/${id}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching workout:', error);
@@ -54,7 +54,7 @@ export const workoutAPI = {
   // Update workout (name, notes, privacy)
   updateWorkout: async (id, updateData) => {
     try {
-      const response = await apiClient.patch(`/workouts/${id}`, updateData);
+      const response = await apiClient.patch(`/api/workouts/${id}`, updateData);
       console.log('Workout updated:', response.data);
       return response.data;
     } catch (error) {
@@ -66,7 +66,7 @@ export const workoutAPI = {
   // Delete workout
   deleteWorkout: async (id) => {
     try {
-      const response = await apiClient.delete(`/workouts/${id}`);
+      const response = await apiClient.delete(`/api/workouts/${id}`);
       console.log('Workout deleted:', response.data);
       return response.data;
     } catch (error) {
@@ -78,7 +78,7 @@ export const workoutAPI = {
   // Get workout statistics
   getWorkoutStats: async (period = 'month') => {
     try {
-      const response = await apiClient.get(`/workouts/stats/summary?period=${period}`);
+      const response = await apiClient.get(`/api/workouts/stats/summary?period=${period}`);
       console.log('Workout stats:', response.data);
       return response.data;
     } catch (error) {
@@ -91,7 +91,7 @@ export const workoutAPI = {
   getPublicWorkouts: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
-      const response = await apiClient.get(`/workouts/public/feed${queryString ? `?${queryString}` : ''}`);
+      const response = await apiClient.get(`/api/workouts/public/feed${queryString ? `?${queryString}` : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching public workouts:', error);
@@ -102,7 +102,7 @@ export const workoutAPI = {
   // Like/unlike workout
   toggleLike: async (id) => {
     try {
-      const response = await apiClient.post(`/workouts/${id}/like`);
+      const response = await apiClient.post(`/api/workouts/${id}/like`);
       console.log('Workout like toggled:', response.data);
       return response.data;
     } catch (error) {
@@ -114,7 +114,7 @@ export const workoutAPI = {
   // Add comment to workout
   addComment: async (id, text) => {
     try {
-      const response = await apiClient.post(`/workouts/${id}/comments`, { text });
+      const response = await apiClient.post(`/api/workouts/${id}/comments`, { text });
       console.log('Comment added:', response.data);
       return response.data;
     } catch (error) {
@@ -127,7 +127,7 @@ export const workoutAPI = {
   getAchievements: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
-      const response = await apiClient.get(`/achievements${queryString ? `?${queryString}` : ''}`);
+      const response = await apiClient.get(`/api/achievements${queryString ? `?${queryString}` : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching achievements:', error);
@@ -138,7 +138,7 @@ export const workoutAPI = {
   // Get recent achievements
   getRecentAchievements: async (days = 7) => {
     try {
-      const response = await apiClient.get(`/achievements/recent?days=${days}`);
+      const response = await apiClient.get(`/api/achievements/recent?days=${days}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching recent achievements:', error);
@@ -149,7 +149,7 @@ export const workoutAPI = {
   // Get achievement progress
   getAchievementProgress: async () => {
     try {
-      const response = await apiClient.get('/achievements/progress');
+      const response = await apiClient.get('/api/achievements/progress');
       return response.data;
     } catch (error) {
       console.error('Error fetching achievement progress:', error);
@@ -160,7 +160,7 @@ export const workoutAPI = {
   // Share achievement
   shareAchievement: async (achievementId) => {
     try {
-      const response = await apiClient.post(`/achievements/${achievementId}/share`);
+      const response = await apiClient.post(`/api/achievements/${achievementId}/share`);
       return response.data;
     } catch (error) {
       console.error('Error sharing achievement:', error);
@@ -172,7 +172,7 @@ export const workoutAPI = {
   getLeaderboard: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
-      const response = await apiClient.get(`/achievements/leaderboard${queryString ? `?${queryString}` : ''}`);
+      const response = await apiClient.get(`/api/achievements/leaderboard${queryString ? `?${queryString}` : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching leaderboard:', error);

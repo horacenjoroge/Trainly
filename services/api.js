@@ -93,8 +93,8 @@ apiClient.interceptors.response.use(
         throw new Error('No refresh token available');
       }
       
-      // Attempt to refresh the token
-      const response = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+      // Attempt to refresh the token - FIXED: Added /api
+      const response = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
       
       if (response.data.token) {
         // Store the new tokens
@@ -139,7 +139,7 @@ export const authService = {
   // Register a new user
   register: async (userData) => {
     try {
-      const response = await apiClient.post('/auth/register', userData);
+      const response = await apiClient.post('/api/auth/register', userData);
       if (response.data.token) {
         await AsyncStorage.setItem('token', response.data.token);
         await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
@@ -158,7 +158,7 @@ export const authService = {
   // Login user
   login: async (credentials) => {
     try {
-      const response = await apiClient.post('/auth/login', credentials);
+      const response = await apiClient.post('/api/auth/login', credentials);
       if (response.data.token) {
         await AsyncStorage.setItem('token', response.data.token);
         await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
@@ -194,7 +194,7 @@ export const authService = {
   // Get current user profile
   getCurrentUser: async () => {
     try {
-      const response = await apiClient.get('/auth/user');
+      const response = await apiClient.get('/api/auth/user');
       return response.data;
     } catch (error) {
       console.error('Error getting current user:', error);
@@ -216,7 +216,7 @@ export const authService = {
         console.log('No refresh token available for manual refresh');
         return false;
       }
-      const response = await apiClient.post('/auth/refresh', { refreshToken });
+      const response = await apiClient.post('/api/auth/refresh', { refreshToken });
       if (response.data.token) {
         await AsyncStorage.setItem('token', response.data.token);
         if (response.data.refreshToken) {
@@ -235,9 +235,9 @@ export const authService = {
   // Get emergency contacts
   getContacts: async () => {
     try {
-      console.log('Sending GET /contacts request...');
-      const response = await apiClient.get('/contacts');
-      console.log('Received response from GET /contacts:', response.data);
+      console.log('Sending GET /api/contacts request...');
+      const response = await apiClient.get('/api/contacts');
+      console.log('Received response from GET /api/contacts:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error getting contacts:', error);
@@ -248,9 +248,9 @@ export const authService = {
   // Add a new emergency contact
   addContact: async (data) => {
     try {
-      console.log('Sending POST /contacts request with data:', data);
-      const response = await apiClient.post('/contacts', data);
-      console.log('Received response from POST /contacts:', response.data);
+      console.log('Sending POST /api/contacts request with data:', data);
+      const response = await apiClient.post('/api/contacts', data);
+      console.log('Received response from POST /api/contacts:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error adding contact:', error);
@@ -261,9 +261,9 @@ export const authService = {
   // Update an existing emergency contact
   updateContact: async (id, data) => {
     try {
-      console.log(`Sending PUT /contacts/${id} request with data:`, data);
-      const response = await apiClient.put(`/contacts/${id}`, data);
-      console.log(`Received response from PUT /contacts/${id}:`, response.data);
+      console.log(`Sending PUT /api/contacts/${id} request with data:`, data);
+      const response = await apiClient.put(`/api/contacts/${id}`, data);
+      console.log(`Received response from PUT /api/contacts/${id}:`, response.data);
       return response.data;
     } catch (error) {
       console.error('Error updating contact:', error);
@@ -274,9 +274,9 @@ export const authService = {
   // Delete an emergency contact
   deleteContact: async (id) => {
     try {
-      console.log(`Sending DELETE /contacts/${id} request...`);
-      const response = await apiClient.delete(`/contacts/${id}`);
-      console.log(`Received response from DELETE /contacts/${id}:`, response.data);
+      console.log(`Sending DELETE /api/contacts/${id} request...`);
+      const response = await apiClient.delete(`/api/contacts/${id}`);
+      console.log(`Received response from DELETE /api/contacts/${id}:`, response.data);
       return response.data;
     } catch (error) {
       console.error('Error deleting contact:', error);
@@ -287,9 +287,9 @@ export const authService = {
   // Send SOS message
   sendSOS: async (data) => {
     try {
-      console.log('Sending POST /contacts/send-sos request with data:', data);
-      const response = await apiClient.post('/contacts/send-sos', data);
-      console.log('Received response from POST /contacts/send-sos:', response);
+      console.log('Sending POST /api/contacts/send-sos request with data:', data);
+      const response = await apiClient.post('/api/contacts/send-sos', data);
+      console.log('Received response from POST /api/contacts/send-sos:', response);
       return response;
     } catch (error) {
       console.error('Error sending SOS:', error);
@@ -302,7 +302,7 @@ export const authService = {
 export const postService = {
   getPosts: async () => {
     try {
-      const response = await apiClient.get('/posts');
+      const response = await apiClient.get('/api/posts');
       return response.data;
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -312,7 +312,7 @@ export const postService = {
 
   createPost: async (postData) => {
     try {
-      const response = await apiClient.post('/posts', postData);
+      const response = await apiClient.post('/api/posts', postData);
       return response.data;
     } catch (error) {
       console.error('Error creating post:', error);
@@ -322,7 +322,7 @@ export const postService = {
 
   likePost: async (postId) => {
     try {
-      const response = await apiClient.put(`/posts/${postId}/like`);
+      const response = await apiClient.put(`/api/posts/${postId}/like`);
       return response.data;
     } catch (error) {
       console.error('Error liking post:', error);
@@ -332,7 +332,7 @@ export const postService = {
 
   addComment: async (postId, commentData) => {
     try {
-      const response = await apiClient.post(`/posts/${postId}/comments`, commentData);
+      const response = await apiClient.post(`/api/posts/${postId}/comments`, commentData);
       return response.data;
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -342,7 +342,7 @@ export const postService = {
 
   getComments: async (postId) => {
     try {
-      const response = await apiClient.get(`/posts/${postId}/comments`);
+      const response = await apiClient.get(`/api/posts/${postId}/comments`);
       return response.data;
     } catch (error) {
       console.error('Error fetching comments:', error);
@@ -355,7 +355,7 @@ export const postService = {
 export const userService = {
   getUserProfile: async () => {
     try {
-      const response = await apiClient.get('/users/profile');
+      const response = await apiClient.get('/api/users/profile');
       return response.data;
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -365,7 +365,7 @@ export const userService = {
 
   updateUserStats: async (statsData) => {
     try {
-      const response = await apiClient.put('/users/stats', statsData);
+      const response = await apiClient.put('/api/users/stats', statsData);
       return response.data;
     } catch (error) {
       console.error('Error updating stats:', error);
@@ -375,7 +375,7 @@ export const userService = {
 
   updateUserProfile: async (profileData) => {
     try {
-      const response = await apiClient.put('/users/profile', profileData);
+      const response = await apiClient.put('/api/users/profile', profileData);
       return response.data;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -396,7 +396,7 @@ export const userService = {
         type,
       });
       
-      const response = await apiClient.post('/users/avatar', formData, {
+      const response = await apiClient.post('/api/users/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -411,7 +411,7 @@ export const userService = {
 
   getUserAchievements: async () => {
     try {
-      const response = await apiClient.get('/achievements/user');
+      const response = await apiClient.get('/api/achievements/user');
       return response.data;
     } catch (error) {
       console.error('Error fetching achievements:', error);
@@ -421,7 +421,7 @@ export const userService = {
 
   addAchievement: async (achievementData) => {
     try {
-      const response = await apiClient.post('/achievements', achievementData);
+      const response = await apiClient.post('/api/achievements', achievementData);
       return response.data;
     } catch (error) {
       console.error('Error adding achievement:', error);
@@ -431,7 +431,7 @@ export const userService = {
 
   getFollowers: async (userId) => {
     try {
-      const response = await apiClient.get(`/follow/followers${userId ? `?userId=${userId}` : ''}`);
+      const response = await apiClient.get(`/api/follow/followers${userId ? `?userId=${userId}` : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error loading followers:', error);
@@ -441,7 +441,7 @@ export const userService = {
   
   getFollowing: async (userId) => {
     try {
-      const response = await apiClient.get(`/follow/following${userId ? `?userId=${userId}` : ''}`);
+      const response = await apiClient.get(`/api/follow/following${userId ? `?userId=${userId}` : ''}`);
       return response.data;
     } catch (error) {
       console.error('Error loading following:', error);
@@ -451,7 +451,7 @@ export const userService = {
 
   followUser: async (userId) => {
     try {
-      const response = await apiClient.post(`/follow/${userId}`);
+      const response = await apiClient.post(`/api/follow/${userId}`);
       return response.data;
     } catch (error) {
       console.error('Error following user:', error);
@@ -461,7 +461,7 @@ export const userService = {
 
   unfollowUser: async (userId) => {
     try {
-      const response = await apiClient.delete(`/follow/${userId}`);
+      const response = await apiClient.delete(`/api/follow/${userId}`);
       return response.data;
     } catch (error) {
       console.error('Error unfollowing user:', error);
@@ -472,10 +472,10 @@ export const userService = {
   searchUsers: async (query = '') => {
     try {
       if (query && query.length >= 2) {
-        const response = await apiClient.get(`/users/search/${query}`);
+        const response = await apiClient.get(`/api/users/search/${query}`);
         return response.data;
       } else {
-        const response = await apiClient.get('/users/search');
+        const response = await apiClient.get('/api/users/search');
         return response.data;
       }
     } catch (error) {
@@ -486,7 +486,7 @@ export const userService = {
 
   getUserById: async (userId) => {
     try {
-      const response = await apiClient.get(`/users/${userId}`);
+      const response = await apiClient.get(`/api/users/${userId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching user profile:', error);
