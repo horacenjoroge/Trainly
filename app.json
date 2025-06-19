@@ -3,6 +3,7 @@
     "name": "Trainly",
     "slug": "Trainly",
     "splash": {
+      "image": "./assets/images/running-person.png",
   "backgroundColor": "#120B42",
   "resizeMode": "contain"
 },
