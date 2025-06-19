@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const API_URL = 'http://192.168.100.88:3000'; // Replace with your backend URL
+const API_URL = __DEV__ 
+  ? 'http://192.168.100.88:3000'  // Local development
+  : 'https://trainly-backend-production.up.railway.app';  // Production
 
 // Store tokens
 export const storeTokens = async (accessToken, refreshToken) => {
