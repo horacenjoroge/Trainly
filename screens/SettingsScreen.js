@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
   Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -205,7 +206,22 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
-  // Safely get image URI - ORIGINAL CODE
+  // Handle opening external links
+  const openExternalLink = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open this link');
+      }
+    } catch (error) {
+      console.error('Error opening link:', error);
+      Alert.alert('Error', 'Failed to open link');
+    }
+  };
+
+  // Safely get image URI - UPDATED to use production backend
   const getSafeImageUri = (imageSource) => {
     if (typeof imageSource !== 'string') {
       return imageSource;
@@ -216,7 +232,7 @@ const SettingsScreen = ({ navigation }) => {
     }
     
     if (imageSource.startsWith('/uploads/')) {
-      return { uri: `http://192.168.100.88:3000${imageSource}` };
+      return { uri: `https://trainly-backend-production.up.railway.app${imageSource}` };
     }
     
     if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {
@@ -343,9 +359,10 @@ const SettingsScreen = ({ navigation }) => {
           <SettingItem
             icon="document-text-outline"
             title="Terms of Service"
+            description="View our terms and conditions"
             type="chevron"
             onPress={() => {
-              Alert.alert('Terms of Service', 'Terms of Service will be available soon.');
+              openExternalLink('https://horacenjoroge.github.io/trainly-legal-docs/terms.html');
             }}
             theme={theme}
             iconColor="#6b7280"
@@ -354,9 +371,10 @@ const SettingsScreen = ({ navigation }) => {
           <SettingItem
             icon="shield-checkmark-outline"
             title="Privacy Policy"
+            description="How we protect your data"
             type="chevron"
             onPress={() => {
-              Alert.alert('Privacy Policy', 'Privacy Policy will be available soon.');
+              openExternalLink('https://horacenjoroge.github.io/trainly-legal-docs/privacy.html');
             }}
             theme={theme}
             iconColor="#6b7280"

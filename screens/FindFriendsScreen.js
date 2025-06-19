@@ -18,7 +18,9 @@ import { userService } from '../services/api';
 import { getSafeImageUri } from '../utils/imageUtils';
 
 // API URL
-const API_URL = 'http://192.168.100.88:3000/api'; // Adjust to match your api.js
+const API_URL = __DEV__ 
+  ? 'http://192.168.100.88:3000'  // Local development
+  : 'https://trainly-backend-production.up.railway.app';  // Production
 
 export default function FindFriends({ navigation }) {
   const theme = useTheme();

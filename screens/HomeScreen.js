@@ -24,7 +24,9 @@ import { useTheme } from '../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 
 // Replace with your actual backend URL
-const API_URL = 'http://192.168.100.88:3000';
+const API_URL = __DEV__ 
+  ? 'http://192.168.100.88:3000'  // Local development
+  : 'https://trainly-backend-production.up.railway.app';  // Production
 const USER_DATA_KEY = '@user_data';
 
 // Helper function to safely handle image URIs of various formats

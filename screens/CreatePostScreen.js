@@ -6,7 +6,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 // Replace with your actual backend URL
-const API_URL = 'http://192.168.100.88:3000';
+const API_URL = __DEV__ 
+  ? 'http://192.168.100.88:3000'  // Local development
+  : 'https://trainly-backend-production.up.railway.app';  // Production
 
 const theme = {
   colors: {
