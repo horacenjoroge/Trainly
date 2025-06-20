@@ -4,10 +4,9 @@
     "slug": "Trainly",
     "splash": {
       "image": "./assets/images/running-person.png",
-  "backgroundColor": "#120B42",
-  "resizeMode": "contain"
-},
-    
+      "backgroundColor": "#120B42",
+      "resizeMode": "contain"
+    },
     "sdkVersion": "53.0.0",
     "version": "1.0.0",
     "assetBundlePatterns": [
@@ -56,13 +55,16 @@
         "SEND_SMS",
         "VIBRATE",
         "READ_CONTACTS",
-        "WRITE_CONTACTS"
+        "WRITE_CONTACTS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_ANDROID_MAPS_API_KEY"
+          "apiKey": "AIzaSyACM1qrJChxiEjuwJ1OsGjXVIIsNa_DqKg"
         }
-      }
+      },
+      "networkSecurityConfig": "network_security_config"
     },
     "ios": {
       "bundleIdentifier": "com.trainly.app",
@@ -79,10 +81,18 @@
           "location",
           "fetch",
           "remote-notification"
-        ]
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
       },
       "config": {
-        "googleMapsApiKey": "YOUR_IOS_MAPS_API_KEY"
+        "googleMapsApiKey": "AIzaSyACM1qrJChxiEjuwJ1OsGjXVIIsNa_DqKg"
       }
     },
     "extra": {
