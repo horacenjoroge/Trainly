@@ -37,6 +37,47 @@ const theme = {
   },
 };
 
+// Helper function to safely handle image URIs (same as HomeScreen)
+const getSafeImageUri = (imageSource) => {
+  // If it's already a require statement (local image), return as is
+  if (typeof imageSource !== 'string') {
+    return imageSource;
+  }
+
+  // Handle file:// URIs (from device storage)
+  if (imageSource && imageSource.startsWith('file://')) {
+    return { uri: imageSource };
+  }
+  
+  // Handle paths that start with "/data/" (internal storage paths)
+  if (imageSource && imageSource.startsWith('/data/')) {
+    return { uri: `file://${imageSource}` };
+  }
+  
+  // Handle paths that directly reference ExperienceData
+  if (imageSource && imageSource.includes('ExperienceData')) {
+    return { uri: imageSource };
+  }
+  
+  // Check if the URL starts with http or https
+  if (imageSource && (imageSource.startsWith('http://') || imageSource.startsWith('https://'))) {
+    return { uri: imageSource };
+  }
+  
+  // If it's a local path without http, add the base URL
+  if (imageSource && !imageSource.startsWith('/')) {
+    return { uri: `${API_URL}/${imageSource}` };
+  }
+  
+  // If it starts with /, assume it's a local path on the server
+  if (imageSource && imageSource.startsWith('/')) {
+    return { uri: `${API_URL}${imageSource}` };
+  }
+  
+  // Fallback to placeholder URL
+  return { uri: 'https://via.placeholder.com/50' };
+};
+
 const CommentScreen = ({ route, navigation }) => {
   const { postId, postContent, postUser } = route.params;
   
@@ -159,8 +200,13 @@ const CommentScreen = ({ route, navigation }) => {
     return (
       <View style={styles.commentItem}>
         <Image 
-          source={{ uri: item.user.avatar || 'https://via.placeholder.com/50' }} 
-          style={styles.commentAvatar} 
+          source={item.user && item.user.avatar 
+            ? getSafeImageUri(item.user.avatar) 
+            : getSafeImageUri(null)} 
+          style={styles.commentAvatar}
+          onError={(e) => {
+            console.log('Comment avatar image error:', e.nativeEvent.error);
+          }}
         />
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
@@ -177,8 +223,13 @@ const CommentScreen = ({ route, navigation }) => {
     <View style={styles.originalPostContainer}>
       <View style={styles.originalPostHeader}>
         <Image 
-          source={{ uri: postUser.avatar || 'https://via.placeholder.com/50' }} 
-          style={styles.postAvatar} 
+          source={postUser && postUser.avatar 
+            ? getSafeImageUri(postUser.avatar) 
+            : getSafeImageUri(null)} 
+          style={styles.postAvatar}
+          onError={(e) => {
+            console.log('Post avatar image error:', e.nativeEvent.error);
+          }}
         />
         <View>
           <Text style={styles.postAuthor}>{postUser.name}</Text>
@@ -243,8 +294,13 @@ const CommentScreen = ({ route, navigation }) => {
       >
         <View style={[styles.commentInputWrapper, { backgroundColor: theme.colors.surface }]}>
           <Image 
-            source={{ uri: userInfo?.avatar || 'https://via.placeholder.com/40' }} 
-            style={styles.inputAvatar} 
+            source={userInfo && userInfo.avatar 
+              ? getSafeImageUri(userInfo.avatar) 
+              : getSafeImageUri(null)} 
+            style={styles.inputAvatar}
+            onError={(e) => {
+              console.log('User input avatar image error:', e.nativeEvent.error);
+            }}
           />
           <TextInput
             ref={inputRef}
