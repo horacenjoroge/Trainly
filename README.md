@@ -210,7 +210,7 @@
 <td align="center" width="50%">
 
 ### 📱 **Quick Download**
-![Trainly QR Code]![qr-code](https://github.com/user-attachments/assets/37e40712-4b20-4d4f-a5aa-6960cf9bae52)
+![Trainly QR Code]![qr-code](https://github.com/user-attachments/assets/4b5b7c8e-b869-4597-a071-87c31179bac0)
 (https://github.com/user-attachments/assets/qr-code-placeholder.png)
 
 **Scan with your phone camera**  
