@@ -124,7 +124,7 @@ export default function EmergencyServicesScreen({ navigation }) {
         setEmergencyContacts([]);
       }
     } catch (error) {
-      console.error('Error loading contacts:', error);
+      logError('Error loading contacts:', error);
       setEmergencyContacts([]);
       Alert.alert('Error', 'Failed to load contacts');
     }
@@ -181,7 +181,7 @@ export default function EmergencyServicesScreen({ navigation }) {
       setNewContactPhone('');
       setEditingContact(null);
     } catch (error) {
-      console.error('Error adding/updating contact:', error);
+      logError('Error adding/updating contact:', error);
       Alert.alert('Error', 'Failed to save contact');
     }
   };
@@ -207,7 +207,7 @@ export default function EmergencyServicesScreen({ navigation }) {
 
   const sendSOSMessage = async (skipLocationCheck = false, isAutoSOS = false) => {
     if (isSendingSOS) {
-      console.log('SOS already in progress, skipping');
+      log('SOS already in progress, skipping');
       return;
     }
     setIsSendingSOS(true);
@@ -261,7 +261,7 @@ export default function EmergencyServicesScreen({ navigation }) {
         .filter(contact => contact && validatePhoneNumber(contact.phoneNumber || contact.phone))
         .map(contact => (contact.phoneNumber || contact.phone).trim());
 
-      console.log('Valid contacts:', validContacts.length);
+      log('Valid contacts:', validContacts.length);
       if (validContacts.length === 0) {
         log('No valid contacts found');
         Alert.alert('No Contacts', 'No emergency contacts found. Please add contacts.', [
@@ -340,9 +340,9 @@ export default function EmergencyServicesScreen({ navigation }) {
       });
 
       setFallDetectionActive(true);
-      console.log('Fall detection initialized');
+      log('Fall detection initialized');
     } catch (error) {
-      console.error('Fall detection initialization error:', error);
+      logError('Fall detection initialization error:', error);
       Alert.alert('Error', 'Failed to start fall detection');
       setFallDetectionActive(false);
     }
@@ -356,11 +356,11 @@ export default function EmergencyServicesScreen({ navigation }) {
     if (acceleration > 2.5 && !isSendingSOS && fallCountdown === 0) {
       lastFallDetected.current = now;
       Vibration.vibrate([500, 500, 500]);
-      console.log('Fall detected, starting countdown');
+      log('Fall detected, starting countdown');
 
       // Attempt to enable location tracking if not active
       if (!locationTrackingActive || !currentLocation) {
-        console.log('Attempting to enable location for fall detection');
+        log('Attempting to enable location for fall detection');
         await setupLocation();
       }
 
@@ -372,7 +372,7 @@ export default function EmergencyServicesScreen({ navigation }) {
           if (prev <= 1) {
             clearInterval(fallTimerRef.current);
             fallTimerRef.current = null;
-            console.log('Countdown complete, sending SOS');
+            log('Countdown complete, sending SOS');
             sendSOSMessage(false, true); // Respect location check, mark as auto-SOS
             return 0;
           }
@@ -407,7 +407,7 @@ export default function EmergencyServicesScreen({ navigation }) {
     if (accelerometerSubscription.current) {
       accelerometerSubscription.current.remove();
       accelerometerSubscription.current = null;
-      console.log('Fall detection stopped');
+      log('Fall detection stopped');
     }
     if (fallTimerRef.current) {
       clearInterval(fallTimerRef.current);
