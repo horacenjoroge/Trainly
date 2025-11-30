@@ -193,7 +193,7 @@ export default function RunningScreen({ navigation, route }) {
     // OPTION 4 FIX: Ensure minimum 30-second duration for API
     const MINIMUM_DURATION = 30; // Backend requirement
     if (duration < MINIMUM_DURATION) {
-      console.log(`RunningScreen - Duration too short (${duration}s), adjusting to ${MINIMUM_DURATION}s for API`);
+      log(`RunningScreen - Duration too short (${duration}s), adjusting to ${MINIMUM_DURATION}s for API`);
       
       // Temporarily modify tracker properties for API compliance
       const originalDuration = tracker.duration;
@@ -202,16 +202,16 @@ export default function RunningScreen({ navigation, route }) {
       tracker.duration = MINIMUM_DURATION;
       tracker.endTime = new Date(tracker.startTime.getTime() + (MINIMUM_DURATION * 1000));
       
-      console.log('RunningScreen - Adjusted duration from', originalDuration, 'to', tracker.duration, 'seconds');
-      console.log('RunningScreen - Adjusted endTime to:', tracker.endTime.toISOString());
+      log('RunningScreen - Adjusted duration from', originalDuration, 'to', tracker.duration, 'seconds');
+      log('RunningScreen - Adjusted endTime to:', tracker.endTime.toISOString());
     }
 
     try {
-      console.log('RunningScreen - Stopping tracker...');
+      log('RunningScreen - Stopping tracker...');
       stopTracking();
       
-      console.log('RunningScreen - About to save workout...');
-      console.log('RunningScreen - Tracker instance:', tracker ? 'exists' : 'null');
+      log('RunningScreen - About to save workout...');
+      log('RunningScreen - Tracker instance:', tracker ? 'exists' : 'null');
       
       const result = await saveWorkout();
       
