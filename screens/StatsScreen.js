@@ -349,26 +349,6 @@ const loadStats = async () => {
     return result;
   };
 
-  // Format duration
-  const formatDuration = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
-  };
-
-  // Format distance
-  const formatDistance = (distance) => {
-    if (!distance) return '0 km';
-    
-    if (distance >= 1000) {
-      return `${(distance / 1000).toFixed(1)} km`;
-    }
-    return `${Math.round(distance)} m`;
-  };
 
   // Prepare chart data
   const prepareWorkoutTypeData = () => {
