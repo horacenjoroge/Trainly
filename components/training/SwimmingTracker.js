@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Vibration } from 'react-native';
 import BaseTracker from './BaseTracker';
+import { log, logError, logWarn } from '../../utils/logger';
 
 // SwimmingTracker class that extends BaseTracker
 class SwimmingTracker extends BaseTracker {
@@ -8,7 +9,7 @@ class SwimmingTracker extends BaseTracker {
     super('Swimming', userId);
     
     this.userId = userId;
-    console.log('SwimmingTracker constructor - userId:', this.userId);
+    log('SwimmingTracker constructor - userId:', this.userId);
     
     // Swimming-specific data
     this.poolLength = 25;
@@ -28,21 +29,21 @@ class SwimmingTracker extends BaseTracker {
 
   async start() {
     try {
-      console.log('SwimmingTracker start - userId before start:', this.userId);
+      log('SwimmingTracker start - userId before start:', this.userId);
       const started = await super.start();
       if (started) {
         this.currentLapStartTime = 0;
       }
-      console.log('SwimmingTracker start - userId after start:', this.userId);
+      log('SwimmingTracker start - userId after start:', this.userId);
       return started;
     } catch (error) {
-      console.error('Failed to start swimming tracker:', error);
+      logError('Failed to start swimming tracker:', error);
       return false;
     }
   }
 
   stop() {
-    console.log('SwimmingTracker stop - userId before stop:', this.userId);
+    log('SwimmingTracker stop - userId before stop:', this.userId);
     const stopped = super.stop();
     if (stopped) {
       this.isResting = false;
@@ -52,7 +53,7 @@ class SwimmingTracker extends BaseTracker {
         this.restInterval = null;
       }
     }
-    console.log('SwimmingTracker stop - userId after stop:', this.userId);
+    log('SwimmingTracker stop - userId after stop:', this.userId);
     return stopped;
   }
 
@@ -172,10 +173,10 @@ class SwimmingTracker extends BaseTracker {
   }
 
   async prepareWorkoutData(sessionData) {
-    console.log('SwimmingTracker prepareWorkoutData - userId at start:', this.userId);
+    log('SwimmingTracker prepareWorkoutData - userId at start:', this.userId);
     
     if (!this.userId) {
-      console.error('ERROR: userId is null/undefined in prepareWorkoutData');
+      logError('ERROR: userId is null/undefined in prepareWorkoutData');
       throw new Error('User ID is required for workout data preparation');
     }
 
@@ -209,7 +210,7 @@ class SwimmingTracker extends BaseTracker {
       privacy: 'public',
     };
 
-    console.log('SwimmingTracker prepareWorkoutData - final userId:', workoutData.userId);
+    log('SwimmingTracker prepareWorkoutData - final userId:', workoutData.userId);
     return workoutData;
   }
 
@@ -247,7 +248,7 @@ const useSwimmingTracker = (userId) => {
   // Create tracker ONLY ONCE when userId first becomes available
   useEffect(() => {
     if (userId && !trackerRef.current) {
-      console.log('useSwimmingTracker - Creating tracker with userId:', userId);
+      log('useSwimmingTracker - Creating tracker with userId:', userId);
       trackerRef.current = new SwimmingTracker(userId);
       
       // Set up callbacks ONCE
@@ -332,7 +333,7 @@ const useSwimmingTracker = (userId) => {
       // CRITICAL FIX: Prevent multiple rapid calls during state updates
       const tracker = trackerRef.current;
       if (tracker._isCompletingLap) {
-        console.warn('Lap completion already in progress, skipping...');
+        logWarn('Lap completion already in progress, skipping...');
         return null;
       }
       
@@ -357,7 +358,7 @@ const useSwimmingTracker = (userId) => {
         
         return lap;
       } catch (error) {
-        console.error('Error in completeLap:', error);
+        logError('Error in completeLap:', error);
         tracker._isCompletingLap = false;
         return null;
       }
