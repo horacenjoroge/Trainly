@@ -42,7 +42,7 @@ export default function RunningScreen({ navigation, route }) {
           const user = JSON.parse(userData);
           const currentUserId = user._id || user.id || user.userId;
           setUserId(currentUserId);
-          console.log('RunningScreen - User ID loaded:', currentUserId);
+          log('RunningScreen - User ID loaded:', currentUserId);
         } else {
           Alert.alert('Error', 'User not authenticated. Please login again.');
           navigation.goBack();
@@ -183,7 +183,7 @@ export default function RunningScreen({ navigation, route }) {
 
     // TESTING BYPASS: Allow short workouts in development mode
     if (distance < 100 && !__DEV__) {
-      console.log('RunningScreen - Workout too short, showing alert');
+      log('RunningScreen - Workout too short, showing alert');
       Alert.alert('Short Run', 'Run for at least 100 meters to save your session.');
       return;
     } else if (distance < 100 && __DEV__) {
@@ -215,7 +215,7 @@ export default function RunningScreen({ navigation, route }) {
       
       const result = await saveWorkout();
       
-      console.log('RunningScreen - Save workout result:', {
+      log('RunningScreen - Save workout result:', {
         success: result?.success,
         hasWorkout: !!result?.workout,
         hasAchievements: !!result?.achievements,
