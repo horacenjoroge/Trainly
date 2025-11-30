@@ -27,7 +27,6 @@ export default function ProfileScreen({ navigation }) {
   const [profileImage, setProfileImage] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [recentWorkouts, setRecentWorkouts] = useState([]);
   const [userData, setUserData] = useState({
     name: 'User',
