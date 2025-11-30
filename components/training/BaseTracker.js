@@ -435,7 +435,7 @@ export const useBaseTracker = (activityType, userId) => {
     startCallbackRef.current = () => {
       setIsActive(true);
       setIsPaused(false);
-      console.log(`${activityType} session started`);
+      log(`${activityType} session started`);
     };
 
     pauseCallbackRef.current = () => {
