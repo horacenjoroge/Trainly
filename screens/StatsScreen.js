@@ -12,27 +12,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { workoutAPI } from '../services/workoutAPI';
-import { log, logError, logWarn } from '../utils/logger';
+import { log } from '../utils/logger';
 import StatCard from '../components/stats/StatCard';
 import { formatDuration, formatDistance } from '../utils/formatUtils';
 import WorkoutTypeChart from '../components/stats/WorkoutTypeChart';
 import ActivityTrendChart from '../components/stats/ActivityTrendChart';
 import CaloriesChart from '../components/stats/CaloriesChart';
+import { useStatsScreen } from '../hooks/useStatsScreen';
 
 
 const StatsScreen = ({ navigation }) => {
   const theme = useTheme();
   const colors = theme.colors;
 
-  // State
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Period selection state
   const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [workoutHistory, setWorkoutHistory] = useState([]);
-  const [achievements, setAchievements] = useState([]);
-  const [debugInfo, setDebugInfo] = useState('');
 
   const periods = [
     { key: 'week', label: 'Week' },
@@ -40,6 +34,15 @@ const StatsScreen = ({ navigation }) => {
     { key: 'year', label: 'Year' },
     { key: 'all', label: 'All Time' },
   ];
+
+  // Use custom hook for stats logic
+  const {
+    stats,
+    loading,
+    workoutHistory,
+    achievements,
+    debugInfo,
+  } = useStatsScreen(navigation, selectedPeriod);
 
   // Enhanced loadStats with better API handling and debugging
   // Fixed loadStats function - Replace your existing loadStats function with this
