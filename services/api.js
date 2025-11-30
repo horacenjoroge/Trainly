@@ -181,9 +181,7 @@ export const authService = {
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('userData');
-      if (global.onLogout) {
-        global.onLogout();
-      }
+      // Logout handled by AuthContext - no need for global callback
       log('Logged out, tokens cleared');
       return true;
     } catch (error) {

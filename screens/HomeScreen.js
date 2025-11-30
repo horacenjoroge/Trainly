@@ -53,10 +53,7 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [userName, setUserName] = useState('User');
 
-  // Make the helper function globally available
-  useEffect(() => {
-    global.getSafeImageUri = getSafeImageUri;
-  }, []);
+  // getSafeImageUri is now imported from utils/imageUtils.js - no need for global
 
   // Load user name and bio from AsyncStorage (FIXED FUNCTION)
   const loadUserNameAndBio = async () => {

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getSafeImageUri } from '../utils/imageUtils';
 
 export default function FollowersList({ route, navigation }) {
   const { userId } = route.params || {};
@@ -109,7 +110,7 @@ export default function FollowersList({ route, navigation }) {
         onPress={() => navigation.navigate('UserProfile', { userId: item._id })}
       >
         <Image
-          source={global.getSafeImageUri(item.avatar || 'https://via.placeholder.com/50')}
+          source={getSafeImageUri(item.avatar || 'https://via.placeholder.com/50')}
           style={styles.avatar}
         />
         <View style={styles.nameContainer}>
