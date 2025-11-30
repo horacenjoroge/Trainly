@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Logo from '../components/common/Logo';
+import { log, logError } from '../utils/logger';
 
 export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSuccess }) {
   const theme = useTheme();
@@ -33,15 +34,15 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
       try {
         const token = await AsyncStorage.getItem('token');
         if (token) {
-          console.log('Found existing token, proceeding to main app');
+          log('Found existing token, proceeding to main app');
           if (onAuthSuccess) {
             onAuthSuccess({ token });
           }
         } else {
-          console.log('No token found, user needs to log in');
+          log('No token found, user needs to log in');
         }
       } catch (error) {
-        console.error('Error checking token:', error);
+        logError('Error checking token:', error);
       }
     };
     
@@ -92,18 +93,18 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
       
       if (isLogin) {
         // Login using the onLogin prop provided by App.js
-        console.log('Attempting login with email:', email);
+        log('Attempting login with email:', email);
         result = await onLogin({ email, password });
-        console.log('Login result:', result);
+        log('Login result:', result);
       } else {
         // Register using the onRegister prop provided by App.js
-        console.log('Attempting registration with name:', name, 'and email:', email);
+        log('Attempting registration with name:', name, 'and email:', email);
         result = await onRegister({ name, email, password });
-        console.log('Registration result:', result);
+        log('Registration result:', result);
       }
       
       if (result && result.success) {
-        console.log('Authentication successful, user data:', result.user);
+        log('Authentication successful, user data:', result.user);
         // onAuthSuccess can be called here if needed, but navigation should be handled by App.js
         if (onAuthSuccess) {
           onAuthSuccess(result.user);
@@ -111,11 +112,11 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
       } else {
         // Handle failed authentication
         const errorMessage = result?.message || 'Authentication failed';
-        console.error('Auth error:', errorMessage);
+        logError('Auth error:', errorMessage);
         setError(errorMessage);
       }
     } catch (error) {
-      console.error('Auth error:', error);
+      logError('Auth error:', error);
       setError(error.response?.data?.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
