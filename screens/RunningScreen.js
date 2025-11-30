@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log, logError } from '../utils/logger';
 
 // Your existing components
 import TrainingHeader from '../components/Trainheader';
@@ -125,12 +126,12 @@ export default function RunningScreen({ navigation, route }) {
     try {
       if (!isActive) {
         // Start running
-        console.log('RunningScreen - Starting tracking...');
+        log('RunningScreen - Starting tracking...');
         const started = await startTracking();
         if (!started) {
           Alert.alert('Error', 'Could not start running session. Please check location permissions.');
         } else {
-          console.log('RunningScreen - Tracking started successfully');
+          log('RunningScreen - Tracking started successfully');
         }
       } else if (isPaused) {
         // Resume running
