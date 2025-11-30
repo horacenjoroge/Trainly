@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
+import { log, logError, logWarn } from '../utils/logger';
 
 const API_URL = __DEV__ 
   ? 'http://192.168.100.88:3000'  // Local development
@@ -89,7 +90,7 @@ export default function ProfileScreen({ navigation }) {
         setRecentWorkouts(workouts.slice(0, 3));
       }
     } catch (error) {
-      console.error('Error loading recent workouts:', error);
+      logError('Error loading recent workouts:', error);
     }
   };
 
@@ -104,16 +105,16 @@ export default function ProfileScreen({ navigation }) {
           const parsedUserData = JSON.parse(userDataFromStorage);
           const userId = parsedUserData._id || parsedUserData.id;
           setCurrentUserId(userId);
-          console.log('✅ ProfileScreen: Loaded current user ID:', userId);
+          log('✅ ProfileScreen: Loaded current user ID:', userId);
         }
       } catch (error) {
-        console.error('❌ ProfileScreen: Error loading user ID:', error);
+        logError('❌ ProfileScreen: Error loading user ID:', error);
       }
       
       // Try to get profile data from API
       try {
         const profileData = await userService.getUserProfile();
-        console.log('Profile data loaded:', profileData);
+        log('Profile data loaded:', profileData);
         
         // Get followers and following counts
         const followersData = await userService.getFollowers();
@@ -152,7 +153,7 @@ export default function ProfileScreen({ navigation }) {
           setProfileImage(profileData.avatar);
         }
       } catch (apiError) {
-        console.error('Error fetching profile from API:', apiError);
+        logError('Error fetching profile from API:', apiError);
         
         // Try to load cached data as fallback
         const cachedUserData = await AsyncStorage.getItem(USER_DATA_KEY);
@@ -172,7 +173,7 @@ export default function ProfileScreen({ navigation }) {
         }
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
+      logError('Error loading profile:', error);
     } finally {
       setLoading(false);
     }
@@ -220,7 +221,7 @@ export default function ProfileScreen({ navigation }) {
       
       return data.avatar;
     } catch (error) {
-      console.error('Error uploading avatar:', error);
+      logError('Error uploading avatar:', error);
       throw error;
     } finally {
       setUploading(false);
@@ -267,7 +268,7 @@ export default function ProfileScreen({ navigation }) {
         }
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      logError('Error picking image:', error);
       Alert.alert('Error', 'Error selecting or processing image');
     } finally {
       setModalVisible(false);
@@ -404,7 +405,7 @@ export default function ProfileScreen({ navigation }) {
               if (currentUserId) {
                 navigation.navigate('FollowersList', { userId: currentUserId });
               } else {
-                console.warn('No current user ID available for followers navigation');
+                logWarn('No current user ID available for followers navigation');
               }
             }}
           />
@@ -417,7 +418,7 @@ export default function ProfileScreen({ navigation }) {
               if (currentUserId) {
                 navigation.navigate('FollowingList', { userId: currentUserId });
               } else {
-                console.warn('No current user ID available for following navigation');
+                logWarn('No current user ID available for following navigation');
               }
             }}
           />

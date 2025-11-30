@@ -15,6 +15,7 @@ import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { workoutAPI } from '../services/workoutAPI';
+import { log, logError, logWarn } from '../utils/logger';
 
 const { width } = Dimensions.get('window');
 
@@ -41,19 +42,19 @@ const StatsScreen = ({ navigation }) => {
   // Fixed loadStats function - Replace your existing loadStats function with this
 
 const loadStats = async () => {
-  console.log('=== LOADING STATS DEBUG START ===');
+  log('=== LOADING STATS DEBUG START ===');
   setLoading(true);
   
   try {
     // Try to load from API first
-    console.log('Attempting to load stats from API for period:', selectedPeriod);
+    log('Attempting to load stats from API for period:', selectedPeriod);
     
     try {
       const response = await workoutAPI.getWorkoutStats(selectedPeriod);
-      console.log('API Response:', response);
+      log('API Response:', response);
       
       if (response.status === 'success' && response.data) {
-        console.log('Successfully loaded stats from API');
+        log('Successfully loaded stats from API');
         
         // FIXED: Better handling of API response
         const apiStats = {
@@ -69,7 +70,7 @@ const loadStats = async () => {
           recentAchievements: response.data.recentAchievements || []
         };
         
-        console.log('Formatted API stats:', {
+        log('Formatted API stats:', {
           summaryValid: !!apiStats.summary,
           statsCount: apiStats.stats.length,
           trendsCount: apiStats.trends.length,
@@ -82,14 +83,14 @@ const loadStats = async () => {
         
         // CRITICAL FIX: Set loading to false here
         setLoading(false);
-        console.log('=== LOADING STATS DEBUG END (API SUCCESS) ===');
+        log('=== LOADING STATS DEBUG END (API SUCCESS) ===');
         return; // Exit early on success
       } else {
-        console.log('API response was not successful:', response);
+        log('API response was not successful:', response);
         setDebugInfo('API response failed');
       }
     } catch (apiError) {
-      console.log('API error, falling back to local data:', apiError.message);
+      log('API error, falling back to local data:', apiError.message);
       setDebugInfo(`API Error: ${apiError.message}`);
     }
 
@@ -98,7 +99,7 @@ const loadStats = async () => {
       const historyData = await AsyncStorage.getItem('workoutHistory');
       if (historyData) {
         const workouts = JSON.parse(historyData);
-        console.log('Calculating stats from local data:', workouts.length, 'workouts');
+        log('Calculating stats from local data:', workouts.length, 'workouts');
         const calculatedStats = calculateStatsFromWorkouts(workouts, selectedPeriod);
         setStats(calculatedStats);
         setDebugInfo(`Local: ${workouts.length} workouts`);
@@ -114,7 +115,7 @@ const loadStats = async () => {
         setDebugInfo('No data found');
       }
     } catch (error) {
-      console.error('Error loading stats:', error);
+      logError('Error loading stats:', error);
       setDebugInfo(`Error: ${error.message}`);
       // Set empty stats on error
       setStats({
@@ -126,7 +127,7 @@ const loadStats = async () => {
       });
     }
   } catch (error) {
-    console.error('Unexpected error in loadStats:', error);
+    logError('Unexpected error in loadStats:', error);
     setDebugInfo(`Unexpected error: ${error.message}`);
     // Set empty stats on error
     setStats({
@@ -139,7 +140,7 @@ const loadStats = async () => {
   } finally {
     // CRITICAL FIX: Always set loading to false in finally block
     setLoading(false);
-    console.log('=== LOADING STATS DEBUG END ===');
+    log('=== LOADING STATS DEBUG END ===');
   }
 };
 
@@ -153,7 +154,7 @@ const loadStats = async () => {
   // Add focus listener to refresh data
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('Stats screen focused - refreshing data');
+      log('Stats screen focused - refreshing data');
       loadStats();
       loadWorkoutHistory();
       loadAchievements();
@@ -163,23 +164,23 @@ const loadStats = async () => {
 
   const loadWorkoutHistory = async () => {
     try {
-      console.log('Loading workout history from AsyncStorage...');
+      log('Loading workout history from AsyncStorage...');
       const historyData = await AsyncStorage.getItem('workoutHistory');
       
       if (historyData) {
         const workouts = JSON.parse(historyData);
-        console.log('Loaded workout history:', {
+        log('Loaded workout history:', {
           count: workouts.length,
           types: [...new Set(workouts.map(w => w.type))],
           recentWorkout: workouts[workouts.length - 1]
         });
         setWorkoutHistory(workouts);
       } else {
-        console.log('No workout history found in AsyncStorage');
+        log('No workout history found in AsyncStorage');
         setWorkoutHistory([]);
       }
     } catch (error) {
-      console.error('Error loading workout history:', error);
+      logError('Error loading workout history:', error);
       setWorkoutHistory([]);
     }
   };
@@ -198,7 +199,7 @@ const loadStats = async () => {
         }
       }
     } catch (error) {
-      console.error('Error loading achievements:', error);
+      logError('Error loading achievements:', error);
       // Load from AsyncStorage as fallback
       try {
         const localAchievements = await AsyncStorage.getItem('achievements');
@@ -206,21 +207,21 @@ const loadStats = async () => {
           setAchievements(JSON.parse(localAchievements));
         }
       } catch (localError) {
-        console.error('Error loading local achievements:', localError);
+        logError('Error loading local achievements:', localError);
       }
     }
   };
 
   // Enhanced calculateStatsFromWorkouts with debugging
   const calculateStatsFromWorkouts = (workouts, period) => {
-    console.log('calculateStatsFromWorkouts called with:', {
+    log('calculateStatsFromWorkouts called with:', {
       workoutCount: workouts?.length || 0,
       period,
       sampleWorkout: workouts?.[0]
     });
 
     if (!workouts || workouts.length === 0) {
-      console.log('No workouts to calculate stats from');
+      log('No workouts to calculate stats from');
       return {
         summary: { totalWorkouts: 0, totalDuration: 0, totalDistance: 0, totalCalories: 0 },
         stats: [],
@@ -236,7 +237,7 @@ const loadStats = async () => {
       const workoutDate = new Date(workout.date || workout.startTime || workout.endTime);
       
       if (isNaN(workoutDate.getTime())) {
-        console.warn('Invalid workout date found:', workout);
+        logWarn('Invalid workout date found:', workout);
         return false;
       }
 
@@ -255,7 +256,7 @@ const loadStats = async () => {
       }
     });
 
-    console.log('Filtered workouts:', {
+    log('Filtered workouts:', {
       originalCount: workouts.length,
       filteredCount: filteredWorkouts.length,
       period
@@ -282,7 +283,7 @@ const loadStats = async () => {
       }, 0)
     };
 
-    console.log('Calculated summary:', summary);
+    log('Calculated summary:', summary);
 
     // Calculate workout type distribution
     const typeStats = {};
@@ -291,7 +292,7 @@ const loadStats = async () => {
       typeStats[type] = (typeStats[type] || 0) + 1;
     });
 
-    console.log('Type stats:', typeStats);
+    log('Type stats:', typeStats);
 
     const stats = Object.entries(typeStats).map(([type, count]) => ({
       _id: type,
@@ -314,7 +315,7 @@ const loadStats = async () => {
       });
     }
 
-    console.log('Calculated trends:', trends);
+    log('Calculated trends:', trends);
 
     // Calculate personal bests
     const personalBests = {};
@@ -332,7 +333,7 @@ const loadStats = async () => {
       }
     });
 
-    console.log('Personal bests:', personalBests);
+    log('Personal bests:', personalBests);
 
     const result = {
       summary,
@@ -342,7 +343,7 @@ const loadStats = async () => {
       recentAchievements: achievements.slice(0, 3)
     };
 
-    console.log('Final calculated stats:', result);
+    log('Final calculated stats:', result);
     return result;
   };
 
@@ -500,8 +501,8 @@ const loadStats = async () => {
     }
   };
 
-  console.log('Current stats state:', stats);
-  console.log('Current workout history length:', workoutHistory.length);
+  log('Current stats state:', stats);
+  log('Current workout history length:', workoutHistory.length);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
