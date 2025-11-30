@@ -225,8 +225,8 @@ const HomeScreen = ({ navigation }) => {
   const debugPostStructure = (postsData) => {
     if (!postsData || !postsData.length) return;
     
-    console.log('FIRST POST STRUCTURE:');
-    console.log(JSON.stringify(postsData[0], null, 2));
+    log('FIRST POST STRUCTURE:');
+    log(JSON.stringify(postsData[0], null, 2));
     
     const hasIds = postsData.map(post => {
       const userId = getUserIdFromPost(post);
@@ -237,8 +237,8 @@ const HomeScreen = ({ navigation }) => {
       };
     });
     
-    console.log('User ID availability in posts:');
-    console.log(JSON.stringify(hasIds, null, 2));
+    log('User ID availability in posts:');
+    log(JSON.stringify(hasIds, null, 2));
   };
 
   // Fetch user profile and posts
