@@ -206,7 +206,7 @@ const CommentScreen = ({ route, navigation }) => {
             : getSafeImageUri(null)} 
           style={styles.commentAvatar}
           onError={(e) => {
-            console.log('Comment avatar image error:', e.nativeEvent.error);
+            log('Comment avatar image error:', e.nativeEvent.error);
           }}
         />
         <View style={styles.commentContent}>
