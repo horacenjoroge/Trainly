@@ -12,9 +12,10 @@ import MainComponent from './screens/MainComponent';
 import AuthScreen from './screens/AuthScreen';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log, logError, logWarn } from './utils/logger';
 
 // IMMEDIATELY hide the native splash screen to prevent conflicts
-SplashScreen.hideAsync().catch(console.warn);
+SplashScreen.hideAsync().catch((err) => logWarn('Splash screen hide error:', err));
 
 global.getSafeImageUri = (uri) => {
   if (uri === null || uri === undefined) return '';
@@ -31,9 +32,9 @@ const MainComponentWrapper = ({ navigation }) => {
   const handleLogout = async () => {
     try {
       await logout();
-      console.log('Logout successful from MainComponentWrapper');
+      log('Logout successful from MainComponentWrapper');
     } catch (error) {
-      console.error('Logout failed:', error);
+      logError('Logout failed:', error);
     }
   };
 
@@ -44,24 +45,24 @@ const AuthScreenWrapper = ({ navigation }) => {
   const { login, register, isAuthenticated } = useAuth();
   
   const enhancedLogin = async (credentials) => {
-    console.log('Enhanced login handler called with:', credentials);
+    log('Enhanced login handler called with:', credentials);
     
     if (!credentials || !credentials.email || !credentials.password) {
-      console.error('Invalid credentials format:', credentials);
+      logError('Invalid credentials format:', credentials);
       return { success: false, message: 'Invalid email or password format' };
     }
     
     try {
       const result = await login(credentials);
-      console.log('Login result:', result);
+      log('Login result:', result);
       
       if (result && result.success) {
-        console.log('Login successful, navigation should handle screen change');
+        log('Login successful, navigation should handle screen change');
       }
       
       return result;
     } catch (error) {
-      console.error('Login error in wrapper:', error);
+      logError('Login error in wrapper:', error);
       return { 
         success: false, 
         message: error.response?.data?.message || 'Login failed' 
@@ -70,24 +71,24 @@ const AuthScreenWrapper = ({ navigation }) => {
   };
   
   const enhancedRegister = async (userData) => {
-    console.log('Enhanced register handler called with:', userData);
+    log('Enhanced register handler called with:', userData);
     
     if (!userData || !userData.email || !userData.password || !userData.name) {
-      console.error('Invalid registration data format:', userData);
+      logError('Invalid registration data format:', userData);
       return { success: false, message: 'Please provide all required fields' };
     }
     
     try {
       const result = await register(userData);
-      console.log('Registration result:', result);
+      log('Registration result:', result);
       
       if (result && result.success) {
-        console.log('Registration successful, navigation should handle screen change');
+        log('Registration successful, navigation should handle screen change');
       }
       
       return result;
     } catch (error) {
-      console.error('Registration error in wrapper:', error);
+      logError('Registration error in wrapper:', error);
       return { 
         success: false, 
         message: error.response?.data?.message || 'Registration failed' 
@@ -96,7 +97,7 @@ const AuthScreenWrapper = ({ navigation }) => {
   };
   
   const handleAuthSuccess = (userData) => {
-    console.log('Authentication successful:', userData);
+    log('Authentication successful:', userData);
   };
 
   return (
@@ -114,7 +115,7 @@ const AppContent = () => {
   const [appIsReady, setAppIsReady] = useState(false);
   const [preparationStarted, setPreparationStarted] = useState(false);
   
-  console.log('📱 AppContent render - Auth state:', { 
+  log('📱 AppContent render - Auth state:', { 
     isAuthenticated, 
     isLoading, 
     authStateVersion,
@@ -124,32 +125,32 @@ const AppContent = () => {
 
   useEffect(() => {
     async function prepare() {
-      // Prevent multiple executions
+      // Prevent multiple executions using ref pattern
       if (preparationStarted) {
-        console.log('⚠️ Preparation already started, skipping');
+        logWarn('⚠️ Preparation already started, skipping');
         return;
       }
       
-      console.log('🚀 Starting app preparation...');
+      log('🚀 Starting app preparation...');
       setPreparationStarted(true);
       
       try {
-        console.log('🧹 Cleaning AsyncStorage...');
+        log('🧹 Cleaning AsyncStorage...');
         
         // Diagnose AsyncStorage
         const keys = await AsyncStorage.getAllKeys();
-        console.log('All AsyncStorage keys:', keys);
+        log('All AsyncStorage keys:', keys);
         
         // Find numeric keys that indicate corruption
         const numericKeys = keys.filter(key => /^\d+$/.test(key));
         if (numericKeys.length > 0) {
-          console.log(`Found ${numericKeys.length} numeric keys (corrupted data)`);
+          log(`Found ${numericKeys.length} numeric keys (corrupted data)`);
           
           // Remove all numeric keys
           for (const key of numericKeys) {
             await AsyncStorage.removeItem(key);
           }
-          console.log('Removed all numeric keys');
+          log('Removed all numeric keys');
           
           // Force a clean slate if corrupted
           await AsyncStorage.removeItem('userData');
@@ -158,24 +159,28 @@ const AppContent = () => {
         }
 
         // Simulate loading time for a better user experience
-        console.log('⏱️ Starting 3 second loading simulation...');
+        log('⏱️ Starting 3 second loading simulation...');
         await new Promise(resolve => setTimeout(resolve, 3000));
-        console.log('✅ 3 second loading completed');
+        log('✅ 3 second loading completed');
         
       } catch (error) {
-        console.error('❌ App preparation error:', error);
+        logError('❌ App preparation error:', error);
       } finally {
-        console.log('🏁 App preparation finished, setting appIsReady to true');
+        log('🏁 App preparation finished, setting appIsReady to true');
         setAppIsReady(true);
       }
     }
 
-    prepare();
-  }, []); // EMPTY DEPENDENCY ARRAY - NO MORE MULTIPLE EXECUTIONS
+    // Only run once on mount
+    if (!preparationStarted) {
+      prepare();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - should only run once on mount
 
   useEffect(() => {
     global.onLogout = async () => {
-      console.log('🚪 Global logout handler triggered');
+      log('🚪 Global logout handler triggered');
       // DON'T reset appIsReady on logout - this causes the infinite splash
       // setAppIsReady(false);  // REMOVED THIS LINE
       // setPreparationStarted(false); // REMOVED THIS LINE
@@ -193,7 +198,7 @@ const AppContent = () => {
   const splashReason = !appIsReady ? 'App not ready' : 
                       (isLoading && isAuthenticated) ? 'Auth loading' : 'Ready';
 
-  console.log('🎭 SPLASH DECISION:', {
+  log('🎭 SPLASH DECISION:', {
     shouldShowSplash,
     reason: splashReason,
     appIsReady,
@@ -203,12 +208,12 @@ const AppContent = () => {
 
   // Show custom splash screen while app is loading
   if (shouldShowSplash) {
-    console.log('🎨 SHOWING CUSTOM SPLASH SCREEN');
+    log('🎨 SHOWING CUSTOM SPLASH SCREEN');
     return <SplashScreenComponent />;
   }
 
-  console.log('🏠 SHOWING MAIN APP');
-  console.log('Navigation state decision:', isAuthenticated ? 'MainApp' : 'Auth');
+  log('🏠 SHOWING MAIN APP');
+  log('Navigation state decision:', isAuthenticated ? 'MainApp' : 'Auth');
 
   return (
     <>
@@ -235,7 +240,7 @@ const AppContent = () => {
 };
 
 export default function App() {
-  console.log('🌟 Main App component rendered');
+  log('🌟 Main App component rendered');
   return (
     <ThemeProvider>
       <AuthProvider>
