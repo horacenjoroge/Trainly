@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Modal,
-  TextInput,
   Alert,
   Dimensions,
 } from 'react-native';
