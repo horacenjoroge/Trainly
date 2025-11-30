@@ -158,10 +158,8 @@ const AppContent = () => {
           await AsyncStorage.removeItem('refreshToken');
         }
 
-        // Simulate loading time for a better user experience
-        log('⏱️ Starting 3 second loading simulation...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        log('✅ 3 second loading completed');
+        // App preparation complete - no artificial delay needed
+        // Actual loading is handled by auth check and splash screen
         
       } catch (error) {
         logError('❌ App preparation error:', error);
