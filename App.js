@@ -124,7 +124,7 @@ const AppContent = () => {
 
   useEffect(() => {
     async function prepare() {
-      // Prevent multiple executions
+      // Prevent multiple executions using ref pattern
       if (preparationStarted) {
         console.log('⚠️ Preparation already started, skipping');
         return;
@@ -170,8 +170,12 @@ const AppContent = () => {
       }
     }
 
-    prepare();
-  }, []); // EMPTY DEPENDENCY ARRAY - NO MORE MULTIPLE EXECUTIONS
+    // Only run once on mount
+    if (!preparationStarted) {
+      prepare();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - should only run once on mount
 
   useEffect(() => {
     global.onLogout = async () => {
