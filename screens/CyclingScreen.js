@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log, logError } from '../utils/logger';
 
 // Import your existing header component
 import TrainingHeader from '../components/Trainheader';
@@ -47,7 +48,7 @@ export default function CyclingScreen({ navigation, route }) {
           navigation.goBack();
         }
       } catch (error) {
-        console.error('Error getting current user ID:', error);
+        logError('Error getting current user ID:', error);
         Alert.alert('Error', 'Authentication error. Please login again.');
         navigation.goBack();
       }
@@ -135,7 +136,7 @@ export default function CyclingScreen({ navigation, route }) {
         pauseTracking();
       }
     } catch (error) {
-      console.error('Error in start/pause:', error);
+      logError('Error in start/pause:', error);
       Alert.alert('Error', 'Could not start/pause cycling session.');
     }
   };
