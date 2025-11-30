@@ -11,7 +11,7 @@ const loadWorkout = async () => {
       setWorkout(response.data.workout || response.data);
     }
   } catch (error) {
-    console.log('API failed, trying local storage...');
+    log('API failed, trying local storage...');
     try {
       const stored = await AsyncStorage.getItem('workoutHistory');
       const workouts = JSON.parse(stored || '[]');
@@ -45,6 +45,7 @@ import MapView, { Polyline, Marker } from 'react-native-maps';
 import { useTheme } from '../context/ThemeContext';
 import { workoutAPI } from '../services/workoutAPI';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log } from '../utils/logger';
 
 const WorkoutDetailScreen = ({ navigation, route }) => {
 const theme = useTheme();
