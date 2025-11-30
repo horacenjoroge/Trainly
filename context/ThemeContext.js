@@ -65,7 +65,7 @@ export const ThemeProvider = ({ children }) => {
           await AsyncStorage.setItem(THEME_PREFERENCE_KEY, deviceColorScheme || 'light');
         }
       } catch (error) {
-        console.error('Error loading theme preference:', error);
+        logError('Error loading theme preference:', error);
         // Default to system preference
         const deviceColorScheme = Appearance.getColorScheme();
         setIsDarkMode(deviceColorScheme === 'dark');
@@ -86,7 +86,7 @@ export const ThemeProvider = ({ children }) => {
           setIsDarkMode(colorScheme === 'dark');
         }
       }).catch(error => {
-        console.error('Error checking saved theme preference:', error);
+        logError('Error checking saved theme preference:', error);
       });
     });
 
@@ -107,7 +107,7 @@ export const ThemeProvider = ({ children }) => {
       // Save preference
       await AsyncStorage.setItem(THEME_PREFERENCE_KEY, newMode ? 'dark' : 'light');
     } catch (error) {
-      console.error('Error saving theme preference:', error);
+      logError('Error saving theme preference:', error);
     }
   };
 
@@ -120,7 +120,7 @@ export const ThemeProvider = ({ children }) => {
       // Save that we're using system preference
       await AsyncStorage.setItem(THEME_PREFERENCE_KEY, 'system');
     } catch (error) {
-      console.error('Error setting system theme:', error);
+      logError('Error setting system theme:', error);
     }
   };
 
