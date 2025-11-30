@@ -167,7 +167,7 @@ const SettingsScreen = ({ navigation }) => {
           onPress: async () => {
             setIsLoggingOut(true);
             try {
-              console.log('🚪 Starting logout process from Settings...');
+              log('🚪 Starting logout process from Settings...');
               
               // Clear user data and preferences first
               await AsyncStorage.multiRemove([
