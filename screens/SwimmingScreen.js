@@ -101,17 +101,17 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
         if (!started) {
           Alert.alert('Error', 'Could not start swimming session.');
         } else {
-          console.log('SwimmingScreen - Tracking started successfully');
+          log('SwimmingScreen - Tracking started successfully');
         }
       } else if (swimming.isPaused) {
-        console.log('SwimmingScreen - Resuming tracking...');
+        log('SwimmingScreen - Resuming tracking...');
         swimming.resumeTracking();
       } else {
-        console.log('SwimmingScreen - Pausing tracking...');
+        log('SwimmingScreen - Pausing tracking...');
         swimming.pauseTracking();
       }
     } catch (error) {
-      console.error('Error in start/pause:', error);
+      logError('Error in start/pause:', error);
       Alert.alert('Error', 'Could not start/pause swimming session.');
     }
   };
