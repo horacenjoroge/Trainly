@@ -256,7 +256,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
       // Step 2: Load data from API and merge with local data
       try {
         const profileData = await userService.getUserProfile();
-        console.log('API response from GET /users/profile:', profileData);
+        log('API response from GET /users/profile:', profileData);
 
         if (profileData) {
           const updatedFormState = { ...localFormState };
@@ -277,11 +277,11 @@ export default function PersonalInfoScreen({ navigation, route }) {
           setFormState(localFormState);
         }
       } catch (apiError) {
-        console.log('Error fetching from API (using local data only):', apiError);
+        log('Error fetching from API (using local data only):', apiError);
         setFormState(localFormState);
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      logError('Error loading user data:', error);
       setFormState({ ...formState });
     } finally {
       setLoading(false);
@@ -330,7 +330,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
       
       dataToSave.bio = finalBio;
 
-      console.log('Saving data to AsyncStorage:', JSON.stringify(dataToSave));
+      log('Saving data to AsyncStorage:', JSON.stringify(dataToSave));
       await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(dataToSave));
 
       // Save individual fields as backup
@@ -346,9 +346,9 @@ export default function PersonalInfoScreen({ navigation, route }) {
           name: formState.fullName.value,
           bio: finalBio,
         });
-        console.log('Profile updated on API with bio:', finalBio);
+        log('Profile updated on API with bio:', finalBio);
       } catch (apiError) {
-        console.error('Error updating profile on API:', apiError);
+        logError('Error updating profile on API:', apiError);
       }
 
       setIsEditing(false);
@@ -366,7 +366,7 @@ export default function PersonalInfoScreen({ navigation, route }) {
         }
       ]);
     } catch (error) {
-      console.error('Error saving user data:', error);
+      logError('Error saving user data:', error);
       Alert.alert('Error', 'Failed to save profile updates');
     } finally {
       setIsSaving(false);
