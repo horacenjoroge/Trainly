@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { workoutAPI } from '../services/workoutAPI';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log, logError } from '../utils/logger';
 
 const WorkoutHistoryScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -59,7 +60,7 @@ const WorkoutHistoryScreen = ({ navigation }) => {
         params.search = searchQuery.trim();
       }
 
-      console.log('Loading workouts with params:', params);
+      log('Loading workouts with params:', params);
 
       // Try API first
       try {
@@ -78,18 +79,18 @@ const WorkoutHistoryScreen = ({ navigation }) => {
           setHasMoreData(response.data.pagination?.hasNextPage || false);
           setCurrentPage(page);
           
-          console.log(`Loaded ${newWorkouts.length} workouts from API`);
+          log(`Loaded ${newWorkouts.length} workouts from API`);
           return;
         }
       } catch (apiError) {
-        console.log('API not available, falling back to local storage');
+        log('API not available, falling back to local storage');
       }
 
       // Fallback to AsyncStorage
       await loadWorkoutsFromStorage(page, type, isRefresh);
       
     } catch (error) {
-      console.error('Error loading workouts:', error);
+      logError('Error loading workouts:', error);
       Alert.alert('Error', 'Failed to load workouts. Please try again.');
     } finally {
       setLoading(false);
@@ -140,13 +141,13 @@ const WorkoutHistoryScreen = ({ navigation }) => {
         setHasMoreData(endIndex < allWorkouts.length);
         setCurrentPage(page);
         
-        console.log(`Loaded ${paginatedWorkouts.length} workouts from storage`);
+        log(`Loaded ${paginatedWorkouts.length} workouts from storage`);
       } else {
         setWorkouts([]);
         setHasMoreData(false);
       }
     } catch (error) {
-      console.error('Error loading from storage:', error);
+      logError('Error loading from storage:', error);
       setWorkouts([]);
     }
   };
@@ -200,7 +201,7 @@ const WorkoutHistoryScreen = ({ navigation }) => {
               
               Alert.alert('Success', 'Workout deleted successfully');
             } catch (error) {
-              console.error('Error deleting workout:', error);
+              logError('Error deleting workout:', error);
               Alert.alert('Error', 'Failed to delete workout');
             }
           },
