@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Vibration } from 'react-native';
 import { workoutAPI } from '../../services/workoutAPI'; // Import workoutAPI
+import { log, logError, logWarn } from '../../utils/logger';
 
 class BaseTracker {
   constructor(activityType, userId) {
@@ -45,7 +46,7 @@ class BaseTracker {
           try {
             this.onDurationUpdateCallback(this.duration);
           } catch (error) {
-            console.warn('Duration update callback error:', error);
+            logWarn('Duration update callback error:', error);
           }
         }
       }
@@ -159,7 +160,7 @@ class BaseTracker {
       const sessionData = this.getSessionData();
       trackerData = await this.prepareWorkoutData(sessionData);
       
-      console.log('Saving workout:', trackerData);
+      log('Saving workout:', trackerData);
       
       // 2. Try to save to API first
       const response = await workoutAPI.saveWorkout(this.activityType, trackerData);
@@ -175,7 +176,7 @@ class BaseTracker {
         // 4. Clear active session
         await AsyncStorage.removeItem(`active_session_${this.sessionId}`);
 
-        console.log(`${this.activityType} workout saved successfully to API and local storage`);
+        log(`${this.activityType} workout saved successfully to API and local storage`);
         
         return {
           success: true,
@@ -188,7 +189,7 @@ class BaseTracker {
       }
       
     } catch (error) {
-      console.error(`Error saving ${this.activityType} workout to API:`, error);
+      logError(`Error saving ${this.activityType} workout to API:`, error);
       
       // Fallback: save locally and add to sync queue
       try {
@@ -206,7 +207,7 @@ class BaseTracker {
           // Clear active session
           await AsyncStorage.removeItem(`active_session_${this.sessionId}`);
 
-          console.log(`${this.activityType} workout saved locally (offline mode)`);
+          log(`${this.activityType} workout saved locally (offline mode)`);
           
           return {
             success: true,
@@ -218,7 +219,7 @@ class BaseTracker {
           throw new Error('Failed to prepare workout data');
         }
       } catch (fallbackError) {
-        console.error('Fallback save failed:', fallbackError);
+        logError('Fallback save failed:', fallbackError);
         return {
           success: false,
           message: `Failed to save ${this.activityType} session: ${fallbackError.message}`,
@@ -240,9 +241,9 @@ class BaseTracker {
         lastSyncAttempt: new Date().toISOString()
       });
       await AsyncStorage.setItem('workout_sync_queue', JSON.stringify(syncQueue));
-      console.log('Added workout to sync queue');
+      log('Added workout to sync queue');
     } catch (error) {
-      console.error('Failed to add to sync queue:', error);
+      logError('Failed to add to sync queue:', error);
     }
   }
 
@@ -264,7 +265,7 @@ class BaseTracker {
           const response = await workoutAPI.saveWorkout(workout.type, workout);
           if (response.success) {
             synced++;
-            console.log(`Synced pending workout: ${workout.type}`);
+            log(`Synced pending workout: ${workout.type}`);
           } else {
             failed++;
             workout.syncAttempts = (workout.syncAttempts || 0) + 1;
@@ -280,7 +281,7 @@ class BaseTracker {
           if (workout.syncAttempts < 3) {
             remainingQueue.push(workout);
           }
-          console.error('Sync failed for workout:', error);
+          logError('Sync failed for workout:', error);
         }
       }
       
@@ -289,7 +290,7 @@ class BaseTracker {
       
       return { synced, failed, remaining: remainingQueue.length };
     } catch (error) {
-      console.error('Error syncing pending workouts:', error);
+      logError('Error syncing pending workouts:', error);
       return { synced: 0, failed: 0, error: error.message };
     }
   }
@@ -314,7 +315,7 @@ class BaseTracker {
         return sessionData;
       }
     } catch (error) {
-      console.error('Session restore failed:', error);
+      logError('Session restore failed:', error);
     }
     return null;
   }
@@ -350,27 +351,27 @@ class BaseTracker {
 
   // Override methods for specific activity types
   onStart() {
-    console.log(`${this.activityType} session started`);
+    log(`${this.activityType} session started`);
   }
 
   onPause() {
-    console.log(`${this.activityType} session paused`);
+    log(`${this.activityType} session paused`);
     Vibration.vibrate(100);
   }
 
   onResume() {
-    console.log(`${this.activityType} session resumed`);
+    log(`${this.activityType} session resumed`);
   }
 
   onStop() {
-    console.log(`${this.activityType} session stopped`);
+    log(`${this.activityType} session stopped`);
     Vibration.vibrate([100, 100, 100]);
   }
 
   // DEPRECATED: Keep for backward compatibility but don't use
   onDurationUpdate(duration) {
     // This method is deprecated - use setDurationCallback instead
-    console.warn('onDurationUpdate is deprecated, use setDurationCallback instead');
+    logWarn('onDurationUpdate is deprecated, use setDurationCallback instead');
   }
 
   async enhanceSessionData(sessionData) {
@@ -439,18 +440,18 @@ export const useBaseTracker = (activityType, userId) => {
 
     pauseCallbackRef.current = () => {
       setIsPaused(true);
-      console.log(`${activityType} session paused`);
+      log(`${activityType} session paused`);
     };
 
     resumeCallbackRef.current = () => {
       setIsPaused(false);
-      console.log(`${activityType} session resumed`);
+      log(`${activityType} session resumed`);
     };
 
     stopCallbackRef.current = () => {
       setIsActive(false);
       setIsPaused(false);
-      console.log(`${activityType} session stopped`);
+      log(`${activityType} session stopped`);
     };
 
     // CRITICAL FIX: Set the stable callback on the tracker
