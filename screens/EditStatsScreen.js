@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logError } from '../utils/logger';
 
 // Replace with your actual backend URL
 const API_URL = __DEV__ 
@@ -77,7 +78,7 @@ const EditStatsScreen = ({ navigation, route }) => {
         route.params.onUpdate();
       }
     } catch (error) {
-      console.error('Error updating stats:', error);
+      logError('Error updating stats:', error);
       Alert.alert('Error', 'Failed to update stats. Please try again.');
     } finally {
       setLoading(false);
