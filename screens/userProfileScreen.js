@@ -149,14 +149,14 @@ export default function UserProfile({ route, onLogout }) {
        setIsFollowing(Array.isArray(followingData) && followingData.some(user => user._id === userId || user.id === userId));
      }
    } catch (error) {
-     console.error('❌ UserProfile: Error loading user profile:', error.message);
+     logError('❌ UserProfile: Error loading user profile:', error.message);
      setError('Failed to load user profile');
    }
  }, [userId, currentUserId]);
 
  const fetchUserPosts = useCallback(async () => {
    try {
-     console.log('📝 UserProfile: Fetching posts for userId:', userId);
+     log('📝 UserProfile: Fetching posts for userId:', userId);
      const allPosts = await postService.getPosts();
      if (allPosts && allPosts.length > 0) {
        const filteredPosts = allPosts.filter(post => {
@@ -167,12 +167,12 @@ export default function UserProfile({ route, onLogout }) {
          return false;
        });
        setUserPosts(filteredPosts);
-       console.log('✅ UserProfile: Found', filteredPosts.length, 'posts for user');
+       log('✅ UserProfile: Found', filteredPosts.length, 'posts for user');
      } else {
        setUserPosts([]);
      }
    } catch (error) {
-     console.error('❌ UserProfile: Error fetching user posts:', error.message);
+     logError('❌ UserProfile: Error fetching user posts:', error.message);
      setUserPosts([]);
    }
  }, [userId]);
@@ -181,14 +181,14 @@ export default function UserProfile({ route, onLogout }) {
  useFocusEffect(
    React.useCallback(() => {
      if (userId) {
-       console.log('🎯 UserProfile: Screen focused, refreshing data for userId:', userId);
+       log('🎯 UserProfile: Screen focused, refreshing data for userId:', userId);
        const loadData = async () => {
          setLoading(true);
          try {
            await loadCurrentUser();
            await Promise.all([loadUserProfile(), fetchUserPosts()]);
          } catch (error) {
-           console.error('❌ UserProfile: Error loading data:', error.message);
+           logError('❌ UserProfile: Error loading data:', error.message);
            setError('Failed to load profile data');
            if (onLogout) onLogout();
          } finally {
@@ -232,7 +232,7 @@ export default function UserProfile({ route, onLogout }) {
        }
      }
    } catch (error) {
-     console.error('❌ UserProfile: Error toggling follow:', error);
+     logError('❌ UserProfile: Error toggling follow:', error);
      // Revert UI changes
      setIsFollowing(!isFollowing);
      setUserData(prev => ({
