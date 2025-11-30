@@ -7,6 +7,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logError } from './logger';
 
 // NOTE: These functions use 'accessToken' key which is inconsistent with the main app
 // The main app uses 'token' key. These are kept for reference only.
@@ -17,7 +18,7 @@ export const storeTokens = async (accessToken, refreshToken) => {
     await AsyncStorage.setItem('accessToken', accessToken);
     await AsyncStorage.setItem('refreshToken', refreshToken);
   } catch (error) {
-    console.error('Error storing tokens:', error);
+    logError('Error storing tokens:', error);
   }
 };
 
