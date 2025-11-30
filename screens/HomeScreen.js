@@ -218,6 +218,20 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Helper function to safely extract the user ID from a post
+  const getUserIdFromPost = (post) => {
+    if (!post || !post.user) return null;
+    
+    if (post.user._id) return post.user._id;
+    if (post.user.id) return post.user.id;
+    if (post.user.userId) return post.user.userId;
+    
+    if (typeof post.user === 'string') return post.user;
+    if (post.userId) return post.userId;
+    
+    return null;
+  };
+
   // Debug fetched posts
   const debugPostStructure = (postsData) => {
     if (!postsData || !postsData.length) return;
