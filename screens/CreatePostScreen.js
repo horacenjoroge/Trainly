@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { log, logError } from '../utils/logger';
 
 // Replace with your actual backend URL
 const API_URL = __DEV__ 
@@ -44,7 +45,7 @@ const CreateProgressPostScreen = ({ navigation }) => {
         setSelectedImages(result.assets.slice(0, 4));
       }
     } catch (error) {
-      console.error('Image picker error:', error);
+      logError('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
@@ -87,7 +88,7 @@ const CreateProgressPostScreen = ({ navigation }) => {
       const data = await response.json();
       return data.imageUrl; // Return the server URL to the uploaded image
     } catch (error) {
-      console.error('Error uploading image:', error);
+      logError('Error uploading image:', error);
       throw error;
     }
   };
@@ -129,7 +130,7 @@ const CreateProgressPostScreen = ({ navigation }) => {
           imageUrl = await uploadImage(selectedImages[0].uri);
           setUploadProgress(50);
         } catch (uploadError) {
-          console.error('Error uploading image:', uploadError);
+          logError('Error uploading image:', uploadError);
           Alert.alert('Upload Error', 'Failed to upload image. Continue without image?', [
             {
               text: 'Cancel',
@@ -161,13 +162,13 @@ const CreateProgressPostScreen = ({ navigation }) => {
         } : null
       };
       
-      console.log("Sending post data:", postData);
+      log("Sending post data:", postData);
       setUploadProgress(75);
       
       // Submit post to API
       const response = await axios.post(`${API_URL}/api/posts`, postData, config);
       
-      console.log("Post creation response:", response.data);
+      log("Post creation response:", response.data);
       setUploadProgress(100);
       
       // Navigate back
@@ -176,7 +177,7 @@ const CreateProgressPostScreen = ({ navigation }) => {
       // Show success message
       Alert.alert('Success', 'Your progress has been shared!');
     } catch (error) {
-      console.error('Error creating post:', error.response?.data || error.message);
+      logError('Error creating post:', error.response?.data || error.message);
       
       // Handle specific errors
       if (error.response?.status === 401) {
