@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log, logError } from '../utils/logger';
 import TrainingHeader from '../components/Trainheader';
 
 // Import the STABLE SwimmingTracker
@@ -34,14 +35,14 @@ export default function SwimmingScreen({ navigation, route }) {
         if (userData) {
           const user = JSON.parse(userData);
           const currentUserId = user._id || user.id || user.userId;
-          console.log('SwimmingScreen - User ID loaded:', currentUserId);
+          log('SwimmingScreen - User ID loaded:', currentUserId);
           setUserId(currentUserId);
         } else {
           Alert.alert('Error', 'User not authenticated. Please login again.');
           navigation.goBack();
         }
       } catch (error) {
-        console.error('Error getting current user ID:', error);
+        logError('Error getting current user ID:', error);
         Alert.alert('Error', 'Authentication error. Please login again.');
         navigation.goBack();
       } finally {
