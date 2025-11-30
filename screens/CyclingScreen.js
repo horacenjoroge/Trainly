@@ -177,7 +177,7 @@ export default function CyclingScreen({ navigation, route }) {
 
     // TESTING BYPASS: Allow short workouts in development mode
     if (distance < 100 && !__DEV__) {
-      console.log('CyclingScreen - Workout too short, showing alert');
+      log('CyclingScreen - Workout too short, showing alert');
       Alert.alert('Short Ride', 'Ride for at least 100 meters to save your cycling session.');
       return;
     } else if (distance < 100 && __DEV__) {
@@ -201,7 +201,7 @@ export default function CyclingScreen({ navigation, route }) {
     }
 
     try {
-      console.log('CyclingScreen - Stopping tracker...');
+      log('CyclingScreen - Stopping tracker...');
       stopTracking();
       
       log('CyclingScreen - About to save workout...');
@@ -219,7 +219,7 @@ export default function CyclingScreen({ navigation, route }) {
       });
       
       if (result && result.success) {
-        console.log('CyclingScreen - Workout saved successfully!');
+        log('CyclingScreen - Workout saved successfully!');
         
         // Show achievements if earned
         if (result.achievements && result.achievements.length > 0) {
