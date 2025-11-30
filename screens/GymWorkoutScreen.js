@@ -190,7 +190,7 @@ const GymWorkoutScreen = ({ navigation, route }) => {
         }
       }
     } catch (error) {
-      console.error('Error loading saved workout:', error);
+      logError('Error loading saved workout:', error);
     }
     
     try {
@@ -321,10 +321,10 @@ const finishWorkout = async () => {
     return;
   }
   
-  console.log('=== GYM WORKOUT FINISH DEBUG START ===');
-  console.log('Duration:', workoutDuration, 'seconds');
-  console.log('Selected Exercises:', selectedExercises.length);
-  console.log('User ID:', userId);
+  log('=== GYM WORKOUT FINISH DEBUG START ===');
+  log('Duration:', workoutDuration, 'seconds');
+  log('Selected Exercises:', selectedExercises.length);
+  log('User ID:', userId);
   
   const incompleteSets = selectedExercises.some(ex => 
     ex.sets.some(set => !set.completed)
@@ -341,7 +341,7 @@ const finishWorkout = async () => {
     Alert.alert('Short Workout', `Workout must be at least ${MINIMUM_DURATION} seconds. Continue your workout or discard this session.`);
     return;
   } else if (workoutDuration < MINIMUM_DURATION && __DEV__) {
-    console.log('GymWorkoutScreen - TESTING MODE: Allowing short workout for API testing');
+    log('GymWorkoutScreen - TESTING MODE: Allowing short workout for API testing');
   }
   
   Alert.alert(
@@ -369,7 +369,7 @@ const finishWorkout = async () => {
             let adjustedEndTime = new Date();
             
             if (workoutDuration < MINIMUM_DURATION) {
-              console.log(`GymWorkoutScreen - Duration too short (${workoutDuration}s), adjusting to ${MINIMUM_DURATION}s for API`);
+              log(`GymWorkoutScreen - Duration too short (${workoutDuration}s), adjusting to ${MINIMUM_DURATION}s for API`);
               adjustedDuration = MINIMUM_DURATION;
               adjustedEndTime = new Date(Date.now() - ((workoutDuration - MINIMUM_DURATION) * 1000));
             }
@@ -414,8 +414,8 @@ const finishWorkout = async () => {
               calories: workoutAPI.estimateCalories('Gym', adjustedDuration),
             };
 
-            console.log('GymWorkoutScreen - About to save workout with sessionId:', sessionId);
-            console.log('GymWorkoutScreen - Workout data structure:', {
+            log('GymWorkoutScreen - About to save workout with sessionId:', sessionId);
+            log('GymWorkoutScreen - Workout data structure:', {
               type: trackerData.type,
               userId: trackerData.userId,
               sessionId: trackerData.sessionId,
@@ -427,7 +427,7 @@ const finishWorkout = async () => {
             const result = await workoutAPI.saveWorkout('Gym', trackerData);
             
             if (result.success) {
-              console.log('GymWorkoutScreen - Workout saved successfully!');
+              log('GymWorkoutScreen - Workout saved successfully!');
               
               // Clear local storage
               await AsyncStorage.removeItem('currentWorkout');
@@ -455,7 +455,7 @@ const finishWorkout = async () => {
             setRestTimerActive(false);
             
           } catch (error) {
-            console.error('GymWorkoutScreen - DETAILED ERROR in finishWorkout:', {
+            logError('GymWorkoutScreen - DETAILED ERROR in finishWorkout:', {
               message: error.message,
               stack: error.stack,
               name: error.name,
@@ -471,7 +471,7 @@ const finishWorkout = async () => {
               ]
             );
           } finally {
-            console.log('=== GYM WORKOUT FINISH DEBUG END ===');
+            log('=== GYM WORKOUT FINISH DEBUG END ===');
           }
         }
       }
