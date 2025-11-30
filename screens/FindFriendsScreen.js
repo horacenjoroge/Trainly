@@ -132,7 +132,7 @@ export default function FindFriends({ navigation }) {
         
         setFollowingMap(followMap);
       } catch (followError) {
-        console.error('Error loading following status:', followError);
+        logError('Error loading following status:', followError);
       }
       
     } catch (error) {
