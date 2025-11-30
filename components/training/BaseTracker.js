@@ -145,9 +145,9 @@ class BaseTracker {
         })
       );
       
-      console.log(`Auto-saved ${this.activityType} session`);
+      log(`Auto-saved ${this.activityType} session`);
     } catch (error) {
-      console.error('Auto-save failed:', error);
+      logError('Auto-save failed:', error);
     }
   }
 
