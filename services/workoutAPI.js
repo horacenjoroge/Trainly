@@ -1,21 +1,22 @@
 // services/workoutAPI.js - Complete Workout API Service (FIXED)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from './api'; // Your existing API client
+import { log, logError } from '../utils/logger';
 
 export const workoutAPI = {
   // Create a new workout
   createWorkout: async (workoutData) => {
     try {
-      console.log('Creating workout with data:', workoutData);
+      log('Creating workout with data:', workoutData);
       const response = await apiClient.post('/api/workouts', workoutData);
-      console.log('Workout created successfully:', response.data);
+      log('Workout created successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error creating workout:', error);
+      logError('Error creating workout:', error);
       
       // ADD THIS - Log the full error response
       if (error.response) {
-        console.error('API Error Details:', {
+        logError('API Error Details:', {
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data,
@@ -32,10 +33,10 @@ export const workoutAPI = {
     try {
       const queryString = new URLSearchParams(params).toString();
       const response = await apiClient.get(`/api/workouts${queryString ? `?${queryString}` : ''}`);
-      console.log('Workouts fetched:', response.data);
+      log('Workouts fetched:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching workouts:', error);
+      logError('Error fetching workouts:', error);
       throw error;
     }
   },
@@ -46,7 +47,7 @@ export const workoutAPI = {
       const response = await apiClient.get(`/api/workouts/${id}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching workout:', error);
+      logError('Error fetching workout:', error);
       throw error;
     }
   },
@@ -55,10 +56,10 @@ export const workoutAPI = {
   updateWorkout: async (id, updateData) => {
     try {
       const response = await apiClient.patch(`/api/workouts/${id}`, updateData);
-      console.log('Workout updated:', response.data);
+      log('Workout updated:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error updating workout:', error);
+      logError('Error updating workout:', error);
       throw error;
     }
   },
@@ -67,10 +68,10 @@ export const workoutAPI = {
   deleteWorkout: async (id) => {
     try {
       const response = await apiClient.delete(`/api/workouts/${id}`);
-      console.log('Workout deleted:', response.data);
+      log('Workout deleted:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error deleting workout:', error);
+      logError('Error deleting workout:', error);
       throw error;
     }
   },
@@ -79,10 +80,10 @@ export const workoutAPI = {
   getWorkoutStats: async (period = 'month') => {
     try {
       const response = await apiClient.get(`/api/workouts/stats/summary?period=${period}`);
-      console.log('Workout stats:', response.data);
+      log('Workout stats:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error fetching workout stats:', error);
+      logError('Error fetching workout stats:', error);
       throw error;
     }
   },
@@ -94,7 +95,7 @@ export const workoutAPI = {
       const response = await apiClient.get(`/api/workouts/public/feed${queryString ? `?${queryString}` : ''}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching public workouts:', error);
+      logError('Error fetching public workouts:', error);
       throw error;
     }
   },
@@ -103,10 +104,10 @@ export const workoutAPI = {
   toggleLike: async (id) => {
     try {
       const response = await apiClient.post(`/api/workouts/${id}/like`);
-      console.log('Workout like toggled:', response.data);
+      log('Workout like toggled:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error toggling workout like:', error);
+      logError('Error toggling workout like:', error);
       throw error;
     }
   },
@@ -115,10 +116,10 @@ export const workoutAPI = {
   addComment: async (id, text) => {
     try {
       const response = await apiClient.post(`/api/workouts/${id}/comments`, { text });
-      console.log('Comment added:', response.data);
+      log('Comment added:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error adding comment:', error);
+      logError('Error adding comment:', error);
       throw error;
     }
   },
@@ -190,30 +191,30 @@ export const workoutAPI = {
       }
       return null;
     } catch (error) {
-      console.error('Error getting current user ID:', error);
+      logError('Error getting current user ID:', error);
       return null;
     }
   },
 
   // FIXED: Helper method to format workout data for different activity types
   formatWorkoutData: (activityType, trackerData, userPreferences = {}) => {
-    console.log('formatWorkoutData input:', { activityType, trackerData });
+    log('formatWorkoutData input:', { activityType, trackerData });
     
     // CRITICAL FIX: Extract and preserve sessionId and userId
     const sessionId = trackerData.sessionId;
     const userId = trackerData.userId;
     
     if (!sessionId) {
-      console.error('WARNING: sessionId is missing from trackerData');
+      logError('WARNING: sessionId is missing from trackerData');
     }
     
     if (!userId) {
-      console.error('WARNING: userId is missing from trackerData');
+      logError('WARNING: userId is missing from trackerData');
     }
     
     // Check if trackerData already has the correct structure (from RunningTracker.prepareWorkoutData)
     if (trackerData.running || trackerData.cycling || trackerData.swimming || trackerData.gym) {
-      console.log('Data already formatted by tracker, using as-is');
+      log('Data already formatted by tracker, using as-is');
       return {
         ...trackerData,
         // CRITICAL FIX: Ensure sessionId and userId are preserved
@@ -225,7 +226,7 @@ export const workoutAPI = {
     }
 
     // Legacy format support - convert flat structure to nested
-    console.log('Converting legacy flat structure to nested format');
+    log('Converting legacy flat structure to nested format');
     
     const baseWorkout = {
       type: activityType,
@@ -365,7 +366,7 @@ export const workoutAPI = {
   // FIXED: Helper to save workout with proper user authentication
   saveWorkout: async (activityType, trackerData, userPreferences = {}) => {
     try {
-      console.log('saveWorkout called with:', { activityType, trackerData });
+      log('saveWorkout called with:', { activityType, trackerData });
       
       // CRITICAL: Validate required fields before processing
       if (!trackerData.sessionId) {
@@ -387,16 +388,16 @@ export const workoutAPI = {
       
       // CRITICAL FIX: Double-check that sessionId and userId are preserved
       if (!workoutData.sessionId) {
-        console.error('CRITICAL ERROR: sessionId was lost during formatting!');
+        logError('CRITICAL ERROR: sessionId was lost during formatting!');
         workoutData.sessionId = trackerData.sessionId;
       }
       
       if (!workoutData.userId) {
-        console.error('CRITICAL ERROR: userId was lost during formatting!');
+        logError('CRITICAL ERROR: userId was lost during formatting!');
         workoutData.userId = trackerData.userId;
       }
       
-      console.log('Final formatted workout data:', workoutData);
+      log('Final formatted workout data:', workoutData);
 
       // Add location if available
       if (trackerData.currentLocation) {
@@ -422,11 +423,11 @@ export const workoutAPI = {
         throw new Error(response.message || 'Failed to save workout');
       }
     } catch (error) {
-      console.error('Error saving workout:', error);
+      logError('Error saving workout:', error);
       
       // ENHANCED ERROR HANDLING: Provide more specific error messages
       if (error.response?.data) {
-        console.error('API Error Details:', error.response.data);
+        logError('API Error Details:', error.response.data);
         return {
           success: false,
           error: error.response.data.message || error.message

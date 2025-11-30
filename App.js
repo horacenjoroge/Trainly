@@ -17,13 +17,6 @@ import { log, logError, logWarn } from './utils/logger';
 // IMMEDIATELY hide the native splash screen to prevent conflicts
 SplashScreen.hideAsync().catch((err) => logWarn('Splash screen hide error:', err));
 
-global.getSafeImageUri = (uri) => {
-  if (uri === null || uri === undefined) return '';
-  return String(uri);
-};
-
-global.onLogout = null;
-
 const RootStack = createStackNavigator();
 
 const MainComponentWrapper = ({ navigation }) => {

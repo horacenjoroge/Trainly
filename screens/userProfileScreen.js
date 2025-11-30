@@ -267,7 +267,7 @@ export default function UserProfile({ route, onLogout }) {
    <View style={[styles.activityItem, { borderColor: theme.colors.border }]}>
      {post.image && (
        <Image
-         source={global.getSafeImageUri(post.image || 'https://via.placeholder.com/60')}
+         source={getSafeImageUri(post.image || 'https://via.placeholder.com/60')}
          style={styles.activityImage}
          resizeMode="cover"
        />
@@ -345,7 +345,7 @@ export default function UserProfile({ route, onLogout }) {
      <ScrollView>
        <View style={[styles.profileHeader, { backgroundColor: theme.colors.surface }]}>
          <Image
-           source={global.getSafeImageUri(userData.avatar || 'https://via.placeholder.com/150')}
+           source={getSafeImageUri(userData.avatar || 'https://via.placeholder.com/150')}
            style={styles.profileImage}
            resizeMode="cover"
          />
