@@ -271,78 +271,36 @@ export default function ProfileScreen({ navigation }) {
           </Text>
         </View>
         
-        {/* Profile Info */}
-        <View style={styles.profileInfo}>
-          <View style={styles.profileImageWrapper}>
-            <Image
-              source={getSafeImageUri(profileImage)}
-              style={styles.profileImage}
-            />
-            <TouchableOpacity 
-              style={[styles.cameraButton, { backgroundColor: theme.colors.primary }]}
-              onPress={() => setModalVisible(true)}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="camera" size={16} color="#fff" />
-              )}
-            </TouchableOpacity>
-          </View>
-          
-          <Text style={[styles.userName, { color: theme.colors.text }]}>
-            {userData.name}
-          </Text>
-          
-          <Text style={[styles.userBio, { color: theme.colors.textSecondary }]}>
-            {userData.bio}
-          </Text>
-        </View>
+        {/* Profile Header */}
+        <ProfileHeader
+          profileImage={profileImage}
+          userName={userData.name}
+          userBio={userData.bio}
+          onImagePress={() => setModalVisible(true)}
+          uploading={uploading}
+        />
         
         {/* Stats */}
-        <View style={[styles.statsContainer, { 
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border
-        }]}>
-          <StatItem 
-            label="Workouts" 
-            value={userData.stats.workouts} 
-            onPress={() => navigation.navigate('WorkoutHistory')}
-          />
-          <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
-          
-          <StatItem 
-            label="Followers" 
-            value={userData.followers} 
-            onPress={() => {
-              if (currentUserId) {
-                navigation.navigate('FollowersList', { userId: currentUserId });
-              } else {
-                logWarn('No current user ID available for followers navigation');
-              }
-            }}
-          />
-          <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
-          
-          <StatItem 
-            label="Following" 
-            value={userData.following} 
-            onPress={() => {
-              if (currentUserId) {
-                navigation.navigate('FollowingList', { userId: currentUserId });
-              } else {
-                logWarn('No current user ID available for following navigation');
-              }
-            }}
-          />
-          <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
-          
-          <StatItem 
-            label="Calories" 
-            value={userData.stats.calories} 
-          />
-        </View>
+        <ProfileStats
+          stats={userData.stats}
+          followers={userData.followers}
+          following={userData.following}
+          onWorkoutsPress={() => navigation.navigate('WorkoutHistory')}
+          onFollowersPress={() => {
+            if (currentUserId) {
+              navigation.navigate('FollowersList', { userId: currentUserId });
+            } else {
+              logWarn('No current user ID available for followers navigation');
+            }
+          }}
+          onFollowingPress={() => {
+            if (currentUserId) {
+              navigation.navigate('FollowingList', { userId: currentUserId });
+            } else {
+              logWarn('No current user ID available for following navigation');
+            }
+          }}
+        />
 
         {/* Action Buttons Row */}
         <View style={styles.actionsContainer}>
