@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appearance } from 'react-native';
+import { logError } from '../utils/logger';
 
 // Theme storage key
 const THEME_PREFERENCE_KEY = '@trainly_theme_mode';
