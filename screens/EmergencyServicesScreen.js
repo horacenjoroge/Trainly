@@ -335,7 +335,7 @@ export default function EmergencyServicesScreen({ navigation }) {
 
           detectFall(data);
         } catch (error) {
-          console.error('Accelerometer listener error:', error);
+          logError('Accelerometer listener error:', error);
         }
       });
 
@@ -368,7 +368,7 @@ export default function EmergencyServicesScreen({ navigation }) {
 
       fallTimerRef.current = setInterval(() => {
         setFallCountdown(prev => {
-          console.log('Countdown tick:', prev - 1);
+          log('Countdown tick:', prev - 1);
           if (prev <= 1) {
             clearInterval(fallTimerRef.current);
             fallTimerRef.current = null;
@@ -394,7 +394,7 @@ export default function EmergencyServicesScreen({ navigation }) {
               }
               setFallCountdown(0);
               Vibration.cancel();
-              console.log('Fall countdown canceled');
+              log('Fall countdown canceled');
             },
           },
         ],
@@ -412,7 +412,7 @@ export default function EmergencyServicesScreen({ navigation }) {
     if (fallTimerRef.current) {
       clearInterval(fallTimerRef.current);
       fallTimerRef.current = null;
-      console.log('Fall timer cleared');
+      log('Fall timer cleared');
     }
     setFallDetectionActive(false);
     setFallCountdown(0);
@@ -455,7 +455,7 @@ export default function EmergencyServicesScreen({ navigation }) {
                   }
                   setFallCountdown(0);
                   Vibration.cancel();
-                  console.log('Countdown banner canceled');
+                  log('Countdown banner canceled');
                 }}
               >
                 <Text style={styles.countdownCancel}>Cancel</Text>
