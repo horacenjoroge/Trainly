@@ -1,6 +1,7 @@
 // global.js
 import React from 'react';
 import { Image as RNImage, Text } from 'react-native';
+import { log, logWarn } from './utils/logger';
 
 // Save original components
 const OriginalImage = RNImage;
@@ -13,7 +14,7 @@ function SafeImage(props) {
   if (safeProps.source && safeProps.source.uri !== undefined) {
     // Convert non-string URI to string
     if (typeof safeProps.source.uri !== 'string') {
-      console.warn('Converting non-string URI to string:', JSON.stringify(safeProps.source.uri));
+      logWarn('Converting non-string URI to string:', JSON.stringify(safeProps.source.uri));
       safeProps.source = {
         ...safeProps.source,
         uri: String(safeProps.source.uri || '')
@@ -22,7 +23,7 @@ function SafeImage(props) {
     
     // Handle null URIs
     if (safeProps.source.uri === 'null' || safeProps.source.uri === 'undefined') {
-      console.warn('Fixing null/undefined URI');
+      logWarn('Fixing null/undefined URI');
       safeProps.source = require('./assets/images/trail.jpg'); // Add a placeholder image to your assets folder
     }
   }
@@ -45,4 +46,4 @@ global.__fixImageUri = (uri) => {
   return String(uri);
 };
 
-console.log('Image component patched for safety!');
+log('Image component patched for safety!');
