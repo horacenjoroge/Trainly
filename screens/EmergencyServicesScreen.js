@@ -211,24 +211,24 @@ export default function EmergencyServicesScreen({ navigation }) {
       return;
     }
     setIsSendingSOS(true);
-    console.log('Attempting to send SOS', { skipLocationCheck, isAutoSOS, locationTrackingActive, hasLocation: !!currentLocation });
+    log('Attempting to send SOS', { skipLocationCheck, isAutoSOS, locationTrackingActive, hasLocation: !!currentLocation });
 
     try {
       // For auto-SOS, attempt to get location if not available
       let finalLocation = currentLocation;
       if (!skipLocationCheck && (!locationTrackingActive || !currentLocation)) {
         if (isAutoSOS) {
-          console.log('Auto-SOS: Attempting to fetch location');
+          log('Auto-SOS: Attempting to fetch location');
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status === 'granted') {
             const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
             finalLocation = { latitude: location.coords.latitude, longitude: location.coords.longitude };
-            console.log('Auto-SOS: Location fetched', finalLocation);
+            log('Auto-SOS: Location fetched', finalLocation);
           } else {
-            console.log('Auto-SOS: Location permission denied');
+            log('Auto-SOS: Location permission denied');
           }
         } else {
-          console.log('Manual SOS: Location check failed, prompting user');
+          log('Manual SOS: Location check failed, prompting user');
           setIsSendingSOS(false);
           Alert.alert(
             'Location Required',
