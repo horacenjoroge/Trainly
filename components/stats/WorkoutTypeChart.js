@@ -39,10 +39,14 @@ const WorkoutTypeChart = React.memo(({ stats }) => {
       return null;
     }
 
-    return stats.map(stat => ({
+    const workoutColors = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'
+    ];
+
+    return stats.map((stat, index) => ({
       name: stat._id || 'Unknown',
       population: stat.count || 0,
-      color: `rgba(70, 183, 209, ${0.7 + (Math.random() * 0.3)})`,
+      color: workoutColors[index % workoutColors.length],
       legendFontColor: colors.text,
       legendFontSize: 12,
     }));
