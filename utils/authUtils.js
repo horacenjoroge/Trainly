@@ -1,11 +1,17 @@
+/**
+ * @deprecated This file contains duplicate/unused API client code.
+ * Use services/api.js as the single source of truth for API calls.
+ * 
+ * This file is kept for backward compatibility but should not be used.
+ * All API calls should use the apiClient from services/api.js
+ */
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'  // Local development
-  : 'https://trainly-backend-production.up.railway.app';  // Production
+// NOTE: These functions use 'accessToken' key which is inconsistent with the main app
+// The main app uses 'token' key. These are kept for reference only.
 
-// Store tokens
+// Store tokens (DEPRECATED - use AuthContext instead)
 export const storeTokens = async (accessToken, refreshToken) => {
   try {
     await AsyncStorage.setItem('accessToken', accessToken);
@@ -15,7 +21,7 @@ export const storeTokens = async (accessToken, refreshToken) => {
   }
 };
 
-// Get access token
+// Get access token (DEPRECATED - use AuthContext instead)
 export const getAccessToken = async () => {
   try {
     return await AsyncStorage.getItem('accessToken');
@@ -25,7 +31,7 @@ export const getAccessToken = async () => {
   }
 };
 
-// Get refresh token
+// Get refresh token (DEPRECATED - use AuthContext instead)
 export const getRefreshToken = async () => {
   try {
     return await AsyncStorage.getItem('refreshToken');
@@ -35,73 +41,6 @@ export const getRefreshToken = async () => {
   }
 };
 
-// Refresh access token
-export const refreshAccessToken = async () => {
-  try {
-    const refreshToken = await getRefreshToken();
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
-    const response = await axios.post(`${API_URL}/refresh`, { refreshToken });
-    const { token: newAccessToken, refreshToken: newRefreshToken } = response.data;
-
-    // Store new tokens
-    await storeTokens(newAccessToken, newRefreshToken);
-    return newAccessToken;
-  } catch (error) {
-    console.error('Error refreshing token:', error);
-    throw error;
-  }
-};
-
-// Axios instance with automatic token refresh
-export const apiClient = axios.create({
-  baseURL: 'http://192.168.100.88:3000/api', // Replace with your backend URL
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-apiClient.interceptors.request.use(
-  async (config) => {
-    let token = await getAccessToken();
-    if (token) {
-      config.headers['x-auth-token'] = token;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      try {
-        const newAccessToken = await refreshAccessToken();
-        originalRequest.headers['x-auth-token'] = newAccessToken;
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        // Logout user or redirect to login
-        await AsyncStorage.removeItem('accessToken');
-        await AsyncStorage.removeItem('refreshToken');
-        return Promise.reject(refreshError);
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-// Logout
-export const logout = async () => {
-  try {
-    await apiClient.post('/auth/logout');
-    await AsyncStorage.removeItem('accessToken');
-    await AsyncStorage.removeItem('refreshToken');
-  } catch (error) {
-    console.error('Error during logout:', error);
-  }
-};
+// NOTE: apiClient export removed - use services/api.js instead
+// NOTE: refreshAccessToken removed - use authService.refreshToken from services/api.js
+// NOTE: logout removed - use authService.logout from services/api.js
