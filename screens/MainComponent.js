@@ -21,6 +21,7 @@ import UserProfile from '../screens/userProfileScreen';
 import FindFriends from '../screens/FindFriendsScreen';
 import GymWorkoutScreen from '../screens/GymWorkoutScreen';
 import { useTheme } from '../context/ThemeContext';
+import { log, logError } from '../utils/logger';
 import RunningScreen from '../screens/RunningScreen';
 import SwimmingScreen from '../screens/SwimmingScreen';
 import CyclingScreen from '../screens/CyclingScreen';
@@ -411,9 +412,9 @@ const MainComponent = (props) => {
               if (props && props.onLogout) {
                 props.onLogout();
               }
-              console.log('Logged out successfully');
+              log('Logged out successfully');
             } catch (error) {
-              console.error('Logout error:', error);
+              logError('Logout error:', error);
             }
           }
         }
