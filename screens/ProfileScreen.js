@@ -266,50 +266,6 @@ export default function ProfileScreen({ navigation }) {
     return icons[type] || 'fitness-outline';
   };
 
-  // Stat item component
-  const StatItem = ({ label, value, onPress }) => (
-    <TouchableOpacity 
-      style={styles.statItem}
-      onPress={onPress}
-    >
-      <Text style={[styles.statValue, { color: theme.colors.text }]}>
-        {value}
-      </Text>
-      <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  // Recent Workout Item Component
-  const RecentWorkoutItem = ({ workout }) => (
-    <TouchableOpacity 
-      style={[styles.workoutItem, { 
-        backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.border 
-      }]}
-      onPress={() => navigation.navigate('WorkoutDetail', { workout })}
-    >
-      <View style={[styles.workoutIcon, { backgroundColor: theme.colors.primary + '15' }]}>
-        <Ionicons 
-          name={getWorkoutIcon(workout.type)} 
-          size={20} 
-          color={theme.colors.primary} 
-        />
-      </View>
-      <View style={styles.workoutInfo}>
-        <Text style={[styles.workoutType, { color: theme.colors.text }]}>
-          {workout.type}
-        </Text>
-        <Text style={[styles.workoutDetails, { color: theme.colors.textSecondary }]}>
-          {formatDuration(workout.duration)} • {workout.calories || 0} cal
-        </Text>
-      </View>
-      <Text style={[styles.workoutDate, { color: theme.colors.textSecondary }]}>
-        {new Date(workout.date).toLocaleDateString()}
-      </Text>
-    </TouchableOpacity>
-  );
 
   if (loading) {
     return (
