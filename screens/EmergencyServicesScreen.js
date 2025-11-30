@@ -21,6 +21,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import EmergencyMap from '../components/EmergencyMap';
 import { debounce } from 'lodash';
+import { log, logError, logWarn } from '../utils/logger';
 
 const EMERGENCY_CONTACTS_KEY = '@emergency_contacts';
 
@@ -65,7 +66,7 @@ export default function EmergencyServicesScreen({ navigation }) {
       if (fallTimerRef.current) {
         clearInterval(fallTimerRef.current);
         fallTimerRef.current = null;
-        console.log('Cleaned up fall timer on unmount');
+        log('Cleaned up fall timer on unmount');
       }
     };
   }, []);
@@ -74,7 +75,7 @@ export default function EmergencyServicesScreen({ navigation }) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        console.log('Location permission denied');
+        log('Location permission denied');
         setLocationTrackingActive(false);
         return false;
       }
@@ -86,10 +87,10 @@ export default function EmergencyServicesScreen({ navigation }) {
       );
       setLocationSubscription(subscription);
       setLocationTrackingActive(true);
-      console.log('Location tracking enabled');
+      log('Location tracking enabled');
       return true;
     } catch (error) {
-      console.error('Location setup error:', error);
+      logError('Location setup error:', error);
       setLocationTrackingActive(false);
       return false;
     }
@@ -102,7 +103,7 @@ export default function EmergencyServicesScreen({ navigation }) {
     }
     setLocationTrackingActive(false);
     setCurrentLocation(null);
-    console.log('Location tracking stopped');
+    log('Location tracking stopped');
   };
 
   const toggleLocationTracking = async () => {
