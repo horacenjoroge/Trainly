@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import apiClient from '../services/api';
+import { logError } from '../utils/logger';
 
 const AchievementsScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -55,7 +56,7 @@ const AchievementsScreen = ({ navigation }) => {
         await loadLeaderboard();
       }
     } catch (error) {
-      console.error('Error loading tab data:', error);
+      logError('Error loading tab data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,7 +88,7 @@ const AchievementsScreen = ({ navigation }) => {
         setStats(response.data.data.stats);
       }
     } catch (error) {
-      console.error('Error loading achievements:', error);
+      logError('Error loading achievements:', error);
       Alert.alert('Error', 'Failed to load achievements');
     }
   };
@@ -100,7 +101,7 @@ const AchievementsScreen = ({ navigation }) => {
         setProgress(response.data.data.progress);
       }
     } catch (error) {
-      console.error('Error loading progress:', error);
+      logError('Error loading progress:', error);
       Alert.alert('Error', 'Failed to load achievement progress');
     }
   };
@@ -113,7 +114,7 @@ const AchievementsScreen = ({ navigation }) => {
         setLeaderboard(response.data.data.leaderboard);
       }
     } catch (error) {
-      console.error('Error loading leaderboard:', error);
+      logError('Error loading leaderboard:', error);
       Alert.alert('Error', 'Failed to load leaderboard');
     }
   };
@@ -147,7 +148,7 @@ const AchievementsScreen = ({ navigation }) => {
         title: `Achievement Unlocked: ${achievement.title}`
       });
     } catch (error) {
-      console.error('Error sharing achievement:', error);
+      logError('Error sharing achievement:', error);
       Alert.alert('Error', 'Failed to share achievement');
     }
   };
