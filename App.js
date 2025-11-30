@@ -169,19 +169,8 @@ const AppContent = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally empty - should only run once on mount
 
-  useEffect(() => {
-    global.onLogout = async () => {
-      log('🚪 Global logout handler triggered');
-      // DON'T reset appIsReady on logout - this causes the infinite splash
-      // setAppIsReady(false);  // REMOVED THIS LINE
-      // setPreparationStarted(false); // REMOVED THIS LINE
-      await refreshAuth();
-    };
-    
-    return () => {
-      global.onLogout = null;
-    };
-  }, [refreshAuth]);
+  // Removed global.onLogout - logout is handled by AuthContext
+  // No need for global state pollution
 
   // Determine if we should show splash
   // FIXED: Don't show splash after logout if app is ready
