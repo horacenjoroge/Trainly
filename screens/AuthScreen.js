@@ -227,27 +227,6 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
             )}
           </TouchableOpacity>
 
-          {/* Rest of UI remains the same... */}
-          <View style={styles.dividerContainer}>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
-              or continue with
-            </Text>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          </View>
-
-          <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity 
-              style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}
-            >
-              <Ionicons name="logo-google" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}
-            >
-              <Ionicons name="logo-apple" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={styles.bottomContainer}>
@@ -332,31 +311,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  socialButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   bottomContainer: {
     flexDirection: 'row',
