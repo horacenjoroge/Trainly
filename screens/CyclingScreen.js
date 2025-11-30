@@ -181,13 +181,13 @@ export default function CyclingScreen({ navigation, route }) {
       Alert.alert('Short Ride', 'Ride for at least 100 meters to save your cycling session.');
       return;
     } else if (distance < 100 && __DEV__) {
-      console.log('CyclingScreen - TESTING MODE: Allowing short workout for API testing');
+      log('CyclingScreen - TESTING MODE: Allowing short workout for API testing');
     }
 
     // OPTION 4 FIX: Ensure minimum 30-second duration for API
     const MINIMUM_DURATION = 30; // Backend requirement
     if (duration < MINIMUM_DURATION) {
-      console.log(`CyclingScreen - Duration too short (${duration}s), adjusting to ${MINIMUM_DURATION}s for API`);
+      log(`CyclingScreen - Duration too short (${duration}s), adjusting to ${MINIMUM_DURATION}s for API`);
       
       // Temporarily modify tracker properties for API compliance
       const originalDuration = tracker.duration;
@@ -196,8 +196,8 @@ export default function CyclingScreen({ navigation, route }) {
       tracker.duration = MINIMUM_DURATION;
       tracker.endTime = new Date(tracker.startTime.getTime() + (MINIMUM_DURATION * 1000));
       
-      console.log('CyclingScreen - Adjusted duration from', originalDuration, 'to', tracker.duration, 'seconds');
-      console.log('CyclingScreen - Adjusted endTime to:', tracker.endTime.toISOString());
+      log('CyclingScreen - Adjusted duration from', originalDuration, 'to', tracker.duration, 'seconds');
+      log('CyclingScreen - Adjusted endTime to:', tracker.endTime.toISOString());
     }
 
     try {
