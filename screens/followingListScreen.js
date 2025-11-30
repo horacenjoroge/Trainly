@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSafeImageUri } from '../utils/imageUtils';
+import { log, logError, logWarn } from '../utils/logger';
 
 export default function FollowingList({ route, navigation }) {
   const { userId } = route.params || {}; 
@@ -37,12 +38,12 @@ export default function FollowingList({ route, navigation }) {
           const user = JSON.parse(data);
           const foundUserId = user._id || user.id;
           setCurrentUserId(foundUserId);
-          console.log('✅ FollowingList: Found current user ID:', foundUserId);
+          log('✅ FollowingList: Found current user ID:', foundUserId);
         } else {
-          console.warn('⚠️ FollowingList: No user data found in storage');
+          logWarn('⚠️ FollowingList: No user data found in storage');
         }
       } catch (error) {
-        console.error('❌ FollowingList: Error getting current user:', error);
+        logError('❌ FollowingList: Error getting current user:', error);
       }
     };
     
@@ -50,7 +51,7 @@ export default function FollowingList({ route, navigation }) {
   }, []);
 
   useEffect(() => {
-    console.log('🔄 FollowingList: Params userId:', userId);
+    log('🔄 FollowingList: Params userId:', userId);
     
     if (userId) {
       loadFollowing();
@@ -64,13 +65,13 @@ export default function FollowingList({ route, navigation }) {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 FollowingList: Loading following for userId:', userId);
+      log('🔄 FollowingList: Loading following for userId:', userId);
       
       const response = await userService.getFollowing(userId);
-      console.log('✅ FollowingList: Loaded following data:', response?.length || 0, 'users');
+      log('✅ FollowingList: Loaded following data:', response?.length || 0, 'users');
       setFollowing(response || []);
     } catch (error) {
-      console.error('❌ FollowingList: Error loading following:', error);
+      logError('❌ FollowingList: Error loading following:', error);
       setError('Failed to load following list');
     } finally {
       setLoading(false);
@@ -87,7 +88,7 @@ export default function FollowingList({ route, navigation }) {
       // Reload data to ensure UI is in sync with server
       setTimeout(loadFollowing, 500);
     } catch (error) {
-      console.error('Error unfollowing user:', error);
+      logError('Error unfollowing user:', error);
     }
   };
 
