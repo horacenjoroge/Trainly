@@ -26,7 +26,7 @@ export const getAccessToken = async () => {
   try {
     return await AsyncStorage.getItem('accessToken');
   } catch (error) {
-    console.error('Error getting access token:', error);
+    logError('Error getting access token:', error);
     return null;
   }
 };
@@ -36,7 +36,7 @@ export const getRefreshToken = async () => {
   try {
     return await AsyncStorage.getItem('refreshToken');
   } catch (error) {
-    console.error('Error getting refresh token:', error);
+    logError('Error getting refresh token:', error);
     return null;
   }
 };
