@@ -28,6 +28,10 @@ import { useCyclingTracker } from '../components/training/CyclingTracker';
 import CyclingMainStats from '../components/cycling/CyclingMainStats';
 import CyclingPerformanceStats from '../components/cycling/CyclingPerformanceStats';
 import CyclingElevationCard from '../components/cycling/CyclingElevationCard';
+import CyclingActivityCard from '../components/cycling/CyclingActivityCard';
+import CyclingControlButtons from '../components/cycling/CyclingControlButtons';
+import CyclingIntervalModal from '../components/cycling/CyclingIntervalModal';
+import CyclingStatsModal from '../components/cycling/CyclingStatsModal';
 
 const { width } = Dimensions.get('window');
 
@@ -320,74 +324,22 @@ export default function CyclingScreen({ navigation, route }) {
         />
 
         {/* Intervals & Segments */}
-        {(intervals.length > 0 || segments.length > 0) && (
-          <View style={[styles.segmentsCard, { backgroundColor: colors.surface }]}>
-            <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>📊 Activity</Text>
-              <TouchableOpacity onPress={() => setShowStatsModal(true)}>
-                <Ionicons name="stats-chart-outline" size={20} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.activityStats}>
-              <View style={styles.activityItem}>
-                <Text style={[styles.activityNumber, { color: colors.primary }]}>
-                  {segments.length}
-                </Text>
-                <Text style={[styles.activityLabel, { color: colors.textSecondary }]}>
-                  Segments
-                </Text>
-              </View>
-              
-              <View style={styles.activityItem}>
-                <Text style={[styles.activityNumber, { color: colors.primary }]}>
-                  {intervals.length}
-                </Text>
-                <Text style={[styles.activityLabel, { color: colors.textSecondary }]}>
-                  Intervals
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
+        <CyclingActivityCard
+          intervals={intervals}
+          segments={segments}
+          onStatsPress={() => setShowStatsModal(true)}
+        />
       </ScrollView>
 
       {/* Control Buttons */}
-      <View style={styles.controls}>
-        <TouchableOpacity
-          style={[styles.controlButton, { backgroundColor: !isActive ? colors.primary : isPaused ? colors.primary : colors.error }]}
-          onPress={handleStartPause}
-        >
-          <Ionicons 
-            name={!isActive ? "play" : isPaused ? "play" : "pause"} 
-            size={24} 
-            color="#FFFFFF" 
-          />
-          <Text style={styles.controlButtonText}>
-            {!isActive ? "Start" : isPaused ? "Resume" : "Pause"}
-          </Text>
-        </TouchableOpacity>
-
-        {isActive && (
-          <TouchableOpacity
-            style={[styles.controlButton, { backgroundColor: colors.warning || '#FF9800' }]}
-            onPress={() => setShowIntervalModal(true)}
-          >
-            <Ionicons name="timer-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.controlButtonText}>Interval</Text>
-          </TouchableOpacity>
-        )}
-
-        {distance > 0 && (
-          <TouchableOpacity
-            style={[styles.controlButton, { backgroundColor: colors.success || '#4CAF50' }]}
-            onPress={handleFinish}
-          >
-            <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.controlButtonText}>Finish</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      <CyclingControlButtons
+        isActive={isActive}
+        isPaused={isPaused}
+        distance={distance}
+        onStartPause={handleStartPause}
+        onInterval={() => setShowIntervalModal(true)}
+        onFinish={handleFinish}
+      />
 
       {/* Interval Training Modal */}
       <Modal
