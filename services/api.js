@@ -491,19 +491,9 @@ export const userService = {
       return response.data;
     } catch (error) {
       logError('Error fetching user profile:', error);
-      return {
-        _id: userId,
-        name: 'User',
-        bio: 'Fitness enthusiast',
-        avatar: 'https://via.placeholder.com/150',
-        stats: {
-          workouts: Math.floor(Math.random() * 100),
-          hours: Math.floor(Math.random() * 200),
-          calories: Math.floor(Math.random() * 50000),
-        },
-        followers: Math.floor(Math.random() * 30),
-        following: Math.floor(Math.random() * 30),
-      };
+      // Return null instead of fake data to indicate error
+      // Caller should handle null case and show appropriate error message
+      return null;
     }
   },
 };
