@@ -48,7 +48,7 @@ export default function RunningScreen({ navigation, route }) {
           navigation.goBack();
         }
       } catch (error) {
-        console.error('Error getting current user ID:', error);
+        logError('Error getting current user ID:', error);
         Alert.alert('Error', 'Authentication error. Please login again.');
         navigation.goBack();
       }
@@ -165,21 +165,21 @@ export default function RunningScreen({ navigation, route }) {
 
   // ENHANCED: Handle finish workout with comprehensive debug logging
   const handleFinish = async () => {
-    console.log('=== WORKOUT FINISH DEBUG START ===');
-    console.log('Distance:', distance, 'meters');
-    console.log('Duration:', duration, 'seconds');
-    console.log('User ID:', userId);
-    console.log('Activity Type:', activityType);
-    console.log('Is Active:', isActive);
-    console.log('Is Paused:', isPaused);
-    console.log('GPS Points Count:', gpsPoints.length);
-    console.log('Splits Count:', splits.length);
-    console.log('Current Speed:', currentSpeed);
-    console.log('Average Speed:', averageSpeed);
-    console.log('Max Speed:', maxSpeed);
-    console.log('Current Pace:', currentPace);
-    console.log('Average Pace:', averagePace);
-    console.log('Elevation:', elevation);
+    log('=== WORKOUT FINISH DEBUG START ===');
+    log('Distance:', distance, 'meters');
+    log('Duration:', duration, 'seconds');
+    log('User ID:', userId);
+    log('Activity Type:', activityType);
+    log('Is Active:', isActive);
+    log('Is Paused:', isPaused);
+    log('GPS Points Count:', gpsPoints.length);
+    log('Splits Count:', splits.length);
+    log('Current Speed:', currentSpeed);
+    log('Average Speed:', averageSpeed);
+    log('Max Speed:', maxSpeed);
+    log('Current Pace:', currentPace);
+    log('Average Pace:', averagePace);
+    log('Elevation:', elevation);
 
     // TESTING BYPASS: Allow short workouts in development mode
     if (distance < 100 && !__DEV__) {
@@ -187,7 +187,7 @@ export default function RunningScreen({ navigation, route }) {
       Alert.alert('Short Run', 'Run for at least 100 meters to save your session.');
       return;
     } else if (distance < 100 && __DEV__) {
-      console.log('RunningScreen - TESTING MODE: Allowing short workout for API testing');
+      log('RunningScreen - TESTING MODE: Allowing short workout for API testing');
     }
 
     // OPTION 4 FIX: Ensure minimum 30-second duration for API
