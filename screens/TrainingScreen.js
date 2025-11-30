@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, Share, Text, TouchableOpacity, Linking } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { logError } from '../utils/logger';
 
 import TrainingHeader from '../components/Trainheader';
 import TrainingMap from '../components/Trainmap';
@@ -39,7 +40,7 @@ export default function TrainingScreen({ navigation, route }) {
          await getCurrentLocation();
        }
      } catch (error) {
-       console.error('Error checking location permission:', error);
+       logError('Error checking location permission:', error);
      } finally {
        setIsLoading(false);
      }
@@ -60,7 +61,7 @@ export default function TrainingScreen({ navigation, route }) {
      setCoordinates([initialLocation]);
      return true;
    } catch (error) {
-     console.error('Error getting current location:', error);
+     logError('Error getting current location:', error);
      return false;
    }
  };
@@ -109,7 +110,7 @@ export default function TrainingScreen({ navigation, route }) {
        return false;
      }
    } catch (error) {
-     console.error('Error requesting location permission:', error);
+     logError('Error requesting location permission:', error);
      return false;
    }
  };
