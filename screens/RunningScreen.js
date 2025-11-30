@@ -135,15 +135,15 @@ export default function RunningScreen({ navigation, route }) {
         }
       } else if (isPaused) {
         // Resume running
-        console.log('RunningScreen - Resuming tracking...');
+        log('RunningScreen - Resuming tracking...');
         resumeTracking();
       } else {
         // Pause running
-        console.log('RunningScreen - Pausing tracking...');
+        log('RunningScreen - Pausing tracking...');
         pauseTracking();
       }
     } catch (error) {
-      console.error('Error in start/pause:', error);
+      logError('Error in start/pause:', error);
       Alert.alert('Error', 'Could not start/pause running session.');
     }
   };
