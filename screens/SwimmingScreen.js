@@ -159,10 +159,10 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
     }
 
     try {
-      console.log('SwimmingScreen - Stopping tracker...');
+      log('SwimmingScreen - Stopping tracker...');
       swimming.stopTracking();
       
-      console.log('SwimmingScreen - About to save workout...');
+      log('SwimmingScreen - About to save workout...');
       const result = await swimming.saveWorkout();
       
       if (result && result.success) {
