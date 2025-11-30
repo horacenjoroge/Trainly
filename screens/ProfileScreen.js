@@ -19,38 +19,12 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
 import { log, logError, logWarn } from '../utils/logger';
+import { getSafeImageUri } from '../utils/imageUtils';
+import ProfileHeader from '../components/profile/ProfileHeader';
+import ProfileStats from '../components/profile/ProfileStats';
+import RecentWorkoutItem from '../components/profile/RecentWorkoutItem';
 
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'  // Local development
-  : 'https://trainly-backend-production.up.railway.app';  // Production
 const USER_DATA_KEY = '@user_data';
-const { width } = Dimensions.get('window');
-
-// Helper function to safely handle image URIs
-const getSafeImageUri = (imageSource) => {
-  // If it's already a require statement (local image), return as is
-  if (typeof imageSource !== 'string') {
-    return imageSource;
-  }
-  
-  // Handle null, undefined or empty string
-  if (!imageSource) {
-    return require('../assets/images/bike.jpg');
-  }
-  
-  // Handle server paths that start with /uploads/
-  if (imageSource.startsWith('/uploads/')) {
-    return { uri: `${API_URL}${imageSource}` };
-  }
-  
-  // Handle full URLs
-  if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {
-    return { uri: imageSource };
-  }
-  
-  // Fallback to default image
-  return require('../assets/images/bike.jpg');
-};
 
 export default function ProfileScreen({ navigation }) {
   const theme = useTheme();
