@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Logo from '../components/common/Logo';
 
 export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSuccess }) {
   const theme = useTheme();
@@ -122,19 +122,6 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
     }
   };
 
-  // Logo component and other UI elements remain the same...
-  const Logo = () => (
-    <Svg width="150" height="150" viewBox="0 0 200 200">
-      <Circle cx="100" cy="40" r="15" fill={theme.colors.primary}/>
-      <Path d="M100 55 L100 95" stroke={theme.colors.primary} strokeWidth="5" fill="none"/>
-      <Path d="M100 65 L130 85" stroke={theme.colors.primary} strokeWidth="5" fill="none"/>
-      <Path d="M100 65 L80 50" stroke={theme.colors.primary} strokeWidth="5" fill="none"/>
-      <Path d="M100 95 L120 140" stroke={theme.colors.primary} strokeWidth="5" fill="none"/>
-      <Path d="M100 95 L80 135" stroke={theme.colors.primary} strokeWidth="5" fill="none"/>
-      <Path d="M120 140 L135 135" stroke={theme.colors.primary} strokeWidth="5" fill="none"/>
-      <Path d="M80 135 L65 140" stroke={theme.colors.primary} strokeWidth="5" fill="none"/>
-    </Svg>
-  );
 
   return (
     <KeyboardAvoidingView
