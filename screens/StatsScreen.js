@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { workoutAPI } from '../services/workoutAPI';
 import { log, logError, logWarn } from '../utils/logger';
+import StatCard from '../components/stats/StatCard';
 
 const { width } = Dimensions.get('window');
 
@@ -547,48 +548,27 @@ const loadStats = async () => {
       <ScrollView style={styles.content}>
         {/* Summary Cards */}
         <View style={styles.summaryContainer}>
-          <TouchableOpacity 
-            style={[styles.summaryCard, { backgroundColor: colors.surface }]}
+          <StatCard
+            icon="fitness-outline"
+            value={stats?.summary?.totalWorkouts || 0}
+            label="Workouts"
             onPress={() => navigation.navigate('WorkoutHistory')}
-          >
-            <Ionicons name="fitness-outline" size={24} color={colors.primary} />
-            <Text style={[styles.summaryValue, { color: colors.text }]}>
-              {stats?.summary?.totalWorkouts || 0}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Workouts
-            </Text>
-          </TouchableOpacity>
-
-          <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
-            <Ionicons name="time-outline" size={24} color={colors.primary} />
-            <Text style={[styles.summaryValue, { color: colors.text }]}>
-              {formatDuration(stats?.summary?.totalDuration || 0)}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Total Time
-            </Text>
-          </View>
-
-          <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
-            <Ionicons name="location-outline" size={24} color={colors.primary} />
-            <Text style={[styles.summaryValue, { color: colors.text }]}>
-              {formatDistance(stats?.summary?.totalDistance || 0)}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Distance
-            </Text>
-          </View>
-
-          <View style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
-            <Ionicons name="flame-outline" size={24} color={colors.primary} />
-            <Text style={[styles.summaryValue, { color: colors.text }]}>
-              {stats?.summary?.totalCalories || 0}
-            </Text>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-              Calories
-            </Text>
-          </View>
+          />
+          <StatCard
+            icon="time-outline"
+            value={formatDuration(stats?.summary?.totalDuration || 0)}
+            label="Total Time"
+          />
+          <StatCard
+            icon="location-outline"
+            value={formatDistance(stats?.summary?.totalDistance || 0)}
+            label="Distance"
+          />
+          <StatCard
+            icon="flame-outline"
+            value={stats?.summary?.totalCalories || 0}
+            label="Calories"
+          />
         </View>
 
         {/* No Data Message */}
