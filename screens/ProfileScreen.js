@@ -6,12 +6,10 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   Modal,
   ActivityIndicator,
   Alert,
-  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -19,7 +17,6 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
 import { log, logError, logWarn } from '../utils/logger';
-import { getSafeImageUri } from '../utils/imageUtils';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import ProfileStats from '../components/profile/ProfileStats';
 import RecentWorkoutItem from '../components/profile/RecentWorkoutItem';
