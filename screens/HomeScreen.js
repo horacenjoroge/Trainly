@@ -24,6 +24,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import PostCard from '../components/social/PostCard';
 import ProgressCard from '../components/home/ProgressCard';
+import { log, logError } from '../utils/logger';
 
 // Replace with your actual backend URL
 const API_URL = __DEV__ 
@@ -63,12 +64,12 @@ const HomeScreen = ({ navigation }) => {
       const localUserData = await AsyncStorage.getItem(USER_DATA_KEY);
       if (localUserData) {
         const parsedData = JSON.parse(localUserData);
-        console.log('🔄 HomeScreen: Loading fresh user data from AsyncStorage');
+        log('🔄 HomeScreen: Loading fresh user data from AsyncStorage');
         
         // Update user name if available
         if (parsedData.fullName) {
           setUserName(parsedData.fullName);
-          console.log('✅ HomeScreen: Updated userName to:', parsedData.fullName);
+          log('✅ HomeScreen: Updated userName to:', parsedData.fullName);
         }
         
         // Update user profile if we have it
@@ -78,11 +79,11 @@ const HomeScreen = ({ navigation }) => {
             name: parsedData.fullName || prev.name,
             bio: parsedData.bio || prev.bio
           }));
-          console.log('✅ HomeScreen: Updated userProfile bio to:', parsedData.bio);
+          log('✅ HomeScreen: Updated userProfile bio to:', parsedData.bio);
         }
       }
     } catch (error) {
-      console.error('❌ HomeScreen: Error loading user data from AsyncStorage:', error);
+      logError('❌ HomeScreen: Error loading user data from AsyncStorage:', error);
     }
   };
 
@@ -146,12 +147,12 @@ const HomeScreen = ({ navigation }) => {
             lastWorkout: lastWorkout
           });
           
-          console.log('Progress stats loaded from API');
+          log('Progress stats loaded from API');
         } else {
           throw new Error('Invalid API response');
         }
       } catch (apiError) {
-        console.log('API failed, trying local data:', apiError.message);
+        log('API failed, trying local data:', apiError.message);
         
         // Fallback to local workout history
         const historyData = await AsyncStorage.getItem('workoutHistory');
@@ -189,7 +190,7 @@ const HomeScreen = ({ navigation }) => {
             lastWorkout: lastWorkout
           });
           
-          console.log('Progress stats calculated from local data');
+          log('Progress stats calculated from local data');
         } else {
           // No data available
           setProgressStats({
@@ -201,11 +202,11 @@ const HomeScreen = ({ navigation }) => {
             lastWorkout: null
           });
           
-          console.log('No workout data found');
+          log('No workout data found');
         }
       }
     } catch (error) {
-      console.error('Error fetching progress data:', error);
+      logError('Error fetching progress data:', error);
       // Set default stats on error
       setProgressStats({
         totalWorkouts: 0,
@@ -250,39 +251,11 @@ const HomeScreen = ({ navigation }) => {
       await loadUserNameAndBio();
       
       if (!token) {
-        // If no data from API yet, use sample data
+        // No token - user not authenticated, show empty state
         setUserProfile({
           name: userName,
         });
-        
-        setPosts([
-          {
-            id: '1',
-            user: {
-              _id: '507f1f77bcf86cd799439011',
-              name: 'Marion',
-              avatar: require('../assets/images/run.jpg')
-            },
-            content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
-            image: require('../assets/images/run.jpg'),
-            likes: 156,
-            comments: 24,
-            isLiked: false
-          },
-          {
-            id: '2',
-            user: {
-              _id: '507f1f77bcf86cd799439012',
-              name: 'Mishael',
-              avatar: require('../assets/images/bike.jpg')
-            },
-            content: 'Daily workout done! 💪 Pushing my limits every day.',
-            image: require('../assets/images/bike.jpg'),
-            likes: 87,
-            comments: 12,
-            isLiked: false
-          }
-        ]);
+        setPosts([]);
         setLoading(false);
         setRefreshing(false);
         return;
@@ -312,9 +285,9 @@ const HomeScreen = ({ navigation }) => {
           bio: profileData.bio || dynamicBio, // Use fresh bio from AsyncStorage
         });
         
-        console.log('🔄 HomeScreen: Profile updated with bio:', profileData.bio || dynamicBio);
+        log('🔄 HomeScreen: Profile updated with bio:', profileData.bio || dynamicBio);
       } catch (error) {
-        console.error('Error fetching profile from service:', error);
+        logError('Error fetching profile from service:', error);
         
         // Try with axios as fallback
         try {
@@ -346,7 +319,7 @@ const HomeScreen = ({ navigation }) => {
             bio: profileRes.data.bio || dynamicBio,
           });
         } catch (axiosError) {
-          console.error('Error fetching profile with axios:', axiosError);
+          logError('Error fetching profile with axios:', axiosError);
           setUserProfile({
             name: userName,
           });
@@ -386,7 +359,7 @@ const HomeScreen = ({ navigation }) => {
           throw new Error('No posts returned from service');
         }
       } catch (error) {
-        console.error('Error fetching posts from service:', error);
+        logError('Error fetching posts from service:', error);
         
         // Try with axios as fallback
         try {
@@ -423,40 +396,14 @@ const HomeScreen = ({ navigation }) => {
           
           setPosts(processedPosts);
         } catch (axiosError) {
-          console.error('Error fetching posts with axios:', axiosError);
-          setPosts([
-            {
-              id: '1',
-              user: {
-                _id: '507f1f77bcf86cd799439011',
-                name: 'Marion',
-                avatar: require('../assets/images/run.jpg')
-              },
-              content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
-              image: require('../assets/images/run.jpg'),
-              likes: 156,
-              comments: 24,
-              isLiked: false
-            },
-            {
-              id: '2',
-              user: {
-                _id: '507f1f77bcf86cd799439012',
-                name: 'Mishael',
-                avatar: require('../assets/images/bike.jpg')
-              },
-              content: 'Daily workout done! 💪 Pushing my limits every day.',
-              image: require('../assets/images/bike.jpg'),
-              likes: 87,
-              comments: 12,
-              isLiked: false
-            }
-          ]);
+          logError('Error fetching posts with axios:', axiosError);
+          // Don't set fake data - show empty state instead
+          setPosts([]);
         }
       }
       
     } catch (error) {
-      console.error('Error fetching data:', error);
+      logError('Error fetching data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -466,7 +413,7 @@ const HomeScreen = ({ navigation }) => {
   // FIXED: Use useFocusEffect to reload data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🎯 HomeScreen: Screen focused, refreshing data');
+      log('🎯 HomeScreen: Screen focused, refreshing data');
       fetchData();
       fetchProgressData();
     }, [])
@@ -482,7 +429,7 @@ const HomeScreen = ({ navigation }) => {
   // Handle like/unlike post
   const handleLikePost = async (postId) => {
     if (!postId) {
-      console.log('Cannot like post - missing ID');
+      log('Cannot like post - missing ID');
       return;
     }
     
@@ -511,7 +458,7 @@ const HomeScreen = ({ navigation }) => {
           )
         );
       } catch (error) {
-        console.error('Error liking post with service:', error);
+        logError('Error liking post with service:', error);
         
         try {
           const config = {
@@ -530,7 +477,7 @@ const HomeScreen = ({ navigation }) => {
             )
           );
         } catch (axiosError) {
-          console.error('Error liking post with axios:', axiosError);
+          logError('Error liking post with axios:', axiosError);
           setPosts(prevPosts => 
             prevPosts.map(post => 
               (post.id === postId || post._id === postId) 
@@ -541,7 +488,7 @@ const HomeScreen = ({ navigation }) => {
         }
       }
     } catch (error) {
-      console.error('Error handling like:', error);
+      logError('Error handling like:', error);
     }
   };
 
