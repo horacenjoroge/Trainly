@@ -263,7 +263,7 @@ export default function EmergencyServicesScreen({ navigation }) {
 
       console.log('Valid contacts:', validContacts.length);
       if (validContacts.length === 0) {
-        console.log('No valid contacts found');
+        log('No valid contacts found');
         Alert.alert('No Contacts', 'No emergency contacts found. Please add contacts.', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Add Contact', onPress: () => openContactModal() },
@@ -274,7 +274,7 @@ export default function EmergencyServicesScreen({ navigation }) {
 
       const isAvailable = await SMS.isAvailableAsync();
       if (!isAvailable) {
-        console.log('SMS service not available');
+        log('SMS service not available');
         Alert.alert('Error', 'SMS service not available on this device');
         setIsSendingSOS(false);
         return;
@@ -288,25 +288,25 @@ export default function EmergencyServicesScreen({ navigation }) {
         sosMessage = `EMERGENCY ALERT! I need help. Location not available - please call me immediately!`;
       }
 
-      console.log('Sending SOS message:', sosMessage);
+      log('Sending SOS message:', sosMessage);
       await Promise.all(
         validContacts.map(async number => {
           try {
             await SMS.sendSMSAsync([number], sosMessage);
-            console.log(`SOS sent to ${number}`);
+            log(`SOS sent to ${number}`);
           } catch (err) {
-            console.error(`Failed to send to ${number}:`, err);
+            logError(`Failed to send to ${number}:`, err);
           }
         })
       );
 
       Alert.alert('SOS Sent', 'Emergency alerts have been sent to your contacts');
     } catch (error) {
-      console.error('SOS Error:', error);
+      logError('SOS Error:', error);
       Alert.alert('Error', 'Failed to send emergency messages');
     } finally {
       setIsSendingSOS(false);
-      console.log('SOS sending completed');
+      log('SOS sending completed');
     }
   };
 
