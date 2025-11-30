@@ -74,9 +74,17 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
       return false;
     }
     
-    // Password validation
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Password validation - improved security
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return false;
+    }
+    
+    // Check for at least one number and one letter
+    const hasNumber = /\d/.test(password);
+    const hasLetter = /[a-zA-Z]/.test(password);
+    if (!hasNumber || !hasLetter) {
+      setError('Password must contain at least one letter and one number');
       return false;
     }
     
@@ -143,8 +151,8 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
         </View>
 
         {error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={[styles.errorContainer, { backgroundColor: `${theme.colors.error}20`, borderColor: theme.colors.error }]}>
+            <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
           </View>
         ) : null}
 
@@ -227,27 +235,6 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
             )}
           </TouchableOpacity>
 
-          {/* Rest of UI remains the same... */}
-          <View style={styles.dividerContainer}>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            <Text style={[styles.dividerText, { color: theme.colors.textSecondary }]}>
-              or continue with
-            </Text>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          </View>
-
-          <View style={styles.socialButtonsContainer}>
-            <TouchableOpacity 
-              style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}
-            >
-              <Ionicons name="logo-google" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.socialButton, { backgroundColor: theme.colors.surface }]}
-            >
-              <Ionicons name="logo-apple" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={styles.bottomContainer}>
@@ -286,14 +273,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   errorContainer: {
-    backgroundColor: '#ffebee',
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
+    borderWidth: 1,
   },
   errorText: {
-    color: '#d32f2f',
     textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
   },
   formContainer: {
     marginTop: 20,
@@ -332,31 +320,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  socialButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   bottomContainer: {
     flexDirection: 'row',

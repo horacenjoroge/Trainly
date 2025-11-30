@@ -23,6 +23,8 @@ import { workoutAPI } from '../services/workoutAPI';
 import { useTheme } from '../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import PostCard from '../components/social/PostCard';
+import ProgressCard from '../components/home/ProgressCard';
+import { log, logError } from '../utils/logger';
 
 // Replace with your actual backend URL
 const API_URL = __DEV__ 
@@ -31,111 +33,6 @@ const API_URL = __DEV__
 const USER_DATA_KEY = '@user_data';
 
 
-// Simplified Progress Card - Just displays basic stats
-const ProgressCard = ({ stats, loading = false, onViewFullStats }) => {
-  const theme = useTheme();
-  const colors = theme.colors;
-
-  // Helper function to format duration
-  const formatDuration = (totalMinutes) => {
-    if (totalMinutes < 60) {
-      return `${totalMinutes}m`;
-    }
-    
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.floor(totalMinutes % 60);
-    
-    if (minutes === 0) {
-      return `${hours}h`;
-    }
-    
-    return `${hours}h ${minutes}m`;
-  };
-
-  return (
-    <View style={[styles.progressContainer, { backgroundColor: colors.surface }]}>
-      <View style={styles.progressHeader}>
-        <Text style={[styles.progressTitle, { color: colors.primary }]}>My Progress</Text>
-        <TouchableOpacity onPress={onViewFullStats}>
-          <Text style={[styles.progressEdit, { color: colors.secondary }]}>View Stats</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {loading ? (
-        <View style={styles.progressLoading}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[styles.progressLoadingText, { color: colors.textSecondary }]}>
-            Loading progress...
-          </Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.progressStats}>
-            <View style={styles.progressStatItem}>
-              <Ionicons name="trophy-outline" size={24} color={colors.primary} />
-              <Text style={[styles.progressStatValue, { color: colors.primary }]}>
-                {stats.totalWorkouts || 0}
-              </Text>
-              <Text style={[styles.progressStatLabel, { color: colors.textSecondary }]}>
-                Workouts
-              </Text>
-            </View>
-            <View style={styles.progressStatItem}>
-              <Ionicons name="time-outline" size={24} color={colors.primary} />
-              <Text style={[styles.progressStatValue, { color: colors.primary }]}>
-                {formatDuration(stats.totalDuration || 0)}
-              </Text>
-              <Text style={[styles.progressStatLabel, { color: colors.textSecondary }]}>
-                Time
-              </Text>
-            </View>
-            <View style={styles.progressStatItem}>
-              <Ionicons name="flame-outline" size={24} color={colors.primary} />
-              <Text style={[styles.progressStatValue, { color: colors.primary }]}>
-                {Math.round(stats.totalCalories || 0)}
-              </Text>
-              <Text style={[styles.progressStatLabel, { color: colors.textSecondary }]}>
-                Calories
-              </Text>
-            </View>
-          </View>
-          
-          {/* Simple weekly goal progress */}
-          <View style={styles.weeklyGoalContainer}>
-            <View style={styles.weeklyGoalHeader}>
-              <Text style={[styles.weeklyGoalTitle, { color: colors.text }]}>
-                This Week
-              </Text>
-              <Text style={[styles.weeklyGoalText, { color: colors.textSecondary }]}>
-                {stats.weeklyWorkouts || 0}/{stats.weeklyGoal || 3} workouts
-              </Text>
-            </View>
-            <View style={[styles.progressBar, { backgroundColor: `${colors.primary}20` }]}>
-              <View 
-                style={[
-                  styles.progressBarFill, 
-                  { 
-                    backgroundColor: colors.primary,
-                    width: `${Math.min(((stats.weeklyWorkouts || 0) / (stats.weeklyGoal || 3)) * 100, 100)}%`
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-
-          {/* Quick insight */}
-          {stats.lastWorkout && (
-            <View style={styles.lastWorkoutContainer}>
-              <Text style={[styles.lastWorkoutText, { color: colors.textSecondary }]}>
-                Last workout: {stats.lastWorkout.type} • {stats.lastWorkout.timeAgo}
-              </Text>
-            </View>
-          )}
-        </>
-      )}
-    </View>
-  );
-};
 
 const HomeScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -167,12 +64,12 @@ const HomeScreen = ({ navigation }) => {
       const localUserData = await AsyncStorage.getItem(USER_DATA_KEY);
       if (localUserData) {
         const parsedData = JSON.parse(localUserData);
-        console.log('🔄 HomeScreen: Loading fresh user data from AsyncStorage');
+        log('🔄 HomeScreen: Loading fresh user data from AsyncStorage');
         
         // Update user name if available
         if (parsedData.fullName) {
           setUserName(parsedData.fullName);
-          console.log('✅ HomeScreen: Updated userName to:', parsedData.fullName);
+          log('✅ HomeScreen: Updated userName to:', parsedData.fullName);
         }
         
         // Update user profile if we have it
@@ -182,11 +79,11 @@ const HomeScreen = ({ navigation }) => {
             name: parsedData.fullName || prev.name,
             bio: parsedData.bio || prev.bio
           }));
-          console.log('✅ HomeScreen: Updated userProfile bio to:', parsedData.bio);
+          log('✅ HomeScreen: Updated userProfile bio to:', parsedData.bio);
         }
       }
     } catch (error) {
-      console.error('❌ HomeScreen: Error loading user data from AsyncStorage:', error);
+      logError('❌ HomeScreen: Error loading user data from AsyncStorage:', error);
     }
   };
 
@@ -250,12 +147,12 @@ const HomeScreen = ({ navigation }) => {
             lastWorkout: lastWorkout
           });
           
-          console.log('Progress stats loaded from API');
+          log('Progress stats loaded from API');
         } else {
           throw new Error('Invalid API response');
         }
       } catch (apiError) {
-        console.log('API failed, trying local data:', apiError.message);
+        log('API failed, trying local data:', apiError.message);
         
         // Fallback to local workout history
         const historyData = await AsyncStorage.getItem('workoutHistory');
@@ -293,7 +190,7 @@ const HomeScreen = ({ navigation }) => {
             lastWorkout: lastWorkout
           });
           
-          console.log('Progress stats calculated from local data');
+          log('Progress stats calculated from local data');
         } else {
           // No data available
           setProgressStats({
@@ -305,11 +202,11 @@ const HomeScreen = ({ navigation }) => {
             lastWorkout: null
           });
           
-          console.log('No workout data found');
+          log('No workout data found');
         }
       }
     } catch (error) {
-      console.error('Error fetching progress data:', error);
+      logError('Error fetching progress data:', error);
       // Set default stats on error
       setProgressStats({
         totalWorkouts: 0,
@@ -328,8 +225,8 @@ const HomeScreen = ({ navigation }) => {
   const debugPostStructure = (postsData) => {
     if (!postsData || !postsData.length) return;
     
-    console.log('FIRST POST STRUCTURE:');
-    console.log(JSON.stringify(postsData[0], null, 2));
+    log('FIRST POST STRUCTURE:');
+    log(JSON.stringify(postsData[0], null, 2));
     
     const hasIds = postsData.map(post => {
       const userId = getUserIdFromPost(post);
@@ -340,8 +237,8 @@ const HomeScreen = ({ navigation }) => {
       };
     });
     
-    console.log('User ID availability in posts:');
-    console.log(JSON.stringify(hasIds, null, 2));
+    log('User ID availability in posts:');
+    log(JSON.stringify(hasIds, null, 2));
   };
 
   // Fetch user profile and posts
@@ -354,39 +251,11 @@ const HomeScreen = ({ navigation }) => {
       await loadUserNameAndBio();
       
       if (!token) {
-        // If no data from API yet, use sample data
+        // No token - user not authenticated, show empty state
         setUserProfile({
           name: userName,
         });
-        
-        setPosts([
-          {
-            id: '1',
-            user: {
-              _id: '507f1f77bcf86cd799439011',
-              name: 'Marion',
-              avatar: require('../assets/images/run.jpg')
-            },
-            content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
-            image: require('../assets/images/run.jpg'),
-            likes: 156,
-            comments: 24,
-            isLiked: false
-          },
-          {
-            id: '2',
-            user: {
-              _id: '507f1f77bcf86cd799439012',
-              name: 'Mishael',
-              avatar: require('../assets/images/bike.jpg')
-            },
-            content: 'Daily workout done! 💪 Pushing my limits every day.',
-            image: require('../assets/images/bike.jpg'),
-            likes: 87,
-            comments: 12,
-            isLiked: false
-          }
-        ]);
+        setPosts([]);
         setLoading(false);
         setRefreshing(false);
         return;
@@ -416,9 +285,9 @@ const HomeScreen = ({ navigation }) => {
           bio: profileData.bio || dynamicBio, // Use fresh bio from AsyncStorage
         });
         
-        console.log('🔄 HomeScreen: Profile updated with bio:', profileData.bio || dynamicBio);
+        log('🔄 HomeScreen: Profile updated with bio:', profileData.bio || dynamicBio);
       } catch (error) {
-        console.error('Error fetching profile from service:', error);
+        logError('Error fetching profile from service:', error);
         
         // Try with axios as fallback
         try {
@@ -450,7 +319,7 @@ const HomeScreen = ({ navigation }) => {
             bio: profileRes.data.bio || dynamicBio,
           });
         } catch (axiosError) {
-          console.error('Error fetching profile with axios:', axiosError);
+          logError('Error fetching profile with axios:', axiosError);
           setUserProfile({
             name: userName,
           });
@@ -490,7 +359,7 @@ const HomeScreen = ({ navigation }) => {
           throw new Error('No posts returned from service');
         }
       } catch (error) {
-        console.error('Error fetching posts from service:', error);
+        logError('Error fetching posts from service:', error);
         
         // Try with axios as fallback
         try {
@@ -527,40 +396,14 @@ const HomeScreen = ({ navigation }) => {
           
           setPosts(processedPosts);
         } catch (axiosError) {
-          console.error('Error fetching posts with axios:', axiosError);
-          setPosts([
-            {
-              id: '1',
-              user: {
-                _id: '507f1f77bcf86cd799439011',
-                name: 'Marion',
-                avatar: require('../assets/images/run.jpg')
-              },
-              content: 'Just completed my first marathon! Feeling incredibly proud and exhausted!',
-              image: require('../assets/images/run.jpg'),
-              likes: 156,
-              comments: 24,
-              isLiked: false
-            },
-            {
-              id: '2',
-              user: {
-                _id: '507f1f77bcf86cd799439012',
-                name: 'Mishael',
-                avatar: require('../assets/images/bike.jpg')
-              },
-              content: 'Daily workout done! 💪 Pushing my limits every day.',
-              image: require('../assets/images/bike.jpg'),
-              likes: 87,
-              comments: 12,
-              isLiked: false
-            }
-          ]);
+          logError('Error fetching posts with axios:', axiosError);
+          // Don't set fake data - show empty state instead
+          setPosts([]);
         }
       }
       
     } catch (error) {
-      console.error('Error fetching data:', error);
+      logError('Error fetching data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -570,7 +413,7 @@ const HomeScreen = ({ navigation }) => {
   // FIXED: Use useFocusEffect to reload data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🎯 HomeScreen: Screen focused, refreshing data');
+      log('🎯 HomeScreen: Screen focused, refreshing data');
       fetchData();
       fetchProgressData();
     }, [])
@@ -586,7 +429,7 @@ const HomeScreen = ({ navigation }) => {
   // Handle like/unlike post
   const handleLikePost = async (postId) => {
     if (!postId) {
-      console.log('Cannot like post - missing ID');
+      log('Cannot like post - missing ID');
       return;
     }
     
@@ -615,7 +458,7 @@ const HomeScreen = ({ navigation }) => {
           )
         );
       } catch (error) {
-        console.error('Error liking post with service:', error);
+        logError('Error liking post with service:', error);
         
         try {
           const config = {
@@ -634,7 +477,7 @@ const HomeScreen = ({ navigation }) => {
             )
           );
         } catch (axiosError) {
-          console.error('Error liking post with axios:', axiosError);
+          logError('Error liking post with axios:', axiosError);
           setPosts(prevPosts => 
             prevPosts.map(post => 
               (post.id === postId || post._id === postId) 
@@ -645,7 +488,7 @@ const HomeScreen = ({ navigation }) => {
         }
       }
     } catch (error) {
-      console.error('Error handling like:', error);
+      logError('Error handling like:', error);
     }
   };
 
@@ -796,98 +639,6 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 22,
     fontWeight: '700',
-  },
-  progressContainer: {
-    margin: 16,
-    borderRadius: 16,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  progressEdit: {
-    fontWeight: '600',
-  },
-  progressLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 30,
-  },
-  progressLoadingText: {
-    marginLeft: 10,
-    fontSize: 14,
-  },
-  progressStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressStatItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  progressStatValue: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 8,
-  },
-  progressStatLabel: {
-    fontSize: 12,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  weeklyGoalContainer: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-  },
-  weeklyGoalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  weeklyGoalTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  weeklyGoalText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  lastWorkoutContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-  },
-  lastWorkoutText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    textAlign: 'center',
   },
   quickActions: {
     flexDirection: 'row',

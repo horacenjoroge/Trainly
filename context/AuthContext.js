@@ -2,6 +2,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/api';
+import { log, logError } from '../utils/logger';
 
 const AuthContext = createContext();
 
@@ -12,7 +13,7 @@ export const AuthProvider = ({ children }) => {
  const [authStateVersion, setAuthStateVersion] = useState(0);
 
  useEffect(() => {
-   console.log('Auth state changed:', { isAuthenticated, user: user?.name || 'none' });
+   log('Auth state changed:', { isAuthenticated, user: user?.name || 'none' });
  }, [isAuthenticated, user]);
 
  useEffect(() => {
@@ -20,18 +21,18 @@ export const AuthProvider = ({ children }) => {
  }, []);
 
  const checkAuthStatus = async () => {
-   console.log('Checking auth status...');
+   log('Checking auth status...');
    setIsLoading(true);
    try {
      const token = await AsyncStorage.getItem('token');
      let userData = await AsyncStorage.getItem('userData');
      
-     console.log('Token exists:', !!token);
-     console.log('User data exists:', !!userData);
+     log('Token exists:', !!token);
+     log('User data exists:', !!userData);
      
      // Check for corrupted userData with telltale string patterns
      if (userData && (userData.startsWith('{\"0\":') || userData.includes('"1": "'))) {
-       console.log('Corrupted userData detected, clearing data');
+       log('Corrupted userData detected, clearing data');
        await clearAuthData();
        setIsLoading(false);
        return;
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }) => {
        try {
          JSON.parse(userData);
        } catch (e) {
-         console.log('Invalid userData format detected, clearing data');
+         log('Invalid userData format detected, clearing data');
          await clearAuthData();
          setIsLoading(false);
          return;
@@ -50,21 +51,21 @@ export const AuthProvider = ({ children }) => {
        
        // Check if token is valid
        const isTokenValid = checkTokenValidity(token);
-       console.log('Token valid:', isTokenValid);
+       log('Token valid:', isTokenValid);
        
        if (isTokenValid) {
          try {
            const parsedUserData = JSON.parse(userData);
            setUser(parsedUserData);
            setIsAuthenticated(true);
-           console.log('Auth state set to authenticated with user:', parsedUserData);
+           log('Auth state set to authenticated with user:', parsedUserData);
          } catch (parseError) {
-           console.error('Error parsing user data:', parseError);
+           logError('Error parsing user data:', parseError);
            await clearAuthData();
          }
        } else {
          // Token expired, try to refresh
-         console.log('Token expired, attempting refresh');
+         log('Token expired, attempting refresh');
          
          try {
            const refreshed = await authService.refreshToken();
@@ -78,27 +79,27 @@ export const AuthProvider = ({ children }) => {
                const parsedUserData = JSON.parse(updatedUserData);
                setUser(parsedUserData);
                setIsAuthenticated(true);
-               console.log('Token refreshed, auth state updated');
+               log('Token refreshed, auth state updated');
              } catch (parseError) {
-               console.error('Error parsing refreshed user data:', parseError);
+               logError('Error parsing refreshed user data:', parseError);
                await clearAuthData();
              }
            } else {
              // Refresh failed, user needs to login again
-             console.log('Token refresh failed, clearing auth state');
+             log('Token refresh failed, clearing auth state');
              await clearAuthData();
            }
          } catch (refreshError) {
-           console.error('Error refreshing token:', refreshError);
+           logError('Error refreshing token:', refreshError);
            await clearAuthData();
          }
        }
      } else {
-       console.log('No token or user data found, clearing auth state');
+       log('No token or user data found, clearing auth state');
        await clearAuthData();
      }
    } catch (error) {
-     console.error('Auth status check error:', error);
+     logError('Auth status check error:', error);
      await clearAuthData();
    } finally {
      // First, check for numeric keys in AsyncStorage that indicate corruption
@@ -107,23 +108,23 @@ export const AuthProvider = ({ children }) => {
        const numericKeys = allKeys.filter(key => /^\d+$/.test(key));
        
        if (numericKeys.length > 0) {
-         console.log(`Found ${numericKeys.length} corrupted numeric keys, cleaning up...`);
+         log(`Found ${numericKeys.length} corrupted numeric keys, cleaning up...`);
          // Remove all numeric keys
          for (const key of numericKeys) {
            await AsyncStorage.removeItem(key);
          }
-         console.log('Cleaned up corrupted keys');
+         log('Cleaned up corrupted keys');
          
          // Force a fresh start with auth
          await clearAuthData();
        }
      } catch (e) {
-       console.error('Error checking for corrupted keys:', e);
+       logError('Error checking for corrupted keys:', e);
      }
      
      setTimeout(() => {
        setIsLoading(false);
-       console.log('Auth check complete. Authenticated:', isAuthenticated);
+       log('Auth check complete. Authenticated:', isAuthenticated);
      }, 0);
    }
  };
@@ -134,13 +135,13 @@ export const AuthProvider = ({ children }) => {
      await AsyncStorage.removeItem('refreshToken');
      await AsyncStorage.removeItem('userData');
    } catch (error) {
-     console.error('Error clearing auth data:', error);
+     logError('Error clearing auth data:', error);
    }
    
    setUser(null);
    setIsAuthenticated(false);
    setAuthStateVersion(prev => prev + 1);
-   console.log('Auth state cleared completely');
+   log('Auth state cleared completely');
  };
 
  const checkTokenValidity = (token) => {
@@ -157,47 +158,47 @@ export const AuthProvider = ({ children }) => {
      const now = Math.floor(Date.now() / 1000);
      return payload.exp > now;
    } catch (error) {
-     console.error('Token validation error:', error);
+     logError('Token validation error:', error);
      return false;
    }
  };
 
  const login = async (credentials) => {
    if (!credentials) {
-     console.error('No credentials provided to login function');
+     logError('No credentials provided to login function');
      return { success: false, message: 'No credentials provided' };
    }
    
-   console.log('Login attempt with:', credentials.email);
+   log('Login attempt with:', credentials.email);
    
    try {
      const data = await authService.login(credentials);
-     console.log('Login response received:', { success: !!data, hasUser: !!data.user });
+     log('Login response received:', { success: !!data, hasUser: !!data.user });
      
      if (data.token) {
        await AsyncStorage.setItem('token', data.token);
-       console.log('Token stored');
+       log('Token stored');
      }
      
      if (data.refreshToken) {
        await AsyncStorage.setItem('refreshToken', data.refreshToken);
-       console.log('Refresh token stored');
+       log('Refresh token stored');
      }
      
      if (data.user) {
        // Safely store user data as stringified JSON
        await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-       console.log('User data stored');
+       log('User data stored');
      }
      
      setUser(data.user);
      setIsAuthenticated(true);
      setAuthStateVersion(prev => prev + 1);
      
-     console.log('Auth state updated after login. Authenticated:', true);
+     log('Auth state updated after login. Authenticated:', true);
      return { success: true, user: data.user };
    } catch (error) {
-     console.error('Login error in context:', error);
+     logError('Login error in context:', error);
      return { 
        success: false, 
        message: error.response?.data?.message || 'Login failed' 
@@ -207,15 +208,15 @@ export const AuthProvider = ({ children }) => {
 
  const register = async (userData) => {
    if (!userData) {
-     console.error('No user data provided to register function');
+     logError('No user data provided to register function');
      return { success: false, message: 'No user data provided' };
    }
    
-   console.log('Registration attempt with:', userData.email);
+   log('Registration attempt with:', userData.email);
    
    try {
      const data = await authService.register(userData);
-     console.log('Registration response received');
+     log('Registration response received');
      
      if (data.token) {
        await AsyncStorage.setItem('token', data.token);
@@ -234,10 +235,10 @@ export const AuthProvider = ({ children }) => {
      setIsAuthenticated(true);
      setAuthStateVersion(prev => prev + 1);
      
-     console.log('Auth state updated after registration');
+     log('Auth state updated after registration');
      return { success: true, user: data.user };
    } catch (error) {
-     console.error('Registration error:', error);
+     logError('Registration error:', error);
      return { 
        success: false, 
        message: error.response?.data?.message || 'Registration failed' 
@@ -246,16 +247,16 @@ export const AuthProvider = ({ children }) => {
  };
 
  const logout = async () => {
-   console.log('Logout attempt');
+   log('Logout attempt');
    try {
      await authService.logout();
-     console.log('Logout API call successful');
+     log('Logout API call successful');
    } catch (error) {
-     console.error('Logout API error:', error);
+     logError('Logout API error:', error);
    }
    
    await clearAuthData();
-   console.log('Logged out, tokens cleared');
+   log('Logged out, tokens cleared');
    return true;
  };
 
