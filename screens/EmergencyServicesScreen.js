@@ -134,7 +134,7 @@ export default function EmergencyServicesScreen({ navigation }) {
     try {
       await AsyncStorage.setItem(EMERGENCY_CONTACTS_KEY, JSON.stringify(contacts));
     } catch (error) {
-      console.error('Error saving contacts:', error);
+      logError('Error saving contacts:', error);
       Alert.alert('Error', 'Failed to save contacts');
     }
   };
@@ -193,7 +193,7 @@ export default function EmergencyServicesScreen({ navigation }) {
       await saveContacts(updatedContacts);
       Alert.alert('Success', 'Contact deleted');
     } catch (error) {
-      console.error('Error deleting contact:', error);
+      logError('Error deleting contact:', error);
       Alert.alert('Error', 'Failed to delete contact');
     }
   };
