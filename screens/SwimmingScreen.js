@@ -185,7 +185,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
         throw new Error(result?.message || 'Failed to save workout');
       }
     } catch (error) {
-      console.error('SwimmingScreen - ERROR in handleFinish:', error.message);
+      logError('SwimmingScreen - ERROR in handleFinish:', error.message);
       Alert.alert(
         'Save Error',
         `Could not save your swimming session: ${error.message}. Would you like to try again?`,
@@ -195,7 +195,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
         ]
       );
     } finally {
-      console.log('=== SWIMMING WORKOUT FINISH DEBUG END ===');
+      log('=== SWIMMING WORKOUT FINISH DEBUG END ===');
     }
   };
 
