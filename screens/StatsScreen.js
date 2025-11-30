@@ -11,15 +11,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { workoutAPI } from '../services/workoutAPI';
 import { log, logError, logWarn } from '../utils/logger';
 import StatCard from '../components/stats/StatCard';
 import { formatDuration, formatDistance } from '../utils/formatUtils';
+import WorkoutTypeChart from '../components/stats/WorkoutTypeChart';
+import ActivityTrendChart from '../components/stats/ActivityTrendChart';
+import CaloriesChart from '../components/stats/CaloriesChart';
 
-const { width } = Dimensions.get('window');
 
 const StatsScreen = ({ navigation }) => {
   const theme = useTheme();
