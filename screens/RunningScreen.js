@@ -225,11 +225,11 @@ export default function RunningScreen({ navigation, route }) {
       });
       
       if (result && result.success) {
-        console.log('RunningScreen - Workout saved successfully!');
+        log('RunningScreen - Workout saved successfully!');
         
         // Show achievements if earned
         if (result.achievements && result.achievements.length > 0) {
-          console.log('RunningScreen - Showing achievements:', result.achievements);
+          log('RunningScreen - Showing achievements:', result.achievements);
           Alert.alert(
             '🎉 New Achievement!',
             `You earned: ${result.achievements.map(a => a.title || a.name || 'Achievement').join(', ')}`,
@@ -238,19 +238,19 @@ export default function RunningScreen({ navigation, route }) {
         }
         
         // Navigate back with success
-        console.log('RunningScreen - Navigating back with success');
+        log('RunningScreen - Navigating back with success');
         navigation.navigate('TrainingSelection', {
           newWorkout: result.workout,
           achievementsEarned: result.achievements,
           message: result.message
         });
       } else {
-        console.log('RunningScreen - Save failed, result:', result);
+        log('RunningScreen - Save failed, result:', result);
         throw new Error(result?.message || 'Failed to save workout - no success flag');
       }
       
     } catch (error) {
-      console.error('RunningScreen - DETAILED ERROR in handleFinish:', {
+      logError('RunningScreen - DETAILED ERROR in handleFinish:', {
         message: error.message,
         stack: error.stack,
         name: error.name,
@@ -266,7 +266,7 @@ export default function RunningScreen({ navigation, route }) {
         ]
       );
     } finally {
-      console.log('=== WORKOUT FINISH DEBUG END ===');
+      log('=== WORKOUT FINISH DEBUG END ===');
     }
   };
 
