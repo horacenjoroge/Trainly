@@ -74,9 +74,17 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
       return false;
     }
     
-    // Password validation
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Password validation - improved security
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return false;
+    }
+    
+    // Check for at least one number and one letter
+    const hasNumber = /\d/.test(password);
+    const hasLetter = /[a-zA-Z]/.test(password);
+    if (!hasNumber || !hasLetter) {
+      setError('Password must contain at least one letter and one number');
       return false;
     }
     
