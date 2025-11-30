@@ -24,6 +24,11 @@ import TrainingMap from '../components/Trainmap';
 // Import the CyclingTracker component
 import { useCyclingTracker } from '../components/training/CyclingTracker';
 
+// Import cycling components
+import CyclingMainStats from '../components/cycling/CyclingMainStats';
+import CyclingPerformanceStats from '../components/cycling/CyclingPerformanceStats';
+import CyclingElevationCard from '../components/cycling/CyclingElevationCard';
+
 const { width } = Dimensions.get('window');
 
 export default function CyclingScreen({ navigation, route }) {
@@ -291,96 +296,28 @@ export default function CyclingScreen({ navigation, route }) {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Main Stats Card */}
-        <View style={[styles.mainStatsCard, { backgroundColor: colors.surface }]}>
-          <View style={styles.mainStatsGrid}>
-            <View style={styles.mainStatItem}>
-              <Text style={[styles.mainStatNumber, { color: colors.primary }]}>
-                {formatSpeed(currentSpeed)}
-              </Text>
-              <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>
-                Current Speed
-              </Text>
-            </View>
-            
-            <View style={styles.mainStatItem}>
-              <Text style={[styles.mainStatNumber, { color: colors.primary }]}>
-                {formatDistance(distance)}
-              </Text>
-              <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>
-                Distance
-              </Text>
-            </View>
-          </View>
-        </View>
+        <CyclingMainStats
+          currentSpeed={currentSpeed}
+          distance={distance}
+          formatSpeed={formatSpeed}
+          formatDistance={formatDistance}
+        />
 
         {/* Performance Stats */}
-        <View style={[styles.statsCard, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>🚴‍♂️ Performance</Text>
-          
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>
-                {formatSpeed(avgSpeed)}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Avg Speed</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>
-                {formatSpeed(maxSpeed)}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Max Speed</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>
-                {formatElevation(elevation.gain)}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Elevation ↗</Text>
-            </View>
-            
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>
-                {Math.round(stats.totalTime / 60)}min
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Time</Text>
-            </View>
-          </View>
-        </View>
+        <CyclingPerformanceStats
+          avgSpeed={avgSpeed}
+          maxSpeed={maxSpeed}
+          elevationGain={elevation.gain}
+          totalTime={stats.totalTime}
+          formatSpeed={formatSpeed}
+          formatElevation={formatElevation}
+        />
 
         {/* Elevation Card */}
-        <View style={[styles.elevationCard, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>📈 Elevation</Text>
-          
-          <View style={styles.elevationStats}>
-            <View style={styles.elevationItem}>
-              <Ionicons name="trending-up" size={20} color="#4CAF50" />
-              <Text style={[styles.elevationValue, { color: colors.text }]}>
-                {formatElevation(elevation.gain)}
-              </Text>
-              <Text style={[styles.elevationLabel, { color: colors.textSecondary }]}>
-                Gain
-              </Text>
-            </View>
-            
-            <View style={styles.elevationItem}>
-              <Ionicons name="trending-down" size={20} color="#FF5722" />
-              <Text style={[styles.elevationLabel, { color: colors.textSecondary }]}>
-                Loss
-              </Text>
-            </View>
-            
-            <View style={styles.elevationItem}>
-              <Ionicons name="location-outline" size={20} color={colors.primary} />
-              <Text style={[styles.elevationValue, { color: colors.text }]}>
-                {formatElevation(elevation.current)}
-              </Text>
-              <Text style={[styles.elevationLabel, { color: colors.textSecondary }]}>
-                Current
-              </Text>
-            </View>
-          </View>
-        </View>
+        <CyclingElevationCard
+          elevation={elevation}
+          formatElevation={formatElevation}
+        />
 
         {/* Intervals & Segments */}
         {(intervals.length > 0 || segments.length > 0) && (
