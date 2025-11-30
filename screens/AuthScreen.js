@@ -143,8 +143,8 @@ export default function AuthScreen({ navigation, onLogin, onRegister, onAuthSucc
         </View>
 
         {error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={[styles.errorContainer, { backgroundColor: `${theme.colors.error}20`, borderColor: theme.colors.error }]}>
+            <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
           </View>
         ) : null}
 
