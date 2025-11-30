@@ -6,10 +6,14 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Modal,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import WorkoutTimer from './WorkoutTimer';
+import RestTimer from './RestTimer';
+import WorkoutStats from './WorkoutStats';
+import ExerciseCard from './ExerciseCard';
+import EmptyWorkoutState from './EmptyWorkoutState';
+import WorkoutSummaryModal from './WorkoutSummaryModal';
 
 const WorkoutTimer = ({ workoutDuration, timerActive, setTimerActive, formatTime, colors }) => (
   <View style={[styles.timerContainer, { backgroundColor: colors.primary + '15' }]}>
