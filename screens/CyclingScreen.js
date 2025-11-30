@@ -204,12 +204,12 @@ export default function CyclingScreen({ navigation, route }) {
       console.log('CyclingScreen - Stopping tracker...');
       stopTracking();
       
-      console.log('CyclingScreen - About to save workout...');
-      console.log('CyclingScreen - Tracker instance:', tracker ? 'exists' : 'null');
+      log('CyclingScreen - About to save workout...');
+      log('CyclingScreen - Tracker instance:', tracker ? 'exists' : 'null');
       
       const result = await saveWorkout();
       
-      console.log('CyclingScreen - Save workout result:', {
+      log('CyclingScreen - Save workout result:', {
         success: result?.success,
         hasWorkout: !!result?.workout,
         hasAchievements: !!result?.achievements,
