@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/api';
 // Import the getSafeImageUri function from utils
 import { getSafeImageUri } from '../utils/imageUtils';
+import { log, logError } from '../utils/logger';
 
 // API URL
 const API_URL = __DEV__ 
@@ -57,11 +58,11 @@ export default function FindFriends({ navigation }) {
       
       // First try to load real users from the backend
       try {
-        console.log('Fetching real users from API...');
+        log('Fetching real users from API...');
         
         // Use your userService to fetch users
         const realUsers = await userService.searchUsers();
-        console.log(`Found ${realUsers.length} real users`);
+        log(`Found ${realUsers.length} real users`);
         
         // If we got real users, use them
         if (realUsers && realUsers.length > 0) {
@@ -82,21 +83,21 @@ export default function FindFriends({ navigation }) {
             
             setFollowingMap(followMap);
           } catch (followError) {
-            console.error('Error loading following status:', followError);
+            logError('Error loading following status:', followError);
           }
           
           setLoading(false);
           return;
         } else {
-          console.log('No real users found, using mock data as fallback');
+          log('No real users found, using mock data as fallback');
         }
       } catch (apiError) {
-        console.error('Error fetching real users:', apiError);
+        logError('Error fetching real users:', apiError);
       }
       
       // If we reach this point, there was an issue loading real users
       // Fall back to mock data for development purposes
-      console.log('Falling back to mock data');
+      log('Falling back to mock data');
       
       // Generate MongoDB-compatible ObjectIds for mock users
       const createObjectId = (index) => {
@@ -135,7 +136,7 @@ export default function FindFriends({ navigation }) {
       }
       
     } catch (error) {
-      console.error('Error loading users:', error);
+      logError('Error loading users:', error);
       setError('Failed to load users');
       Alert.alert('Error', 'Failed to load users. Pull down to refresh.');
     } finally {
@@ -155,7 +156,7 @@ export default function FindFriends({ navigation }) {
         }));
         
         await userService.unfollowUser(userId);
-        console.log(`Successfully unfollowed user: ${userId}`);
+        log(`Successfully unfollowed user: ${userId}`);
       } else {
         // Show loading state first (optimistic update)
         setFollowingMap(prev => ({
@@ -164,13 +165,13 @@ export default function FindFriends({ navigation }) {
         }));
         
         await userService.followUser(userId);
-        console.log(`Successfully followed user: ${userId}`);
+        log(`Successfully followed user: ${userId}`);
       }
       
       // Already updated the UI optimistically, no need to update again on success
       
     } catch (error) {
-      console.error('Error toggling follow:', error);
+      logError('Error toggling follow:', error);
       
       // Revert the optimistic update on error
       const isCurrentlyFollowing = followingMap[userId];
@@ -200,7 +201,7 @@ export default function FindFriends({ navigation }) {
             source={getSafeImageUri(item.avatar)} 
             style={styles.avatar} 
             onError={(e) => {
-              console.log('Avatar load error for user:', item.name, e.nativeEvent.error);
+              log('Avatar load error for user:', item.name, e.nativeEvent.error);
             }}
           />
           <View style={styles.nameContainer}>
