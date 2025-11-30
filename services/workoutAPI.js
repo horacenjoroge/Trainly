@@ -131,7 +131,7 @@ export const workoutAPI = {
       const response = await apiClient.get(`/api/achievements${queryString ? `?${queryString}` : ''}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching achievements:', error);
+      logError('Error fetching achievements:', error);
       throw error;
     }
   },
@@ -142,7 +142,7 @@ export const workoutAPI = {
       const response = await apiClient.get(`/api/achievements/recent?days=${days}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching recent achievements:', error);
+      logError('Error fetching recent achievements:', error);
       throw error;
     }
   },
@@ -153,7 +153,7 @@ export const workoutAPI = {
       const response = await apiClient.get('/api/achievements/progress');
       return response.data;
     } catch (error) {
-      console.error('Error fetching achievement progress:', error);
+      logError('Error fetching achievement progress:', error);
       throw error;
     }
   },
@@ -164,7 +164,7 @@ export const workoutAPI = {
       const response = await apiClient.post(`/api/achievements/${achievementId}/share`);
       return response.data;
     } catch (error) {
-      console.error('Error sharing achievement:', error);
+      logError('Error sharing achievement:', error);
       throw error;
     }
   },
@@ -176,7 +176,7 @@ export const workoutAPI = {
       const response = await apiClient.get(`/api/achievements/leaderboard${queryString ? `?${queryString}` : ''}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching leaderboard:', error);
+      logError('Error fetching leaderboard:', error);
       throw error;
     }
   },
