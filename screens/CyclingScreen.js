@@ -159,21 +159,21 @@ export default function CyclingScreen({ navigation, route }) {
   };
 
   const handleFinish = async () => {
-    console.log('=== CYCLING WORKOUT FINISH DEBUG START ===');
-    console.log('Distance:', distance, 'meters');
-    console.log('Duration:', duration, 'seconds');
-    console.log('User ID:', userId);
-    console.log('Activity Type:', activityType);
-    console.log('Is Active:', isActive);
-    console.log('Is Paused:', isPaused);
-    console.log('Route Points Count:', cyclingRoute.length);
-    console.log('Segments Count:', segments.length);
-    console.log('Intervals Count:', intervals.length);
-    console.log('Current Speed:', currentSpeed);
-    console.log('Average Speed:', avgSpeed);
-    console.log('Max Speed:', maxSpeed);
-    console.log('Elevation Gain:', elevation.gain);
-    console.log('Elevation Loss:', elevation.loss);
+    log('=== CYCLING WORKOUT FINISH DEBUG START ===');
+    log('Distance:', distance, 'meters');
+    log('Duration:', duration, 'seconds');
+    log('User ID:', userId);
+    log('Activity Type:', activityType);
+    log('Is Active:', isActive);
+    log('Is Paused:', isPaused);
+    log('Route Points Count:', cyclingRoute.length);
+    log('Segments Count:', segments.length);
+    log('Intervals Count:', intervals.length);
+    log('Current Speed:', currentSpeed);
+    log('Average Speed:', avgSpeed);
+    log('Max Speed:', maxSpeed);
+    log('Elevation Gain:', elevation.gain);
+    log('Elevation Loss:', elevation.loss);
 
     // TESTING BYPASS: Allow short workouts in development mode
     if (distance < 100 && !__DEV__) {
