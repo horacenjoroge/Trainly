@@ -249,22 +249,6 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  // Format workout duration
-  const formatDuration = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    return `${mins}m`;
-  };
-
-  // Get workout icon
-  const getWorkoutIcon = (type) => {
-    const icons = {
-      'Swimming': 'water-outline',
-      'Running': 'walk-outline',
-      'Cycling': 'bicycle-outline',
-      'Gym': 'barbell-outline',
-    };
-    return icons[type] || 'fitness-outline';
-  };
 
 
   if (loading) {
