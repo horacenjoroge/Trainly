@@ -351,72 +351,6 @@ const loadStats = async () => {
   };
 
 
-  // Prepare chart data
-  const prepareWorkoutTypeData = () => {
-    if (!stats?.stats || stats.stats.length === 0) return [];
-    
-    const workoutColors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'
-    ];
-
-    return stats.stats.map((stat, index) => ({
-      name: stat._id,
-      population: stat.count,
-      color: workoutColors[index % workoutColors.length],
-      legendFontColor: colors.text,
-      legendFontSize: 12,
-    }));
-  };
-
-  const prepareTrendsData = () => {
-    if (!stats?.trends || stats.trends.length === 0) {
-      return {
-        labels: ['No Data'],
-        datasets: [{
-          data: [0],
-          color: (opacity = 1) => `rgba(70, 183, 209, ${opacity})`,
-          strokeWidth: 2,
-        }]
-      };
-    }
-
-    const labels = stats.trends.map(trend => {
-      const date = new Date(trend._id);
-      return `${date.getMonth() + 1}/${date.getDate()}`;
-    });
-
-    return {
-      labels,
-      datasets: [
-        {
-          data: stats.trends.map(trend => trend.count),
-          color: (opacity = 1) => `rgba(70, 183, 209, ${opacity})`,
-          strokeWidth: 2,
-        }
-      ]
-    };
-  };
-
-  const prepareCaloriesData = () => {
-    if (!stats?.trends || stats.trends.length === 0) {
-      return {
-        labels: ['No Data'],
-        datasets: [{
-          data: [0],
-        }]
-      };
-    }
-
-    return {
-      labels: stats.trends.map(trend => {
-        const date = new Date(trend._id);
-        return `${date.getMonth() + 1}/${date.getDate()}`;
-      }),
-      datasets: [{
-        data: stats.trends.map(trend => trend.totalCalories || 0),
-      }]
-    };
-  };
 
   // Debug component for development
   const DebugSection = () => {
@@ -467,22 +401,6 @@ const loadStats = async () => {
     );
   }
 
-  const chartConfig = {
-    backgroundColor: colors.surface,
-    backgroundGradientFrom: colors.surface,
-    backgroundGradientTo: colors.surface,
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(70, 183, 209, ${opacity})`,
-    labelColor: (opacity = 1) => colors.text,
-    style: {
-      borderRadius: 16,
-    },
-    propsForDots: {
-      r: "4",
-      strokeWidth: "2",
-      stroke: colors.primary
-    }
-  };
 
   log('Current stats state:', stats);
   log('Current workout history length:', workoutHistory.length);
@@ -572,57 +490,10 @@ const loadStats = async () => {
           </View>
         )}
 
-        {/* Workout Types Chart */}
-        {stats?.stats && stats.stats.length > 0 && (
-          <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>
-              Workout Types
-            </Text>
-            <PieChart
-              data={prepareWorkoutTypeData()}
-              width={width - 64}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute
-            />
-          </View>
-        )}
-
-        {/* Activity Trends */}
-        {stats?.trends && stats.trends.length > 0 && stats.trends.some(t => t.count > 0) && (
-          <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>
-              Daily Activity (Last 7 Days)
-            </Text>
-            <LineChart
-              data={prepareTrendsData()}
-              width={width - 64}
-              height={220}
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chart}
-            />
-          </View>
-        )}
-
-        {/* Calories Burned */}
-        {stats?.trends && stats.trends.length > 0 && stats.trends.some(t => t.totalCalories > 0) && (
-          <View style={[styles.chartContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.chartTitle, { color: colors.text }]}>
-              Calories Burned (Last 7 Days)
-            </Text>
-            <BarChart
-              data={prepareCaloriesData()}
-              width={width - 64}
-              height={220}
-              chartConfig={chartConfig}
-              style={styles.chart}
-            />
-          </View>
-        )}
+        {/* Charts */}
+        <WorkoutTypeChart stats={stats?.stats} />
+        <ActivityTrendChart trends={stats?.trends} />
+        <CaloriesChart trends={stats?.trends} />
 
         {/* Personal Bests */}
         {stats?.personalBests && Object.keys(stats.personalBests).length > 0 && (
