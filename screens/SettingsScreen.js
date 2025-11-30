@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
+import { log, logError } from '../utils/logger';
 
 const USER_DATA_KEY = '@user_data';
 
@@ -107,11 +108,11 @@ const SettingsScreen = ({ navigation }) => {
               setUserData(prev => ({...prev, ...profileData}));
             }
           } catch (apiError) {
-            console.log('Using cached profile data');
+            log('Using cached profile data');
           }
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
+        logError('Error loading profile:', error);
       }
     };
     
@@ -143,7 +144,7 @@ const SettingsScreen = ({ navigation }) => {
             setUserData(prev => ({...prev, ...parsedData}));
           }
         } catch (error) {
-          console.error('Error refreshing profile:', error);
+          logError('Error refreshing profile:', error);
         }
       };
       
@@ -177,17 +178,17 @@ const SettingsScreen = ({ navigation }) => {
                 'settings_push_notifications'
               ]);
               
-              console.log('🧹 Cleared local storage');
+              log('🧹 Cleared local storage');
               
               // Call the auth logout function
               await logout();
               
-              console.log('✅ Settings logout completed successfully');
+              log('✅ Settings logout completed successfully');
               
               // Force navigation to auth screen immediately
               // Don't rely on the auth context navigation
               setTimeout(() => {
-                console.log('🔄 Force navigating to Auth screen');
+                log('🔄 Force navigating to Auth screen');
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Auth' }],
@@ -195,7 +196,7 @@ const SettingsScreen = ({ navigation }) => {
               }, 100);
               
             } catch (error) {
-              console.error('❌ Settings logout error:', error);
+              logError('❌ Settings logout error:', error);
               setIsLoggingOut(false);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
@@ -216,7 +217,7 @@ const SettingsScreen = ({ navigation }) => {
         Alert.alert('Error', 'Cannot open this link');
       }
     } catch (error) {
-      console.error('Error opening link:', error);
+      logError('Error opening link:', error);
       Alert.alert('Error', 'Failed to open link');
     }
   };
