@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { workoutAPI } from '../services/workoutAPI';
 import { log, logError, logWarn } from '../utils/logger';
 import StatCard from '../components/stats/StatCard';
+import { formatDuration, formatDistance } from '../utils/formatUtils';
 
 const { width } = Dimensions.get('window');
 
