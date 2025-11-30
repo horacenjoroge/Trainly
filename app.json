@@ -108,6 +108,31 @@
     "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/a389fc99-f94b-4e7c-943b-9c4584770a51"
+    },
+    "web": {
+      "favicon": "./assets/images/running-person.png",
+      "name": "Trainly",
+      "shortName": "Trainly",
+      "lang": "en",
+      "scope": "/",
+      "themeColor": "#FF7D2C",
+      "backgroundColor": "#F8F9FA",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "description": "Your personal fitness companion for tracking workouts and connecting with the fitness community",
+      "icons": [
+        {
+          "src": "./assets/images/running-person.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        },
+        {
+          "src": "./assets/images/running-person.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ]
     }
   }
 }
