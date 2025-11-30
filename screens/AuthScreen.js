@@ -265,14 +265,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   errorContainer: {
-    backgroundColor: '#ffebee',
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
+    borderWidth: 1,
   },
   errorText: {
-    color: '#d32f2f',
     textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
   },
   formContainer: {
     marginTop: 20,
