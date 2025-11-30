@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log, logError } from '../utils/logger';
 import { workoutAPI } from '../services/workoutAPI'; // Import workoutAPI
 
 // Import sub-components
@@ -89,7 +90,7 @@ const GymWorkoutScreen = ({ navigation, route }) => {
           navigation.goBack();
         }
       } catch (error) {
-        console.error('Error getting current user ID:', error);
+        logError('Error getting current user ID:', error);
         Alert.alert('Error', 'Authentication error. Please login again.');
         navigation.goBack();
       }
@@ -198,7 +199,7 @@ const GymWorkoutScreen = ({ navigation, route }) => {
         setWorkoutHistory(JSON.parse(savedHistory));
       }
     } catch (error) {
-      console.error('Error loading workout history:', error);
+      logError('Error loading workout history:', error);
     }
   };
 
@@ -214,7 +215,7 @@ const GymWorkoutScreen = ({ navigation, route }) => {
       };
       await AsyncStorage.setItem('currentWorkout', JSON.stringify(workoutData));
     } catch (error) {
-      console.error('Error saving workout progress:', error);
+      logError('Error saving workout progress:', error);
     }
   };
 
