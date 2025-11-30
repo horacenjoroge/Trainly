@@ -23,6 +23,7 @@ import { workoutAPI } from '../services/workoutAPI';
 import { useTheme } from '../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import PostCard from '../components/social/PostCard';
+import ProgressCard from '../components/home/ProgressCard';
 
 // Replace with your actual backend URL
 const API_URL = __DEV__ 
@@ -31,111 +32,6 @@ const API_URL = __DEV__
 const USER_DATA_KEY = '@user_data';
 
 
-// Simplified Progress Card - Just displays basic stats
-const ProgressCard = ({ stats, loading = false, onViewFullStats }) => {
-  const theme = useTheme();
-  const colors = theme.colors;
-
-  // Helper function to format duration
-  const formatDuration = (totalMinutes) => {
-    if (totalMinutes < 60) {
-      return `${totalMinutes}m`;
-    }
-    
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.floor(totalMinutes % 60);
-    
-    if (minutes === 0) {
-      return `${hours}h`;
-    }
-    
-    return `${hours}h ${minutes}m`;
-  };
-
-  return (
-    <View style={[styles.progressContainer, { backgroundColor: colors.surface }]}>
-      <View style={styles.progressHeader}>
-        <Text style={[styles.progressTitle, { color: colors.primary }]}>My Progress</Text>
-        <TouchableOpacity onPress={onViewFullStats}>
-          <Text style={[styles.progressEdit, { color: colors.secondary }]}>View Stats</Text>
-        </TouchableOpacity>
-      </View>
-      
-      {loading ? (
-        <View style={styles.progressLoading}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={[styles.progressLoadingText, { color: colors.textSecondary }]}>
-            Loading progress...
-          </Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.progressStats}>
-            <View style={styles.progressStatItem}>
-              <Ionicons name="trophy-outline" size={24} color={colors.primary} />
-              <Text style={[styles.progressStatValue, { color: colors.primary }]}>
-                {stats.totalWorkouts || 0}
-              </Text>
-              <Text style={[styles.progressStatLabel, { color: colors.textSecondary }]}>
-                Workouts
-              </Text>
-            </View>
-            <View style={styles.progressStatItem}>
-              <Ionicons name="time-outline" size={24} color={colors.primary} />
-              <Text style={[styles.progressStatValue, { color: colors.primary }]}>
-                {formatDuration(stats.totalDuration || 0)}
-              </Text>
-              <Text style={[styles.progressStatLabel, { color: colors.textSecondary }]}>
-                Time
-              </Text>
-            </View>
-            <View style={styles.progressStatItem}>
-              <Ionicons name="flame-outline" size={24} color={colors.primary} />
-              <Text style={[styles.progressStatValue, { color: colors.primary }]}>
-                {Math.round(stats.totalCalories || 0)}
-              </Text>
-              <Text style={[styles.progressStatLabel, { color: colors.textSecondary }]}>
-                Calories
-              </Text>
-            </View>
-          </View>
-          
-          {/* Simple weekly goal progress */}
-          <View style={styles.weeklyGoalContainer}>
-            <View style={styles.weeklyGoalHeader}>
-              <Text style={[styles.weeklyGoalTitle, { color: colors.text }]}>
-                This Week
-              </Text>
-              <Text style={[styles.weeklyGoalText, { color: colors.textSecondary }]}>
-                {stats.weeklyWorkouts || 0}/{stats.weeklyGoal || 3} workouts
-              </Text>
-            </View>
-            <View style={[styles.progressBar, { backgroundColor: `${colors.primary}20` }]}>
-              <View 
-                style={[
-                  styles.progressBarFill, 
-                  { 
-                    backgroundColor: colors.primary,
-                    width: `${Math.min(((stats.weeklyWorkouts || 0) / (stats.weeklyGoal || 3)) * 100, 100)}%`
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-
-          {/* Quick insight */}
-          {stats.lastWorkout && (
-            <View style={styles.lastWorkoutContainer}>
-              <Text style={[styles.lastWorkoutText, { color: colors.textSecondary }]}>
-                Last workout: {stats.lastWorkout.type} • {stats.lastWorkout.timeAgo}
-              </Text>
-            </View>
-          )}
-        </>
-      )}
-    </View>
-  );
-};
 
 const HomeScreen = ({ navigation }) => {
   const theme = useTheme();
