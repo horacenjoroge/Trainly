@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, SafeAreaView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme, colors } from '../theme';
+import { log } from '../utils/logger';
 
 const DUMMY_POSTS = [
   {
@@ -78,8 +79,8 @@ const CommunityFeedScreen = ({ navigation }) => {
 
   const handleCreatePost = () => navigation.navigate('CreatePost');
 
-  const handleLike = (postId) => console.log(`Liked post ${postId}`);
-  const handleComment = (postId) => console.log(`Navigate to comments for post ${postId}`);
+  const handleLike = (postId) => log(`Liked post ${postId}`);
+  const handleComment = (postId) => log(`Navigate to comments for post ${postId}`);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
