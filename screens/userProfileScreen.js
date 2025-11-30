@@ -113,34 +113,34 @@ export default function UserProfile({ route, onLogout }) {
      
      // ONLY if this is the current user, check for updated bio in AsyncStorage
      if (currentUserId === userId) {
-       console.log('📱 UserProfile: This is current user, checking for updated bio in AsyncStorage');
+       log('📱 UserProfile: This is current user, checking for updated bio in AsyncStorage');
        
        try {
          const localData = await AsyncStorage.getItem(USER_DATA_KEY);
          if (localData) {
            const parsedData = JSON.parse(localData);
-           console.log('✅ UserProfile: Found local data for current user');
+           log('✅ UserProfile: Found local data for current user');
            
            // Only update specific fields, don't overwrite everything
            if (parsedData.bio) {
              finalUserData.bio = parsedData.bio;
-             console.log('✅ UserProfile: Updated bio from local storage:', parsedData.bio);
+             log('✅ UserProfile: Updated bio from local storage:', parsedData.bio);
            }
            
            if (parsedData.fullName) {
              finalUserData.name = parsedData.fullName;
-             console.log('✅ UserProfile: Updated name from local storage:', parsedData.fullName);
+             log('✅ UserProfile: Updated name from local storage:', parsedData.fullName);
            }
            
            // Keep API data for stats, followers, following
            // Don't overwrite these with local data
          }
        } catch (localError) {
-         console.log('⚠️ UserProfile: No local data found, using API data only');
+         log('⚠️ UserProfile: No local data found, using API data only');
        }
      }
      
-     console.log('🌐 UserProfile: Final user data:', finalUserData);
+     log('🌐 UserProfile: Final user data:', finalUserData);
      setUserData(finalUserData);
 
      // Check follow status if different user
