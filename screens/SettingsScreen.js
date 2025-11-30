@@ -233,7 +233,7 @@ const SettingsScreen = ({ navigation }) => {
     }
     
     if (imageSource.startsWith('/uploads/')) {
-      return { uri: `https://trainly-backend-production.up.railway.app${imageSource}` };
+      return { uri: `https://trainingapp-api-production.up.railway.app${imageSource}` };
     }
     
     if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {

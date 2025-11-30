@@ -5,9 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logError } from '../utils/logger';
 
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'  // Local development
-  : 'https://trainly-backend-production.up.railway.app';  // Production
+const API_URL = 'https://trainingapp-api-production.up.railway.app';
 
 const USER_DATA_KEY = '@user_data';
 

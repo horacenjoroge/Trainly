@@ -1,9 +1,7 @@
 // utils/imageUtils.js
 import { log } from './logger';
 
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'  // Local development
-  : 'https://trainly-backend-production.up.railway.app';  // Production
+const API_URL = 'https://trainingapp-api-production.up.railway.app';
 
 /**
  * Safely handle image URIs of various formats

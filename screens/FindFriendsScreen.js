@@ -19,9 +19,7 @@ import { getSafeImageUri } from '../utils/imageUtils';
 import { log, logError } from '../utils/logger';
 
 // API URL
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'  // Local development
-  : 'https://trainly-backend-production.up.railway.app';  // Production
+const API_URL = 'https://trainingapp-api-production.up.railway.app';
 
 export default function FindFriends({ navigation }) {
   const theme = useTheme();

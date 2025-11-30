@@ -4,9 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { log } from '../../utils/logger';
 
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'
-  : 'https://trainly-backend-production.up.railway.app';
+const API_URL = 'https://trainingapp-api-production.up.railway.app';
 
 /**
  * Helper function to safely handle image URIs of various formats

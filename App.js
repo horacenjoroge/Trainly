@@ -128,36 +128,28 @@ const AppContent = () => {
       setPreparationStarted(true);
       
       try {
-        log('🧹 Cleaning AsyncStorage...');
-        
-        // Diagnose AsyncStorage
-        const keys = await AsyncStorage.getAllKeys();
-        log('All AsyncStorage keys:', keys);
-        
-        // Find numeric keys that indicate corruption
-        const numericKeys = keys.filter(key => /^\d+$/.test(key));
-        if (numericKeys.length > 0) {
-          log(`Found ${numericKeys.length} numeric keys (corrupted data)`);
-          
-          // Remove all numeric keys
-          for (const key of numericKeys) {
-            await AsyncStorage.removeItem(key);
+        // Optimized: Only check AsyncStorage if we suspect corruption
+        // Don't block startup with full scan
+        const token = await AsyncStorage.getItem('token');
+        if (token) {
+          // Quick check for corruption - only if token exists
+          try {
+            const userData = await AsyncStorage.getItem('userData');
+            if (userData && (userData.startsWith('{\"0\":') || userData.includes('"1": "'))) {
+              log('Corrupted data detected, cleaning...');
+              await AsyncStorage.multiRemove(['userData', 'token', 'refreshToken']);
+            }
+          } catch (e) {
+            // Ignore errors during quick check
           }
-          log('Removed all numeric keys');
-          
-          // Force a clean slate if corrupted
-          await AsyncStorage.removeItem('userData');
-          await AsyncStorage.removeItem('token');
-          await AsyncStorage.removeItem('refreshToken');
         }
-
-        // App preparation complete - no artificial delay needed
-        // Actual loading is handled by auth check and splash screen
+        
+        // App preparation complete - set ready immediately
+        setAppIsReady(true);
         
       } catch (error) {
         logError('❌ App preparation error:', error);
-      } finally {
-        log('🏁 App preparation finished, setting appIsReady to true');
+        // Still set ready even on error to prevent blocking
         setAppIsReady(true);
       }
     }

@@ -17,6 +17,7 @@ import { userService, postService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { log, logError } from '../utils/logger';
+import { getSafeImageUri } from '../utils/imageUtils';
 
 const USER_DATA_KEY = '@user_data';
 

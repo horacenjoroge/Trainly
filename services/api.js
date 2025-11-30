@@ -3,9 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { log, logError } from '../utils/logger';
 
 // Base URL for the API
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'  // Local development
-  : 'https://trainly-backend-production.up.railway.app';  // Production
+const API_URL = 'https://trainingapp-api-production.up.railway.app';
 
 // Create axios instance
 const apiClient = axios.create({

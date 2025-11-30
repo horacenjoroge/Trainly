@@ -290,7 +290,7 @@ Configure API endpoints in `services/api.js`:
 ```javascript
 const API_URL = __DEV__ 
   ? 'http://localhost:3000'
-  : 'https://trainly-backend-production.up.railway.app';
+  : 'https://trainingapp-api-production.up.railway.app';
 ```
 
 ---
@@ -333,7 +333,7 @@ npm run test:e2e
 - `POST /api/posts` - Create new post
 - `POST /api/posts/:id/like` - Like/unlike post
 
-[View Full API Documentation](https://trainly-backend-production.up.railway.app/api/docs)
+[View Full API Documentation](https://trainingapp-api-production.up.railway.app/api/docs)
 
 ---
 

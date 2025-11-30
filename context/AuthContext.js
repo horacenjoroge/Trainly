@@ -23,83 +23,101 @@ export const AuthProvider = ({ children }) => {
  const checkAuthStatus = async () => {
    log('Checking auth status...');
    setIsLoading(true);
+   
+   // Add timeout to prevent hanging
+   const timeoutPromise = new Promise((_, reject) => 
+     setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+   );
+   
    try {
-     const token = await AsyncStorage.getItem('token');
-     let userData = await AsyncStorage.getItem('userData');
-     
-     log('Token exists:', !!token);
-     log('User data exists:', !!userData);
-     
-     // Check for corrupted userData with telltale string patterns
-     if (userData && (userData.startsWith('{\"0\":') || userData.includes('"1": "'))) {
-       log('Corrupted userData detected, clearing data');
-       await clearAuthData();
-       setIsLoading(false);
-       return;
-     }
-     
-     if (token && userData) {
-       // Validate userData is proper JSON before proceeding
-       try {
-         JSON.parse(userData);
-       } catch (e) {
-         log('Invalid userData format detected, clearing data');
+     const authCheck = async () => {
+       const token = await AsyncStorage.getItem('token');
+       let userData = await AsyncStorage.getItem('userData');
+       
+       log('Token exists:', !!token);
+       log('User data exists:', !!userData);
+       
+       // Check for corrupted userData with telltale string patterns
+       if (userData && (userData.startsWith('{\"0\":') || userData.includes('"1": "'))) {
+         log('Corrupted userData detected, clearing data');
          await clearAuthData();
          setIsLoading(false);
          return;
        }
        
-       // Check if token is valid
-       const isTokenValid = checkTokenValidity(token);
-       log('Token valid:', isTokenValid);
-       
-       if (isTokenValid) {
+       if (token && userData) {
+         // Validate userData is proper JSON before proceeding
          try {
-           const parsedUserData = JSON.parse(userData);
-           setUser(parsedUserData);
-           setIsAuthenticated(true);
-           log('Auth state set to authenticated with user:', parsedUserData);
-         } catch (parseError) {
-           logError('Error parsing user data:', parseError);
+           JSON.parse(userData);
+         } catch (e) {
+           log('Invalid userData format detected, clearing data');
            await clearAuthData();
+           setIsLoading(false);
+           return;
          }
-       } else {
-         // Token expired, try to refresh
-         log('Token expired, attempting refresh');
          
-         try {
-           const refreshed = await authService.refreshToken();
-           
-           if (refreshed) {
-             // Refresh successful
-             const updatedUserData = await AsyncStorage.getItem('userData');
-             
-             // Validate the refreshed user data
-             try {
-               const parsedUserData = JSON.parse(updatedUserData);
-               setUser(parsedUserData);
-               setIsAuthenticated(true);
-               log('Token refreshed, auth state updated');
-             } catch (parseError) {
-               logError('Error parsing refreshed user data:', parseError);
-               await clearAuthData();
-             }
-           } else {
-             // Refresh failed, user needs to login again
-             log('Token refresh failed, clearing auth state');
+         // Check if token is valid
+         const isTokenValid = checkTokenValidity(token);
+         log('Token valid:', isTokenValid);
+         
+         if (isTokenValid) {
+           try {
+             const parsedUserData = JSON.parse(userData);
+             setUser(parsedUserData);
+             setIsAuthenticated(true);
+             log('Auth state set to authenticated with user:', parsedUserData);
+           } catch (parseError) {
+             logError('Error parsing user data:', parseError);
              await clearAuthData();
            }
-         } catch (refreshError) {
-           logError('Error refreshing token:', refreshError);
-           await clearAuthData();
+         } else {
+           // Token expired, try to refresh with timeout
+           log('Token expired, attempting refresh');
+           
+           try {
+             const refreshed = await Promise.race([
+               authService.refreshToken(),
+               new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh timeout')), 3000))
+             ]);
+             
+             if (refreshed) {
+               // Refresh successful
+               const updatedUserData = await AsyncStorage.getItem('userData');
+               
+               // Validate the refreshed user data
+               try {
+                 const parsedUserData = JSON.parse(updatedUserData);
+                 setUser(parsedUserData);
+                 setIsAuthenticated(true);
+                 log('Token refreshed, auth state updated');
+               } catch (parseError) {
+                 logError('Error parsing refreshed user data:', parseError);
+                 await clearAuthData();
+               }
+             } else {
+               // Refresh failed, user needs to login again
+               log('Token refresh failed, clearing auth state');
+               await clearAuthData();
+             }
+           } catch (refreshError) {
+             logError('Error refreshing token:', refreshError);
+             await clearAuthData();
+           }
          }
+       } else {
+         log('No token or user data found, clearing auth state');
+         await clearAuthData();
        }
-     } else {
-       log('No token or user data found, clearing auth state');
-       await clearAuthData();
-     }
+     };
+     
+     await Promise.race([authCheck(), timeoutPromise]);
+     
    } catch (error) {
      logError('Auth status check error:', error);
+     // On timeout, just clear and continue (don't block)
+     if (error.message === 'Auth check timeout' || error.message === 'Refresh timeout') {
+       log('Auth check timed out, proceeding without auth');
+     }
      await clearAuthData();
    } finally {
      // First, check for numeric keys in AsyncStorage that indicate corruption

@@ -26,10 +26,8 @@ import PostCard from '../components/social/PostCard';
 import ProgressCard from '../components/home/ProgressCard';
 import { log, logError } from '../utils/logger';
 
-// Replace with your actual backend URL
-const API_URL = __DEV__ 
-  ? 'http://192.168.100.88:3000'  // Local development
-  : 'https://trainly-backend-production.up.railway.app';  // Production
+// Backend API URL
+const API_URL = 'https://trainingapp-api-production.up.railway.app';
 const USER_DATA_KEY = '@user_data';
 
 

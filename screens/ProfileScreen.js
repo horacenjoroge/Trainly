@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -19,7 +21,9 @@ import ProfileStats from '../components/profile/ProfileStats';
 import RecentWorkoutItem from '../components/profile/RecentWorkoutItem';
 import ImagePickerModal from '../components/profile/ImagePickerModal';
 import { useImageUpload } from '../hooks/useImageUpload';
+import { getSafeImageUri } from '../utils/imageUtils';
 
+const API_URL = 'https://trainingapp-api-production.up.railway.app';
 const USER_DATA_KEY = '@user_data';
 
 export default function ProfileScreen({ navigation }) {
@@ -38,7 +42,18 @@ export default function ProfileScreen({ navigation }) {
   const [currentUserId, setCurrentUserId] = useState(null);
 
   // Use image upload hook
-  const { uploading, pickImage } = useImageUpload();
+  const { uploading, pickImage: pickImageFromHook } = useImageUpload();
+  
+  // Wrapper to update profile image after upload and close modal
+  const pickImage = async (sourceType) => {
+    try {
+      await pickImageFromHook(sourceType, (avatarUrl) => {
+        setProfileImage(avatarUrl);
+      });
+    } finally {
+      setModalVisible(false);
+    }
+  };
   
   // Add a listener for focus events to refresh data
   useEffect(() => {
@@ -49,7 +64,6 @@ export default function ProfileScreen({ navigation }) {
   useEffect(() => {
     loadProfileData();
     loadRecentWorkouts();
-    global.getSafeImageUri = getSafeImageUri;
   }, []);
 
   const loadRecentWorkouts = async () => {
@@ -151,101 +165,6 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  // Upload image to the server
-  const uploadAvatar = async (imageUri) => {
-    try {
-      setUploading(true);
-      
-      const formData = new FormData();
-      const filename = imageUri.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
-      
-      formData.append('image', {
-        uri: imageUri,
-        name: filename,
-        type,
-      });
-
-      const token = await AsyncStorage.getItem('token');
-      const response = await fetch(`${API_URL}/api/uploads/avatar`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'x-auth-token': token,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Update local storage with new avatar
-      const userData = await AsyncStorage.getItem(USER_DATA_KEY);
-      if (userData) {
-        const parsedData = JSON.parse(userData);
-        parsedData.avatar = data.avatar;
-        await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(parsedData));
-      }
-      
-      return data.avatar;
-    } catch (error) {
-      logError('Error uploading avatar:', error);
-      throw error;
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const pickImage = async (sourceType) => {
-    try {
-      // Request permissions
-      let permissionResult;
-      if (sourceType === 'camera') {
-        permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      } else {
-        permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      }
-
-      if (permissionResult.status !== 'granted') {
-        Alert.alert('Permission Required', `Please grant ${sourceType} permissions to continue`);
-        return;
-      }
-
-      // Launch camera or image picker
-      const options = {
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      };
-
-      const result = sourceType === 'camera' 
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync({
-            ...options,
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          });
-
-      // Process selected image
-      if (!result.canceled && result.assets && result.assets[0]) {
-        try {
-          const avatarUrl = await uploadAvatar(result.assets[0].uri);
-          setProfileImage(avatarUrl);
-          Alert.alert('Success', 'Profile picture updated successfully');
-        } catch (error) {
-          Alert.alert('Error', 'Failed to update profile picture');
-        }
-      }
-    } catch (error) {
-      logError('Error picking image:', error);
-      Alert.alert('Error', 'Error selecting or processing image');
-    } finally {
-      setModalVisible(false);
-    }
-  };
 
 
 
