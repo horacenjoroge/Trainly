@@ -223,7 +223,7 @@ export default function CyclingScreen({ navigation, route }) {
         
         // Show achievements if earned
         if (result.achievements && result.achievements.length > 0) {
-          console.log('CyclingScreen - Showing achievements:', result.achievements);
+          log('CyclingScreen - Showing achievements:', result.achievements);
           Alert.alert(
             '🎉 New Achievement!',
             `You earned: ${result.achievements.map(a => a.title || a.name || 'Achievement').join(', ')}`,
@@ -232,19 +232,19 @@ export default function CyclingScreen({ navigation, route }) {
         }
         
         // Navigate back with success
-        console.log('CyclingScreen - Navigating back with success');
+        log('CyclingScreen - Navigating back with success');
         navigation.navigate('TrainingSelection', {
           newWorkout: result.workout,
           achievementsEarned: result.achievements,
           message: result.message
         });
       } else {
-        console.log('CyclingScreen - Save failed, result:', result);
+        log('CyclingScreen - Save failed, result:', result);
         throw new Error(result?.message || 'Failed to save workout - no success flag');
       }
       
     } catch (error) {
-      console.error('CyclingScreen - DETAILED ERROR in handleFinish:', {
+      logError('CyclingScreen - DETAILED ERROR in handleFinish:', {
         message: error.message,
         stack: error.stack,
         name: error.name,
@@ -260,7 +260,7 @@ export default function CyclingScreen({ navigation, route }) {
         ]
       );
     } finally {
-      console.log('=== CYCLING WORKOUT FINISH DEBUG END ===');
+      log('=== CYCLING WORKOUT FINISH DEBUG END ===');
     }
   };
 
