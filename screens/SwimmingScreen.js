@@ -96,7 +96,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
   const handleStartPause = async () => {
     try {
       if (!swimming.isActive) {
-        console.log('SwimmingScreen - Starting tracking...');
+        log('SwimmingScreen - Starting tracking...');
         const started = await swimming.startTracking();
         if (!started) {
           Alert.alert('Error', 'Could not start swimming session.');
@@ -139,10 +139,10 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
 
   // SIMPLIFIED handleFinish - No complex state dependencies
   const handleFinish = async () => {
-    console.log('=== SWIMMING WORKOUT FINISH DEBUG START ===');
-    console.log('Total Distance:', swimming.totalDistance, 'meters');
-    console.log('Duration:', swimming.duration, 'seconds');
-    console.log('Total Laps:', swimming.laps.length);
+    log('=== SWIMMING WORKOUT FINISH DEBUG START ===');
+    log('Total Distance:', swimming.totalDistance, 'meters');
+    log('Duration:', swimming.duration, 'seconds');
+    log('Total Laps:', swimming.laps.length);
 
     // Simple validation
     if (swimming.laps.length === 0 && !__DEV__) {
@@ -153,7 +153,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
     // Duration fix
     const MINIMUM_DURATION = 30;
     if (swimming.duration < MINIMUM_DURATION && swimming.tracker) {
-      console.log(`Duration too short (${swimming.duration}s), adjusting to ${MINIMUM_DURATION}s`);
+      log(`Duration too short (${swimming.duration}s), adjusting to ${MINIMUM_DURATION}s`);
       swimming.tracker.duration = MINIMUM_DURATION;
       swimming.tracker.endTime = new Date(swimming.tracker.startTime.getTime() + (MINIMUM_DURATION * 1000));
     }
@@ -166,7 +166,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
       const result = await swimming.saveWorkout();
       
       if (result && result.success) {
-        console.log('SwimmingScreen - Workout saved successfully!');
+        log('SwimmingScreen - Workout saved successfully!');
         
         if (result.achievements && result.achievements.length > 0) {
           Alert.alert(
