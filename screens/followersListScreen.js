@@ -14,6 +14,7 @@ import { useTheme } from '../context/ThemeContext';
 import { userService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSafeImageUri } from '../utils/imageUtils';
+import { log, logError, logWarn } from '../utils/logger';
 
 export default function FollowersList({ route, navigation }) {
   const { userId } = route.params || {};
@@ -38,19 +39,19 @@ export default function FollowersList({ route, navigation }) {
           const user = JSON.parse(data);
           const foundUserId = user._id || user.id;
           setCurrentUserId(foundUserId);
-          console.log('✅ FollowersList: Found current user ID:', foundUserId);
+          log('✅ FollowersList: Found current user ID:', foundUserId);
         } else {
-          console.warn('⚠️ FollowersList: No user data found in storage');
+          logWarn('⚠️ FollowersList: No user data found in storage');
         }
       } catch (error) {
-        console.error('❌ FollowersList: Error getting current user:', error);
+        logError('❌ FollowersList: Error getting current user:', error);
       }
     };
     getCurrentUser();
   }, []);
 
   useEffect(() => {
-    console.log('🔄 FollowersList: Params userId:', userId);
+    log('🔄 FollowersList: Params userId:', userId);
     
     if (userId) {
       loadFollowers();
@@ -66,7 +67,7 @@ export default function FollowersList({ route, navigation }) {
       const userData = await userService.getUserById(userId);
       setViewingUserName(userData?.name || '');
     } catch (error) {
-      console.error('Error loading user details:', error);
+      logError('Error loading user details:', error);
     }
   };
 
@@ -74,13 +75,13 @@ export default function FollowersList({ route, navigation }) {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 FollowersList: Loading followers for userId:', userId);
+      log('🔄 FollowersList: Loading followers for userId:', userId);
       
       const response = await userService.getFollowers(userId);
-      console.log('✅ FollowersList: Loaded followers data:', response?.length || 0, 'users');
+      log('✅ FollowersList: Loaded followers data:', response?.length || 0, 'users');
       setFollowers(response || []);
     } catch (error) {
-      console.error('❌ FollowersList: Error loading followers:', error);
+      logError('❌ FollowersList: Error loading followers:', error);
       setError('Failed to load followers list');
     } finally {
       setLoading(false);
@@ -99,7 +100,7 @@ export default function FollowersList({ route, navigation }) {
       );
       setTimeout(loadFollowers, 500);
     } catch (error) {
-      console.error('Error following user:', error);
+      logError('Error following user:', error);
     }
   };
 
