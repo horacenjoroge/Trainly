@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Vibration, Alert } from 'react-native';
 import * as Location from 'expo-location';
 import BaseTracker from './BaseTracker';
+import { log, logError } from '../../utils/logger';
 
 // CyclingTracker class that extends BaseTracker
 class CyclingTracker extends BaseTracker {
@@ -11,7 +12,7 @@ class CyclingTracker extends BaseTracker {
     
     // CRITICAL FIX: Ensure userId is properly stored
     this.userId = userId;
-    console.log('CyclingTracker constructor - userId:', this.userId);
+    log('CyclingTracker constructor - userId:', this.userId);
     
     // Cycling-specific data
     this.distance = 0; // meters
@@ -54,7 +55,7 @@ class CyclingTracker extends BaseTracker {
   // Override start to initialize GPS tracking
   async start() {
     try {
-      console.log('CyclingTracker start - userId before start:', this.userId);
+      log('CyclingTracker start - userId before start:', this.userId);
       
       // Request location permissions
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -69,17 +70,17 @@ class CyclingTracker extends BaseTracker {
         this.currentSegment = this.createNewSegment();
       }
       
-      console.log('CyclingTracker start - userId after start:', this.userId);
+      log('CyclingTracker start - userId after start:', this.userId);
       return started;
     } catch (error) {
-      console.error('Failed to start cycling tracker:', error);
+      logError('Failed to start cycling tracker:', error);
       return false;
     }
   }
 
   // Override stop to clean up GPS tracking
   stop() {
-    console.log('CyclingTracker stop - userId before stop:', this.userId);
+    log('CyclingTracker stop - userId before stop:', this.userId);
     const stopped = super.stop();
     if (stopped) {
       this.stopLocationTracking();
@@ -87,7 +88,7 @@ class CyclingTracker extends BaseTracker {
         this.finishCurrentSegment();
       }
     }
-    console.log('CyclingTracker stop - userId after stop:', this.userId);
+    log('CyclingTracker stop - userId after stop:', this.userId);
     return stopped;
   }
 
@@ -127,7 +128,7 @@ class CyclingTracker extends BaseTracker {
       );
 
     } catch (error) {
-      console.error('Failed to start location tracking:', error);
+      logError('Failed to start location tracking:', error);
     }
   }
 
@@ -358,11 +359,11 @@ class CyclingTracker extends BaseTracker {
 
   // CRITICAL FIX: Override prepareWorkoutData to include sessionId and structure correctly
   async prepareWorkoutData(sessionData) {
-    console.log('CyclingTracker prepareWorkoutData - userId at start:', this.userId);
+    log('CyclingTracker prepareWorkoutData - userId at start:', this.userId);
     
     // Ensure we have a valid userId
     if (!this.userId) {
-      console.error('ERROR: userId is null/undefined in prepareWorkoutData');
+      logError('ERROR: userId is null/undefined in prepareWorkoutData');
       throw new Error('User ID is required for workout data preparation');
     }
 
@@ -423,8 +424,8 @@ class CyclingTracker extends BaseTracker {
       privacy: 'public',
     };
 
-    console.log('CyclingTracker prepareWorkoutData - final userId:', workoutData.userId);
-    console.log('CyclingTracker prepareWorkoutData - workout data structure:', {
+    log('CyclingTracker prepareWorkoutData - final userId:', workoutData.userId);
+    log('CyclingTracker prepareWorkoutData - workout data structure:', {
       type: workoutData.type,
       userId: workoutData.userId,
       sessionId: workoutData.sessionId,
@@ -444,7 +445,7 @@ class CyclingTracker extends BaseTracker {
 
   // Cycling-specific callbacks
   onAutoPause() {
-    console.log('Auto-paused due to low speed');
+    log('Auto-paused due to low speed');
     Vibration.vibrate(200);
   }
 
@@ -492,7 +493,7 @@ const useCyclingTracker = (userId) => {
   // Create or update tracker when userId changes
   useEffect(() => {
     if (userId) {
-      console.log('useCyclingTracker - Creating/updating tracker with userId:', userId);
+      log('useCyclingTracker - Creating/updating tracker with userId:', userId);
       const newTracker = new CyclingTracker(userId);
       setTracker(newTracker);
       
@@ -515,7 +516,7 @@ const useCyclingTracker = (userId) => {
   useEffect(() => {
     if (!tracker) return;
     
-    console.log('useCyclingTracker useEffect - tracker userId:', tracker.userId);
+    log('useCyclingTracker useEffect - tracker userId:', tracker.userId);
 
     // Override callbacks for cycling-specific updates
     tracker.onDurationUpdate = (newDuration) => {
