@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { formatDistanceToNow } from 'date-fns';
+import { log, logError } from '../utils/logger';
 
 const API_URL = __DEV__ 
   ? 'http://192.168.100.88:3000'  // Local development
@@ -123,7 +124,7 @@ const CommentScreen = ({ route, navigation }) => {
         setUserInfo(JSON.parse(userData));
       }
     } catch (error) {
-      console.error('Error fetching user info:', error);
+      logError('Error fetching user info:', error);
     }
   };
 
@@ -147,7 +148,7 @@ const CommentScreen = ({ route, navigation }) => {
       const response = await axios.get(`${API_URL}/api/posts/${postId}/comments`, config);
       setComments(response.data);
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      logError('Error fetching comments:', error);
       Alert.alert('Error', 'Failed to load comments. Please try again.');
     } finally {
       setLoading(false);
@@ -187,7 +188,7 @@ const CommentScreen = ({ route, navigation }) => {
       // Dismiss keyboard
       Keyboard.dismiss();
     } catch (error) {
-      console.error('Error submitting comment:', error);
+      logError('Error submitting comment:', error);
       Alert.alert('Error', 'Failed to submit comment. Please try again.');
     } finally {
       setSubmitting(false);
@@ -228,7 +229,7 @@ const CommentScreen = ({ route, navigation }) => {
             : getSafeImageUri(null)} 
           style={styles.postAvatar}
           onError={(e) => {
-            console.log('Post avatar image error:', e.nativeEvent.error);
+            log('Post avatar image error:', e.nativeEvent.error);
           }}
         />
         <View>
@@ -299,7 +300,7 @@ const CommentScreen = ({ route, navigation }) => {
               : getSafeImageUri(null)} 
             style={styles.inputAvatar}
             onError={(e) => {
-              console.log('User input avatar image error:', e.nativeEvent.error);
+              log('User input avatar image error:', e.nativeEvent.error);
             }}
           />
           <TextInput
