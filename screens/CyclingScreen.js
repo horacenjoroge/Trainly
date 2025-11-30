@@ -342,134 +342,27 @@ export default function CyclingScreen({ navigation, route }) {
       />
 
       {/* Interval Training Modal */}
-      <Modal
+      <CyclingIntervalModal
         visible={showIntervalModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowIntervalModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Start Interval</Text>
-            
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
-              Interval Type:
-            </Text>
-            <View style={styles.intervalTypes}>
-              {intervalTypes.map(type => (
-                <TouchableOpacity
-                  key={type.value}
-                  style={[
-                    styles.intervalTypeButton,
-                    intervalType === type.value && { backgroundColor: type.color },
-                    { borderColor: type.color }
-                  ]}
-                  onPress={() => setIntervalType(type.value)}
-                >
-                  <Text style={[
-                    styles.intervalTypeText,
-                    { color: intervalType === type.value ? '#FFFFFF' : type.color }
-                  ]}>
-                    {type.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
-              Duration (seconds):
-            </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-              value={intervalDuration}
-              onChangeText={setIntervalDuration}
-              keyboardType="numeric"
-              placeholder="300 (5 minutes)"
-              placeholderTextColor={colors.textSecondary}
-            />
-            
-            <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
-              Target Power (optional):
-            </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
-              value={targetPower}
-              onChangeText={setTargetPower}
-              keyboardType="numeric"
-              placeholder="250 watts"
-              placeholderTextColor={colors.textSecondary}
-            />
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.error + '20', borderColor: colors.error }]}
-                onPress={() => setShowIntervalModal(false)}
-              >
-                <Text style={[styles.modalButtonText, { color: colors.error }]}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: colors.primary }]}
-                onPress={handleStartInterval}
-              >
-                <Text style={styles.modalButtonText}>Start Interval</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        intervalType={intervalType}
+        intervalDuration={intervalDuration}
+        targetPower={targetPower}
+        intervalTypes={intervalTypes}
+        onClose={() => setShowIntervalModal(false)}
+        onIntervalTypeChange={setIntervalType}
+        onDurationChange={setIntervalDuration}
+        onPowerChange={setTargetPower}
+        onStart={handleStartInterval}
+      />
 
       {/* Detailed Stats Modal */}
-      <Modal
+      <CyclingStatsModal
         visible={showStatsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowStatsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Detailed Statistics</Text>
-            
-            <ScrollView style={styles.statsModalContent}>
-              <View style={styles.statRow}>
-                <Text style={[styles.statRowLabel, { color: colors.textSecondary }]}>
-                  Moving Time:
-                </Text>
-                <Text style={[styles.statRowValue, { color: colors.text }]}>
-                  {Math.floor(stats.movingTime / 60)}:{(stats.movingTime % 60).toString().padStart(2, '0')}
-                </Text>
-              </View>
-              
-              <View style={styles.statRow}>
-                <Text style={[styles.statRowLabel, { color: colors.textSecondary }]}>
-                  Average Moving Speed:
-                </Text>
-                <Text style={[styles.statRowValue, { color: colors.text }]}>
-                  {formatSpeed(stats.avgMovingSpeed)}
-                </Text>
-              </View>
-              
-              <View style={styles.statRow}>
-                <Text style={[styles.statRowLabel, { color: colors.textSecondary }]}>
-                  Total Elevation Change:
-                </Text>
-                <Text style={[styles.statRowValue, { color: colors.text }]}>
-                  {formatElevation(stats.totalElevationChange)}
-                </Text>
-              </View>
-              
-              {/* Add more detailed stats as needed */}
-            </ScrollView>
-            
-            <TouchableOpacity
-              style={[styles.modalButton, { backgroundColor: colors.primary }]}
-              onPress={() => setShowStatsModal(false)}
-            >
-              <Text style={styles.modalButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        stats={stats}
+        formatSpeed={formatSpeed}
+        formatElevation={formatElevation}
+        onClose={() => setShowStatsModal(false)}
+      />
     </SafeAreaView>
   );
 }
