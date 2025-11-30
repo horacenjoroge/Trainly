@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { userService, postService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { log, logError } from '../utils/logger';
 
 const USER_DATA_KEY = '@user_data';
 
@@ -53,7 +54,7 @@ export default function UserProfile({ route, onLogout }) {
        const userId = user._id || user.id;
        if (userId) {
          setCurrentUserId(userId);
-         console.log('✅ UserProfile: Loaded current user ID:', userId);
+         log('✅ UserProfile: Loaded current user ID:', userId);
        } else {
          throw new Error('User data missing ID field');
        }
@@ -62,7 +63,7 @@ export default function UserProfile({ route, onLogout }) {
        if (onLogout) onLogout();
      }
    } catch (error) {
-     console.error('❌ UserProfile: Error loading current user:', error.message);
+     logError('❌ UserProfile: Error loading current user:', error.message);
      setError('Failed to load user data');
      if (onLogout) onLogout();
    } finally {
@@ -73,7 +74,7 @@ export default function UserProfile({ route, onLogout }) {
  // Load user profile with dynamic bio support
  const loadUserProfile = useCallback(async () => {
    try {
-     console.log('🔄 UserProfile: Loading profile for userId:', userId);
+     log('🔄 UserProfile: Loading profile for userId:', userId);
      
      // ALWAYS load from API first to get the user's actual data
      const profileData = await userService.getUserById(userId);
