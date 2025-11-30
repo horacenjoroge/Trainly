@@ -7,13 +7,10 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  Modal,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
 import { log, logError, logWarn } from '../utils/logger';
@@ -40,6 +37,9 @@ export default function ProfileScreen({ navigation }) {
     following: 0
   });
   const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Use image upload hook
+  const { uploading, pickImage } = useImageUpload();
   
   // Add a listener for focus events to refresh data
   useEffect(() => {
