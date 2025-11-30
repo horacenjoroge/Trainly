@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { userService } from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
+import { log, logError } from '../utils/logger';
 
 const USER_DATA_KEY = '@user_data';
 
@@ -226,17 +227,17 @@ export default function PersonalInfoScreen({ navigation, route }) {
   const loadUserData = async () => {
     try {
       setLoading(true);
-      console.log('Loading user data from storage...');
+      log('Loading user data from storage...');
 
       // Step 1: Load data from AsyncStorage
       let localFormState = { ...formState };
       const savedData = await AsyncStorage.getItem(USER_DATA_KEY);
-      console.log('Retrieved data from storage:', savedData);
+      log('Retrieved data from storage:', savedData);
 
       if (savedData) {
         try {
           const parsedData = JSON.parse(savedData);
-          console.log('Parsed data:', parsedData);
+          log('Parsed data:', parsedData);
 
           Object.keys(localFormState).forEach((key) => {
             if (parsedData[key]) {
@@ -246,9 +247,9 @@ export default function PersonalInfoScreen({ navigation, route }) {
               };
             }
           });
-          console.log('Local form state after AsyncStorage:', localFormState);
+          log('Local form state after AsyncStorage:', localFormState);
         } catch (parseError) {
-          console.error('Error parsing saved data:', parseError);
+          logError('Error parsing saved data:', parseError);
         }
       }
 
