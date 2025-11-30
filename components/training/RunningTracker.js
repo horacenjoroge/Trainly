@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 import { PermissionsAndroid, Platform, Alert, Vibration } from 'react-native';
 import BaseTracker from './BaseTracker';
+import { log, logError } from '../../utils/logger';
 
 class RunningTracker extends BaseTracker {
   constructor(userId) {
@@ -9,7 +10,7 @@ class RunningTracker extends BaseTracker {
     
     // CRITICAL FIX: Ensure userId is properly stored
     this.userId = userId;
-    console.log('RunningTracker constructor - userId:', this.userId);
+    log('RunningTracker constructor - userId:', this.userId);
     
     // Running-specific data
     this.distance = 0; // meters
@@ -53,7 +54,7 @@ class RunningTracker extends BaseTracker {
   // Override start to initialize GPS tracking
   async start() {
     try {
-      console.log('RunningTracker start - userId before start:', this.userId);
+      log('RunningTracker start - userId before start:', this.userId);
       
       // Request location permissions
       const hasPermission = await this.requestLocationPermission();
@@ -69,22 +70,22 @@ class RunningTracker extends BaseTracker {
         await this.setInitialLocation();
       }
       
-      console.log('RunningTracker start - userId after start:', this.userId);
+      log('RunningTracker start - userId after start:', this.userId);
       return started;
     } catch (error) {
-      console.error('Failed to start running tracker:', error);
+      logError('Failed to start running tracker:', error);
       return false;
     }
   }
 
   // Override stop to clean up GPS tracking
   stop() {
-    console.log('RunningTracker stop - userId before stop:', this.userId);
+    log('RunningTracker stop - userId before stop:', this.userId);
     const stopped = super.stop();
     if (stopped) {
       this.stopGPSTracking();
     }
-    console.log('RunningTracker stop - userId after stop:', this.userId);
+    log('RunningTracker stop - userId after stop:', this.userId);
     return stopped;
   }
 
@@ -101,7 +102,7 @@ class RunningTracker extends BaseTracker {
         return status === 'granted';
       }
     } catch (error) {
-      console.error('Permission error:', error);
+      logError('Permission error:', error);
       return false;
     }
   }
@@ -133,7 +134,7 @@ class RunningTracker extends BaseTracker {
       this.lastGpsPoint = initialPoint;
       
     } catch (error) {
-      console.error('Failed to get initial location:', error);
+      logError('Failed to get initial location:', error);
     }
   }
 
@@ -153,7 +154,7 @@ class RunningTracker extends BaseTracker {
         }
       );
     } catch (error) {
-      console.error('GPS tracking error:', error);
+      logError('GPS tracking error:', error);
     }
   }
 
@@ -410,7 +411,7 @@ class RunningTracker extends BaseTracker {
 
   // Override enhanceSessionData to include running data
   async enhanceSessionData(sessionData) {
-    console.log('enhanceSessionData - userId:', this.userId);
+    log('enhanceSessionData - userId:', this.userId);
     const baseData = await super.enhanceSessionData(sessionData);
     const stats = this.getRunningStats();
     
@@ -431,11 +432,11 @@ class RunningTracker extends BaseTracker {
 
   // CRITICAL FIX: Override prepareWorkoutData with better error handling
   async prepareWorkoutData(sessionData) {
-    console.log('prepareWorkoutData - userId at start:', this.userId);
+    log('prepareWorkoutData - userId at start:', this.userId);
     
     // Ensure we have a valid userId
     if (!this.userId) {
-      console.error('ERROR: userId is null/undefined in prepareWorkoutData');
+      logError('ERROR: userId is null/undefined in prepareWorkoutData');
       throw new Error('User ID is required for workout data preparation');
     }
 
@@ -502,8 +503,8 @@ class RunningTracker extends BaseTracker {
       privacy: 'public',
     };
 
-    console.log('prepareWorkoutData - final userId:', workoutData.userId);
-    console.log('prepareWorkoutData - workout data structure:', {
+    log('prepareWorkoutData - final userId:', workoutData.userId);
+    log('prepareWorkoutData - workout data structure:', {
       type: workoutData.type,
       userId: workoutData.userId,
       duration: workoutData.duration,
@@ -536,12 +537,12 @@ class RunningTracker extends BaseTracker {
 
   // Running-specific callbacks
   onAutoPause() {
-    console.log('Auto-paused due to low speed');
+    log('Auto-paused due to low speed');
     Vibration.vibrate(300);
   }
 
   onAutoResume() {
-    console.log('Auto-resumed - speed increased');
+    log('Auto-resumed - speed increased');
     Vibration.vibrate(100);
   }
 
@@ -592,7 +593,7 @@ const useRunningTracker = (userId) => {
   // Create or update tracker when userId changes
   useEffect(() => {
     if (userId) {
-      console.log('useRunningTracker - Creating/updating tracker with userId:', userId);
+      log('useRunningTracker - Creating/updating tracker with userId:', userId);
       const newTracker = new RunningTracker(userId);
       setTracker(newTracker);
       
@@ -615,7 +616,7 @@ const useRunningTracker = (userId) => {
   useEffect(() => {
     if (!tracker) return;
     
-    console.log('useRunningTracker useEffect - tracker userId:', tracker.userId);
+    log('useRunningTracker useEffect - tracker userId:', tracker.userId);
     
     // Override callbacks for running-specific updates
     tracker.onDurationUpdate = (newDuration) => {
