@@ -20,6 +20,8 @@ import { log, logError, logWarn } from '../utils/logger';
 import ProfileHeader from '../components/profile/ProfileHeader';
 import ProfileStats from '../components/profile/ProfileStats';
 import RecentWorkoutItem from '../components/profile/RecentWorkoutItem';
+import ImagePickerModal from '../components/profile/ImagePickerModal';
+import { useImageUpload } from '../hooks/useImageUpload';
 
 const USER_DATA_KEY = '@user_data';
 
