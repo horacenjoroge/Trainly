@@ -188,6 +188,22 @@ class SwimmingTracker extends BaseTracker {
       throw new Error('User ID is required for workout data preparation');
     }
 
+    // Ensure we have valid start/end times to avoid toISOString null errors
+    if (!this.startTime) {
+      logWarn('SwimmingTracker prepareWorkoutData - startTime was null, defaulting to now - duration');
+      const now = new Date();
+      // duration is in seconds; subtract from now as a best-effort estimate
+      const safeStart = isFinite(this.duration) && this.duration > 0
+        ? new Date(now.getTime() - this.duration * 1000)
+        : now;
+      this.startTime = safeStart;
+    }
+
+    if (!this.endTime) {
+      logWarn('SwimmingTracker prepareWorkoutData - endTime was null, defaulting to now');
+      this.endTime = new Date();
+    }
+
     const stats = this.getSwimmingStats();
 
     const workoutData = {
