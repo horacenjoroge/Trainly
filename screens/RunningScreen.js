@@ -86,6 +86,7 @@ export default function RunningScreen({ navigation, route }) {
   } = useRunningTracker(userId);
   
   // UI state
+  const [isFinishing, setIsFinishing] = useState(false);
   const [showingSplits, setShowingSplits] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [coordinates, setCoordinates] = useState([]);
@@ -165,6 +166,10 @@ export default function RunningScreen({ navigation, route }) {
 
   // ENHANCED: Handle finish workout with comprehensive debug logging
   const handleFinish = async () => {
+    if (isFinishing) {
+      return;
+    }
+    setIsFinishing(true);
     log('=== WORKOUT FINISH DEBUG START ===');
     log('Distance:', distance, 'meters');
     log('Duration:', duration, 'seconds');
@@ -226,24 +231,48 @@ export default function RunningScreen({ navigation, route }) {
       
       if (result && result.success) {
         log('RunningScreen - Workout saved successfully!');
-        
-        // Show achievements if earned
-        if (result.achievements && result.achievements.length > 0) {
-          log('RunningScreen - Showing achievements:', result.achievements);
-          Alert.alert(
-            '🎉 New Achievement!',
-            `You earned: ${result.achievements.map(a => a.title || a.name || 'Achievement').join(', ')}`,
-            [{ text: 'Awesome!', style: 'default' }]
-          );
-        }
-        
-        // Navigate back with success
-        log('RunningScreen - Navigating back with success');
-        navigation.navigate('TrainingSelection', {
-          newWorkout: result.workout,
-          achievementsEarned: result.achievements,
-          message: result.message
-        });
+
+        const stats = getRunningStats();
+        const distanceKm = (distance / 1000).toFixed(2);
+        const paceFormatted = formatPace(averagePace);
+        const timeFormatted = formattedDuration;
+
+        // Show a summary modal before navigating away
+        Alert.alert(
+          'Run Summary',
+          `Distance: ${distanceKm} km\nTime: ${timeFormatted}\nAvg Pace: ${paceFormatted}/km\nCalories: ${Math.round(
+            stats.caloriesEstimate || 0
+          )}`,
+          [
+            ...(result.achievements && result.achievements.length > 0
+              ? [
+                  {
+                    text: 'View Achievements',
+                    onPress: () =>
+                      Alert.alert(
+                        '🎉 New Achievement!',
+                        `You earned: ${result.achievements
+                          .map(a => a.title || a.name || 'Achievement')
+                          .join(', ')}`,
+                        [{ text: 'Nice!' }],
+                      ),
+                  },
+                ]
+              : []),
+            {
+              text: 'Done',
+              style: 'default',
+              onPress: () => {
+                log('RunningScreen - Navigating back with success');
+                navigation.navigate('TrainingSelection', {
+                  newWorkout: result.workout,
+                  achievementsEarned: result.achievements,
+                  message: result.message,
+                });
+              },
+            },
+          ],
+        );
       } else {
         log('RunningScreen - Save failed, result:', result);
         throw new Error(result?.message || 'Failed to save workout - no success flag');
@@ -267,6 +296,7 @@ export default function RunningScreen({ navigation, route }) {
       );
     } finally {
       log('=== WORKOUT FINISH DEBUG END ===');
+      setIsFinishing(false);
     }
   };
 
@@ -493,6 +523,7 @@ export default function RunningScreen({ navigation, route }) {
           <TouchableOpacity
             style={[styles.controlButton, { backgroundColor: colors.success || '#4CAF50' }]}
             onPress={handleFinish}
+            disabled={isFinishing}
           >
             <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
             <Text style={styles.controlButtonText}>Finish</Text>

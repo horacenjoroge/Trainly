@@ -94,6 +94,7 @@ export default function CyclingScreen({ navigation, route }) {
   } = useCyclingTracker(userId);
   
   // Modal and UI states
+  const [isFinishing, setIsFinishing] = useState(false);
   const [showIntervalModal, setShowIntervalModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [intervalType, setIntervalType] = useState('work');
@@ -166,6 +167,10 @@ export default function CyclingScreen({ navigation, route }) {
   };
 
   const handleFinish = async () => {
+    if (isFinishing) {
+      return;
+    }
+    setIsFinishing(true);
     log('=== CYCLING WORKOUT FINISH DEBUG START ===');
     log('Distance:', distance, 'meters');
     log('Duration:', duration, 'seconds');
@@ -227,24 +232,48 @@ export default function CyclingScreen({ navigation, route }) {
       
       if (result && result.success) {
         log('CyclingScreen - Workout saved successfully!');
-        
-        // Show achievements if earned
-        if (result.achievements && result.achievements.length > 0) {
-          log('CyclingScreen - Showing achievements:', result.achievements);
-          Alert.alert(
-            '🎉 New Achievement!',
-            `You earned: ${result.achievements.map(a => a.title || a.name || 'Achievement').join(', ')}`,
-            [{ text: 'Awesome!', style: 'default' }]
-          );
-        }
-        
-        // Navigate back with success
-        log('CyclingScreen - Navigating back with success');
-        navigation.navigate('TrainingSelection', {
-          newWorkout: result.workout,
-          achievementsEarned: result.achievements,
-          message: result.message
-        });
+
+        const stats = getCyclingStats();
+        const distanceKm = (distance / 1000).toFixed(2);
+        const avgSpeedFormatted = formatSpeed(avgSpeed);
+        const timeFormatted = formattedDuration;
+
+        // Show a summary modal before navigating away
+        Alert.alert(
+          'Ride Summary',
+          `Distance: ${distanceKm} km\nTime: ${timeFormatted}\nAvg Speed: ${avgSpeedFormatted}\nElevation Gain: ${Math.round(
+            elevation.gain || 0,
+          )} m`,
+          [
+            ...(result.achievements && result.achievements.length > 0
+              ? [
+                  {
+                    text: 'View Achievements',
+                    onPress: () =>
+                      Alert.alert(
+                        '🎉 New Achievement!',
+                        `You earned: ${result.achievements
+                          .map(a => a.title || a.name || 'Achievement')
+                          .join(', ')}`,
+                        [{ text: 'Nice!' }],
+                      ),
+                  },
+                ]
+              : []),
+            {
+              text: 'Done',
+              style: 'default',
+              onPress: () => {
+                log('CyclingScreen - Navigating back with success');
+                navigation.navigate('TrainingSelection', {
+                  newWorkout: result.workout,
+                  achievementsEarned: result.achievements,
+                  message: result.message,
+                });
+              },
+            },
+          ],
+        );
       } else {
         log('CyclingScreen - Save failed, result:', result);
         throw new Error(result?.message || 'Failed to save workout - no success flag');
@@ -268,6 +297,7 @@ export default function CyclingScreen({ navigation, route }) {
       );
     } finally {
       log('=== CYCLING WORKOUT FINISH DEBUG END ===');
+      setIsFinishing(false);
     }
   };
 

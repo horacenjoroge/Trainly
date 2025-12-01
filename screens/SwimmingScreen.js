@@ -175,21 +175,49 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
       
       if (result && result.success) {
         log('SwimmingScreen - Workout saved successfully!');
-        
-        if (result.achievements && result.achievements.length > 0) {
-          Alert.alert(
-            '🎉 New Achievement!',
-            `You earned: ${result.achievements.map(a => a.title || a.name || 'Achievement').join(', ')}`,
-            [{ text: 'Awesome!' }]
-          );
-        }
-        
-        navigation.navigate('TrainingSelection', {
-          newWorkout: result.workout,
-          achievementsEarned: result.achievements,
-          message: result.message || 'Swimming session completed!'
-        });
-      setHasFinished(true);
+
+        const stats = swimming.getSwimmingStats();
+        const distanceKm = (swimming.totalDistance / 1000).toFixed(2);
+        const timeFormatted = swimming.formatDuration(swimming.duration);
+        const paceFormatted = stats ? swimming.formatTime(Math.round(stats.pace100m)) : '--:--';
+        const calories = stats ? Math.round(stats.caloriesEstimate || 0) : 0;
+
+        // Show a summary modal before navigating away
+        Alert.alert(
+          'Swim Summary',
+          `Distance: ${distanceKm} km\nTime: ${timeFormatted}\nPace /100m: ${paceFormatted}\nLaps: ${swimming.laps.length}\nCalories: ${calories}`,
+          [
+            ...(result.achievements && result.achievements.length > 0
+              ? [
+                  {
+                    text: 'View Achievements',
+                    onPress: () =>
+                      Alert.alert(
+                        '🎉 New Achievement!',
+                        `You earned: ${result.achievements
+                          .map(a => a.title || a.name || 'Achievement')
+                          .join(', ')}`,
+                        [{ text: 'Nice!' }],
+                      ),
+                  },
+                ]
+              : []),
+            {
+              text: 'Done',
+              style: 'default',
+              onPress: () => {
+                log('SwimmingScreen - Navigating back with success');
+                navigation.navigate('TrainingSelection', {
+                  newWorkout: result.workout,
+                  achievementsEarned: result.achievements,
+                  message: result.message || 'Swimming session completed!',
+                });
+              },
+            },
+          ],
+        );
+
+        setHasFinished(true);
       } else {
         throw new Error(result?.message || 'Failed to save workout');
       }
