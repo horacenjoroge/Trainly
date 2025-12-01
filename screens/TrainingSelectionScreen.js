@@ -21,7 +21,7 @@ const TrainingOptions = [
     image: require('../assets/images/pool.jpg'),
     description: 'Full body workout in the pool',
     requiresMap: true,
-    available: false // Temporarily disabled due to infinite loop issue
+    available: true
   },
   {
     name: 'Bike Trail',
@@ -55,16 +55,6 @@ const TrainingSelectionScreen = ({ navigation }) => {
 
   // FIXED: Updated navigation logic
   const handleTrainingSelect = (training, requiresMap, available) => {
-    // Check if activity is available
-    if (!available) {
-      Alert.alert(
-        'Coming Soon',
-        'This activity is currently under development. Please check back in the next update!',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
     if (training === 'Running Trail') {
       // Route Running Trail to enhanced RunningScreen
       navigation.navigate('RunningScreen', { activity: 'Running' });
@@ -149,13 +139,8 @@ const TrainingSelectionScreen = ({ navigation }) => {
                 { color: colors.textSecondary },
                 !option.available && styles.disabledText
               ]}>
-                {option.available ? option.description : 'Coming Soon'}
+                {option.description}
               </Text>
-              {!option.available && (
-                <View style={styles.comingSoonBadge}>
-                  <Text style={styles.comingSoonText}>Coming Soon</Text>
-                </View>
-              )}
             </View>
           </TouchableOpacity>
         ))}
@@ -250,18 +235,6 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     color: '#999999',
-  },
-  comingSoonBadge: {
-    backgroundColor: 'rgba(255, 193, 7, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  comingSoonText: {
-    color: '#000',
-    fontSize: 10,
-    fontWeight: '600',
   },
 });
 

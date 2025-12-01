@@ -80,7 +80,7 @@ export const ACTIVITY_CONFIG = {
     name: 'Swimming',
     icon: 'water',
     color: '#96CEB4',
-    implemented: false, // Week 3
+    implemented: true,
     features: {
       poolMode: true,
       openWater: false, // Future
