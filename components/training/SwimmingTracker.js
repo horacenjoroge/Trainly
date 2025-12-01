@@ -188,6 +188,15 @@ class SwimmingTracker extends BaseTracker {
       throw new Error('User ID is required for workout data preparation');
     }
 
+    // Ensure we have a valid sessionId for backend uniqueness
+    if (!this.sessionId) {
+      const generatedSessionId = `swimming_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+      logWarn('SwimmingTracker prepareWorkoutData - sessionId was null, generating:', generatedSessionId);
+      this.sessionId = generatedSessionId;
+    }
+
     // Ensure we have valid start/end times to avoid toISOString null errors
     if (!this.startTime) {
       logWarn('SwimmingTracker prepareWorkoutData - startTime was null, defaulting to now - duration');

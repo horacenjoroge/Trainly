@@ -369,7 +369,8 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
         disabled={
           isFinishing ||
           hasFinished ||
-          (!swimming.isActive && swimming.laps.length === 0 && !__DEV__)
+          // Require at least one lap OR an active session before allowing finish
+          (!swimming.isActive && swimming.laps.length === 0)
         }
         >
           <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
