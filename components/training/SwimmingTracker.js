@@ -165,8 +165,16 @@ class SwimmingTracker extends BaseTracker {
   }
 
   getIntensityMultiplier() {
+    // Avoid calling getSwimmingStats() here to prevent recursive loops.
     if (this.laps.length === 0) return 1.0;
-    const avgSwolf = this.getSwimmingStats().avgSwolf;
+
+    const totalSwolf = this.laps.reduce((sum, lap) => {
+      const lapTime = lap.time || 0;
+      const strokeCount = lap.strokeCount || 0;
+      return sum + (lapTime + strokeCount);
+    }, 0);
+
+    const avgSwolf = totalSwolf / this.laps.length;
     if (avgSwolf < 30) return 1.3;
     if (avgSwolf < 40) return 1.1;
     return 1.0;

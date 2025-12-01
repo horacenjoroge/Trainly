@@ -84,6 +84,8 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
   const swimming = useSwimmingTracker(userId);
 
   // Local UI state - MINIMAL to prevent loops
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [hasFinished, setHasFinished] = useState(false);
   const [showPoolSetup, setShowPoolSetup] = useState(false);
   const [showLapModal, setShowLapModal] = useState(false);
   const [strokeCount, setStrokeCount] = useState('');
@@ -139,6 +141,12 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
 
   // SIMPLIFIED handleFinish - No complex state dependencies
   const handleFinish = async () => {
+    // Prevent double-submit / double-finish
+    if (isFinishing || hasFinished) {
+      return;
+    }
+
+    setIsFinishing(true);
     log('=== SWIMMING WORKOUT FINISH DEBUG START ===');
     log('Total Distance:', swimming.totalDistance, 'meters');
     log('Duration:', swimming.duration, 'seconds');
@@ -181,6 +189,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
           achievementsEarned: result.achievements,
           message: result.message || 'Swimming session completed!'
         });
+      setHasFinished(true);
       } else {
         throw new Error(result?.message || 'Failed to save workout');
       }
@@ -196,6 +205,7 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
       );
     } finally {
       log('=== SWIMMING WORKOUT FINISH DEBUG END ===');
+      setIsFinishing(false);
     }
   };
 
@@ -356,7 +366,11 @@ function SwimmingScreenContent({ userId, navigation, colors, theme, activityType
         <TouchableOpacity
           style={[styles.finishButton, { backgroundColor: colors.success || '#4CAF50' }]}
           onPress={handleFinish}
-          disabled={!swimming.isActive && swimming.laps.length === 0 && !__DEV__}
+        disabled={
+          isFinishing ||
+          hasFinished ||
+          (!swimming.isActive && swimming.laps.length === 0 && !__DEV__)
+        }
         >
           <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
           <Text style={[styles.buttonText, { color: "#FFFFFF", marginLeft: 8 }]}>
