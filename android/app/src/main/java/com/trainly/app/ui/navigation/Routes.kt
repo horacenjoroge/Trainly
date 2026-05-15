@@ -1,7 +1,7 @@
 package com.trainly.app.ui.navigation
 sealed class Routes(val route: String) {
     data object Splash: Routes("splash"); data object Login: Routes("login"); data object Register: Routes("register")
-    data object Home: Routes("home"); data object Stats: Routes("stats"); data object Profile: Routes("profile"); data object Settings: Routes("settings")
+    data object Main: Routes("main"); data object Home: Routes("home"); data object Stats: Routes("stats"); data object Profile: Routes("profile"); data object Settings: Routes("settings")
     data object TrainingSelection: Routes("training_selection"); data object Running: Routes("running"); data object Cycling: Routes("cycling")
     data object Swimming: Routes("swimming"); data object GymWorkout: Routes("gym_workout")
     data object WorkoutHistory: Routes("workout_history"); data object WorkoutDetail: Routes("workout_detail/{workoutId}") { fun createRoute(id:String)="workout_detail/$id" }
