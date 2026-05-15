@@ -32,75 +32,41 @@ sealed class WHUiState {
 }
 
 @HiltViewModel
-class WorkoutHistoryViewModel @Inject constructor(
-    private val api: ApiService
-) : ViewModel() {
-    private val _s = MutableStateFlow<WHUiState>(WHUiState.Loading)
-    val uiState: StateFlow<WHUiState> = _s.asStateFlow()
-
+class WorkoutHistoryViewModel @Inject constructor(private val api: ApiService) : ViewModel() {
+    private val _s = MutableStateFlow<WHUiState>(WHUiState.Loading); val uiState: StateFlow<WHUiState> = _s.asStateFlow()
     init { load() }
-
-    fun load() {
-        viewModelScope.launch {
-            _s.value = WHUiState.Loading
-            when (val r = api.getWorkouts(mapOf("sortBy" to "createdAt", "sortOrder" to "desc", "limit" to "50"))) {
-                is NetworkResult.Success -> _s.value = WHUiState.Success(r.data)
-                is NetworkResult.Error -> _s.value = WHUiState.Error(r.error.message)
-                is NetworkResult.Loading -> { }
-            }
-        }
-    }
+    fun load() { viewModelScope.launch { _s.value = WHUiState.Loading; when (val r = api.getWorkouts(mapOf("sortBy" to "createdAt", "sortOrder" to "desc", "limit" to "50"))) { is NetworkResult.Success -> _s.value = WHUiState.Success(r.data); is NetworkResult.Error -> _s.value = WHUiState.Error(r.error.message); else -> {} } } }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkoutHistoryScreen(
-    onNavigateBack: () -> Unit,
-    onWorkoutClick: (String) -> Unit,
-    viewModel: WorkoutHistoryViewModel = hiltViewModel()
-) {
+fun WorkoutHistoryScreen(onNavigateBack: () -> Unit, onWorkoutClick: (String) -> Unit, viewModel: WorkoutHistoryViewModel = hiltViewModel()) {
     val s by viewModel.uiState.collectAsStateWithLifecycle()
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Workout History", fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onNavigateBack) { Text("\u2190") } }
-            )
-        }
-    ) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Workout History", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onClick = onNavigateBack) { Text("\u2190") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)) }) { padding ->
         when (val st = s) {
             is WHUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             is WHUiState.Error -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text(st.message, color = MaterialTheme.colorScheme.error) }
             is WHUiState.Success -> {
-                if (st.workouts.isEmpty()) {
-                    Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("No workouts yet") }
-                } else {
-                    LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp)) {
-                        items(st.workouts) { w ->
-                            Card(
-                                onClick = { w.id?.let { onWorkoutClick(it) } },
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    val icon = when (w.type) {
-                                        "Running" -> "\uD83C\uDFC3"
-                                        "Cycling" -> "\uD83D\uDEB2"
-                                        "Swimming" -> "\uD83C\uDFCA"
-                                        "Gym" -> "\uD83C\uDFCB"
-                                        else -> "\uD83C\uDFC3"
+                if (st.workouts.isEmpty()) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Column(horizontalAlignment=Alignment.CenterHorizontally) { Text("\uD83C\uDFC3", style=MaterialTheme.typography.displayMedium); Text("No workouts yet", fontWeight=FontWeight.SemiBold); Text("Start your fitness journey!", style=MaterialTheme.typography.bodySmall, color=MaterialTheme.colorScheme.onSurfaceVariant) } }
+                else LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(st.workouts, key = { it.id ?: it.hashCode().toString() }) { w ->
+                        Card(onClick = { w.id?.let { onWorkoutClick(it) } }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(1.dp)) {
+                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(48.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        val icon = when (w.type) { "Running" -> "\uD83C\uDFC3"; "Cycling" -> "\uD83D\uDEB2"; "Swimming" -> "\uD83C\uDFCA"; "Gym" -> "\uD83C\uDFCB"; else -> "\uD83C\uDFC3" }
+                                        Text(icon, style = MaterialTheme.typography.titleLarge)
                                     }
-                                    Text(icon, style = MaterialTheme.typography.titleLarge)
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(w.name ?: w.type ?: "Workout", fontWeight = FontWeight.Bold)
-                                        Text(DateUtils.formatTimeAgo(w.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(w.duration?.let { DateUtils.formatDurationSeconds(it) } ?: "--", fontWeight = FontWeight.SemiBold)
-                                        Text("${w.calories ?: 0} cal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(w.name ?: w.type ?: "Workout", fontWeight = FontWeight.Bold)
+                                    Text(DateUtils.formatTimeAgo(w.createdAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (w.distance != null && w.distance!! > 0) Text(formatDist(w.distance!!), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(w.duration?.let { DateUtils.formatDurationSeconds(it) } ?: "--", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall)
+                                    Text("${w.calories ?: 0} cal", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -110,3 +76,5 @@ fun WorkoutHistoryScreen(
         }
     }
 }
+
+private fun formatDist(m: Double): String = if (m >= 1000) "%.2f km".format(m / 1000) else "${m.toInt()} m"

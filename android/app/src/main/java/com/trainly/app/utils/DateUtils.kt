@@ -37,4 +37,14 @@ object DateUtils {
     fun formatDurationSeconds(s: Int): String {
         return "${s / 60}:${"%02d".format(s % 60)}"
     }
+
+    fun formatDate(d: String?): String {
+        if (d.isNullOrBlank()) return "--"
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+            sdf.timeZone = TimeZone.getTimeZone("UTC")
+            val date = sdf.parse(d) ?: return "--"
+            SimpleDateFormat("MMM d, yyyy", Locale.US).format(date)
+        } catch (_: Exception) { "--" }
+    }
 }
