@@ -1,5 +1,2 @@
-<resources>
-  <color name="splashscreen_background">#120B42</color>
-  <color name="colorPrimary">#023c69</color>
-  <color name="colorPrimaryDark">#120B42</color>
-</resources>
+<?xml version="1.0" encoding="utf-8"?>
+<resources><color name="trainly_background">#120B42</color><color name="trainly_surface">#1A144B</color><color name="trainly_primary">#E57C0B</color><color name="white">#FFFFFF</color><color name="black">#000000</color></resources>
