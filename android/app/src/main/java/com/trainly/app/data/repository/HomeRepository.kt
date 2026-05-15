@@ -1,0 +1,27 @@
+package com.trainly.app.data.repository
+import com.trainly.app.data.local.room.PostEntity
+import com.trainly.app.data.remote.*
+import com.trainly.app.data.remote.ApiService
+import com.trainly.app.data.local.room.AppDatabase
+import com.trainly.app.domain.models.*
+import com.trainly.app.domain.repository.HomeRepository
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class OfflineHomeRepository @Inject constructor(
+    private val api: ApiService, private val db: AppDatabase
+) : HomeRepository {
+    override suspend fun getProgressStats(): NetworkResult<ProgressStats> = when (val r = api.getWorkoutStats("month")) {
+        is NetworkResult.Success -> { val d=r.data; NetworkResult.Success(ProgressStats(totalWorkouts=d.totalWorkouts?:0, totalDistance=d.totalDistance?:0.0, totalDuration=d.totalDuration?:0, totalCalories=d.totalCalories?:0)) }
+        is NetworkResult.Error -> NetworkResult.Error(r.error); is NetworkResult.Loading -> NetworkResult.Loading
+    }
+    override suspend fun getPosts(): NetworkResult<List<Post>> = when (val r = api.getPosts()) {
+        is NetworkResult.Success -> { val p=r.data.mapNotNull { d-> Post(id=d.id?:return@mapNotNull null, userId=d.userId?.id?:"", userName=d.userId?.name?:"User", userAvatar=d.userId?.avatar, content=d.content, image=d.image, likes=d.likes?:emptyList(), comments=emptyList(), createdAt=d.createdAt?:"") }; db.postDao().deleteAll(); db.postDao().insertAll(p.map { PostEntity(id=it.id, userId=it.userId, userName=it.userName, userAvatar=it.userAvatar, content=it.content, image=it.image, likes=it.likes.size, comments=0, createdAt=it.createdAt) }); NetworkResult.Success(p) }
+        is NetworkResult.Error -> NetworkResult.Error(r.error); is NetworkResult.Loading -> NetworkResult.Loading
+    }
+    override suspend fun likePost(id: String): NetworkResult<Post> = when (val r = api.likePost(id)) {
+        is NetworkResult.Success -> NetworkResult.Success(Post(id=r.data.id?:"", userId="", userName="", content=null, likes=emptyList(), comments=emptyList(), createdAt=""))
+        is NetworkResult.Error -> NetworkResult.Error(r.error); is NetworkResult.Loading -> NetworkResult.Loading
+    }
+}
