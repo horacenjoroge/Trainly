@@ -28,6 +28,7 @@ fun CommunityFeedScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val likedIds by viewModel.likedPostIds.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
         topBar = {
@@ -38,7 +39,7 @@ fun CommunityFeedScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreatePost, containerColor = MaterialTheme.colorScheme.primary) {
+            FloatingActionButton(onClick = onCreatePost, containerColor = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(16.dp)) {
                 Text("+", style = MaterialTheme.typography.titleLarge)
             }
         }
@@ -46,38 +47,31 @@ fun CommunityFeedScreen(
         Column(Modifier.fillMaxSize().padding(padding)) {
             OutlinedTextField(
                 searchQuery, { searchQuery = it; viewModel.search(it) },
-                placeholder = { Text("Search...") },
+                placeholder = { Text("Search users...") },
                 leadingIcon = { Text("\uD83D\uDD0D") },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                shape = RoundedCornerShape(12.dp), singleLine = true
+                modifier = Modifier.fillMaxWidth().padding(horizontal=16.dp, vertical=8.dp),
+                shape = RoundedCornerShape(12.dp), singleLine = true, colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha=0.5f))
             )
-
-            when (val st = uiState) {
-                is CommunityFeedUiState.Loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                }
-                is CommunityFeedUiState.Success -> {
-                    if (st.posts.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No posts") }
-                    } else {
-                        LazyColumn(contentPadding = PaddingValues(16.dp)) {
+            TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.primary) {
+                Tab(selectedTab == 0, { selectedTab = 0 }) { Text("\uD83D\uDCA5 Feed", Modifier.padding(12.dp), fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Normal) }
+                Tab(selectedTab == 1, { selectedTab = 1 }) { Text("\uD83C\uDFC6 Achievements", Modifier.padding(12.dp), fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Normal) }
+                Tab(selectedTab == 2, { selectedTab = 2 }) { Text("\uD83D\uDC65 Friends", Modifier.padding(12.dp), fontWeight = if (selectedTab == 2) FontWeight.SemiBold else FontWeight.Normal) }
+            }
+            when (selectedTab) {
+                0 -> when (val st = uiState) {
+                    is CommunityFeedUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    is CommunityFeedUiState.Success -> {
+                        if (st.posts.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment=Alignment.CenterHorizontally) { Text("\uD83D\uDC4B", style=MaterialTheme.typography.displayMedium); Text("No posts yet", fontWeight=FontWeight.SemiBold); Text("Be the first to share!", style=MaterialTheme.typography.bodySmall, color=MaterialTheme.colorScheme.onSurfaceVariant) } }
+                        else LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(st.posts, key = { it.id }) { post ->
-                                PostCard(
-                                    post = post,
-                                    isLiked = likedIds.contains(post.id),
-                                    onLike = { viewModel.likePost(post.id) },
-                                    onComment = { onComment(post.id) },
-                                    onUser = { onUserClick(post.userId) }
-                                )
+                                PostCard(post = post, isLiked = likedIds.contains(post.id), onLike = { viewModel.likePost(post.id) }, onComment = { onComment(post.id) }, onUser = { onUserClick(post.userId) })
                             }
                         }
                     }
+                    is CommunityFeedUiState.Error -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(st.message, color = MaterialTheme.colorScheme.error) }
                 }
-                is CommunityFeedUiState.Error -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(st.message, color = MaterialTheme.colorScheme.error)
-                    }
-                }
+                1 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Achievements", fontWeight=FontWeight.SemiBold) }
+                2 -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Friends", fontWeight=FontWeight.SemiBold) }
             }
         }
     }
