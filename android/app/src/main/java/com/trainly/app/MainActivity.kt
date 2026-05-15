@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TrainlyTheme {
-                Surface(modifier = Modifier.fillMaxSize()) { NavGraph(sessionManager = sessionManager) }
+                Surface(modifier = Modifier.fillMaxSize()) { NavGraph(sm = sessionManager) }
             }
         }
     }

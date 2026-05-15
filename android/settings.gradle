@@ -1,6 +1,21 @@
 pluginManagement {
-    repositories { google(); mavenCentral(); gradlePluginPortal() }
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    plugins {
+        id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
+    }
 }
-dependencyResolution { repositories { google(); mavenCentral() } }
-rootProject.name = 'Trainly'
-include ':app'
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "Trainly"
+include(":app")

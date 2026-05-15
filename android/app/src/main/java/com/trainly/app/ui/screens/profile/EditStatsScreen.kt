@@ -25,6 +25,10 @@ data class ESUiState(val weight:String="", val height:String="", val level:Strin
 }
 @OptIn(ExperimentalMaterial3Api::class) @Composable fun EditStatsScreen(onBack:()->Unit, vm:EditStatsViewModel= hiltViewModel()) {
     val s by vm.uiState.collectAsStateWithLifecycle()
-    Scaffold(topBar={TopAppBar(title={Text("Edit Stats", fontWeight=FontWeight.Bold)}, navigationIcon={IconButton(onClick=onBack){Text("←")}}, actions={TextButton(onClick={vm.save(onSuccess=onBack)}){Text("Save", fontWeight=FontWeight.Bold)}})})
-    {p-> Column(Modifier.fillMaxSize().padding(p).padding(16.dp), verticalArrangement=Arrangement.spacedBy(12.dp)){ OutlinedTextField(s.weight, {vm.updateWeight(it)}, label={Text("Weight (kg)")}, modifier=Modifier.fillMaxWidth(), shape=RoundedCornerShape(12.dp)); OutlinedTextField(s.height, {vm.updateHeight(it)}, label={Text("Height (cm)")}, modifier=Modifier.fillMaxWidth(), shape=RoundedCornerShape(12.dp)) } }
+        Scaffold(topBar={TopAppBar(title={Text("Edit Stats", fontWeight=FontWeight.Bold)}, navigationIcon={IconButton(onClick=onBack){Text("\u2190")}}, actions={TextButton(onClick={vm.save(onOK=onBack)}){Text("Save", fontWeight=FontWeight.Bold)}})}) { p ->
+        Column(Modifier.fillMaxSize().padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(value = s.weight, onValueChange = { vm.updateWeight(it) }, label = { Text("Weight (kg)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+            OutlinedTextField(value = s.height, onValueChange = { vm.updateHeight(it) }, label = { Text("Height (cm)") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+        }
+    }
 }

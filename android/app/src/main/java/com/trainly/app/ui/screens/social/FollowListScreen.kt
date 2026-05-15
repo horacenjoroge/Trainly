@@ -1,4 +1,5 @@
 package com.trainly.app.ui.screens.social
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,29 +14,63 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import com.trainly.app.data.remote.ApiService
 import com.trainly.app.data.remote.NetworkResult
 import com.trainly.app.data.remote.dto.UserDto
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class FLUiState(val users:List<UserDto>=emptyList(), val loading:Boolean=true)
-@HiltViewModel class FollowListViewModel @Inject constructor(private val api:ApiService) : ViewModel() {
-    private val _s=MutableStateFlow(FLUiState()); val uiState:StateFlow<FLUiState> = _s.asStateFlow()
-    fun loadFollowers(){viewModelScope.launch{_s.value=FLUiState(loading=true); when(val r=api.getFollowers()){ is NetworkResult.Success -> _s.value=FLUiState(users=r.data); else->_s.value=FLUiState(loading=false) }}}
-    fun loadFollowing(){viewModelScope.launch{_s.value=FLUiState(loading=true); when(val r=api.getFollowing()){ is NetworkResult.Success -> _s.value=FLUiState(users=r.data); else->_s.value=FLUiState(loading=false) }}}
+data class FLUiState(val users: List<UserDto> = emptyList(), val loading: Boolean = true)
+
+@HiltViewModel
+class FollowListViewModel @Inject constructor(private val api: ApiService) : ViewModel() {
+    private val _s = MutableStateFlow(FLUiState())
+    val uiState: StateFlow<FLUiState> = _s.asStateFlow()
+
+    fun loadFollowers() { viewModelScope.launch { _s.value = FLUiState(loading = true); when (val r = api.getFollowers()) { is NetworkResult.Success -> _s.value = FLUiState(users = r.data); else -> _s.value = FLUiState(loading = false) } } }
+    fun loadFollowing() { viewModelScope.launch { _s.value = FLUiState(loading = true); when (val r = api.getFollowing()) { is NetworkResult.Success -> _s.value = FLUiState(users = r.data); else -> _s.value = FLUiState(loading = false) } } }
 }
-@OptIn(ExperimentalMaterial3Api::class) @Composable fun FollowersListScreen(onBack:()->Unit, onUser:(String)->Unit, vm:FollowListViewModel= hiltViewModel()) { LaunchedEffect(Unit){vm.loadFollowers()}; FollowListContent("Followers", onBack, vm) }
-@OptIn(ExperimentalMaterial3Api::class) @Composable fun FollowingListScreen(onBack:()->Unit, onUser:(String)->Unit, vm:FollowListViewModel= hiltViewModel()) { LaunchedEffect(Unit){vm.loadFollowing()}; FollowListContent("Following", onBack, vm) }
-@Composable private fun FollowListContent(t:String, onBack:()->Unit, vm:FollowListViewModel) {
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FollowersListScreen(onNavigateBack: () -> Unit, onUserClick: (String) -> Unit, vm: FollowListViewModel = hiltViewModel()) {
+    LaunchedEffect(Unit) { vm.loadFollowers() }
+    FollowListContent("Followers", onNavigateBack, vm)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FollowingListScreen(onNavigateBack: () -> Unit, onUserClick: (String) -> Unit, vm: FollowListViewModel = hiltViewModel()) {
+    LaunchedEffect(Unit) { vm.loadFollowing() }
+    FollowListContent("Following", onNavigateBack, vm)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FollowListContent(title: String, onNavigateBack: () -> Unit, vm: FollowListViewModel) {
     val s by vm.uiState.collectAsStateWithLifecycle()
-    Scaffold(topBar={TopAppBar(title={Text(t, fontWeight=FontWeight.Bold)}, navigationIcon={IconButton(onClick=onBack){Text("←")}})}){p->
-        if(s.loading) Box(Modifier.fillMaxSize().padding(p), contentAlignment=Alignment.Center){CircularProgressIndicator()}
-        else if(s.users.isEmpty()) Box(Modifier.fillMaxSize().padding(p), contentAlignment=Alignment.Center){Text("No users")}
-        else LazyColumn(Modifier.fillMaxSize().padding(p), contentPadding=PaddingValues(16.dp)) { items(s.users){ Card(Modifier.fillMaxWidth().padding(vertical=4.dp), shape=RoundedCornerShape(12.dp)) { Row(Modifier.padding(12.dp), verticalAlignment=Alignment.CenterVertically) { AsyncImage(it.avatar, null, Modifier.size(48.dp).clip(CircleShape)); Spacer(Modifier.width(12.dp)); Text(it.name?:"", fontWeight=FontWeight.Bold) } } } } }
+    Scaffold(
+        topBar = { TopAppBar(title = { Text(title, fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onClick = onNavigateBack) { Text("\u2190") } }) }
+    ) { p ->
+        if (s.loading) Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        else if (s.users.isEmpty()) Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { Text("No users") }
+        else LazyColumn(Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(16.dp)) {
+            items(s.users) { user ->
+                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(12.dp)) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(user.avatar, null, Modifier.size(48.dp).clip(CircleShape))
+                        Spacer(Modifier.width(12.dp))
+                        Text(user.name ?: "", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
 }

@@ -20,7 +20,18 @@ import javax.inject.Inject
 data class PIUiState(val name:String="", val bio:String="", val location:String="", val isLoading:Boolean=true, val isSaving:Boolean=false)
 @HiltViewModel class PersonalInfoViewModel @Inject constructor(private val api:ApiService):ViewModel(){
     private val _s=MutableStateFlow(PIUiState());val uiState:StateFlow<PIUiState> = _s.asStateFlow()
-    init{load()};fun load(){viewModelScope.launch{when(api.getUserProfile()){is NetworkResult.Success->{val d=it.data;_s.value=PIUiState(name=d.name?:"",bio=d.bio?:"",isLoading=false)};else->_s.value=_s.value.copy(isLoading=false)}}}
+    init { load() }
+    fun load() {
+        viewModelScope.launch {
+            when (val result = api.getUserProfile()) {
+                is NetworkResult.Success -> {
+                    val d = result.data
+                    _s.value = PIUiState(name = d.name ?: "", bio = d.bio ?: "", isLoading = false)
+                }
+                else -> _s.value = _s.value.copy(isLoading = false)
+            }
+        }
+    }
     fun updateName(n:String){_s.value=_s.value.copy(name=n)};fun updateBio(b:String){_s.value=_s.value.copy(bio=b)}
     fun save(){viewModelScope.launch{_s.value=_s.value.copy(isSaving=true);when(api.updateUserProfile(mapOf("name" to _s.value.name,"bio" to _s.value.bio))){is NetworkResult.Success->_s.value=_s.value.copy(isSaving=false);else->_s.value=_s.value.copy(isSaving=false)}}}
 }

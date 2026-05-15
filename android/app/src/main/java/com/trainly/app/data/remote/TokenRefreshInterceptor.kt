@@ -15,9 +15,10 @@ class TokenRefreshInterceptor @Inject constructor(
         val rt = tm.getRefreshToken() ?: return@runBlocking null
         try {
             val r = ac.get().authApi.refreshToken(RefreshTokenRequest(rt))
-            tm.saveAccessToken(r.body()?.token ?: return@runBlocking null)
+            val newToken = r.body()?.token ?: return@runBlocking null
+            tm.saveAccessToken(newToken)
             r.body()?.refreshToken?.let { tm.saveRefreshToken(it) }
-            response.request.newBuilder().header("x-auth-token", r.body()?.token).build()
+            response.request.newBuilder().header("x-auth-token", newToken).build()
         } catch (_: Exception) { tm.clearAll(); null }
     }
 }
