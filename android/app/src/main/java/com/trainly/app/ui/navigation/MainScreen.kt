@@ -1,83 +1,114 @@
 package com.trainly.app.ui.navigation
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.trainly.app.ui.screens.home.HomeScreen
-import com.trainly.app.ui.screens.profile.ProfileScreen
-import com.trainly.app.ui.screens.social.CommunityFeedScreen
-import com.trainly.app.ui.screens.stats.StatsScreen
+import com.trainly.app.ui.designsystem.layouts.TrainlyScaffold
+import com.trainly.app.ui.designsystem.layouts.TopBarStyle
+import com.trainly.app.ui.designsystem.navigation.BottomNavItem
+import com.trainly.app.ui.designsystem.navigation.TrainlyBottomNav
+import com.trainly.app.ui.features.analytics.StatsScreen
+import com.trainly.app.ui.features.home.HomeScreen
+import com.trainly.app.ui.features.profile.ProfileScreen
+import com.trainly.app.ui.features.social.CommunityFeedScreen
 
-data class Tab(val route: String, val label: String, val icon: String)
-
-val tabs = listOf(
-    Tab("tab_home", "Home", "\uD83C\uDFE0"),
-    Tab("tab_stats", "Stats", "\uD83D\uDCCA"),
-    Tab("tab_community", "Community", "\uD83D\uDC65"),
-    Tab("tab_profile", "Profile", "\uD83D\uDC64"),
+private val bottomNavItems = listOf(
+    BottomNavItem("tab_home", "Home", { Text("\uD83C\uDFE0") }),
+    BottomNavItem("tab_stats", "Stats", { Text("\uD83D\uDCCA") }),
+    BottomNavItem("tab_community", "Community", { Text("\uD83D\uDC65") }),
+    BottomNavItem("tab_profile", "Profile", { Text("\uD83D\uDC64") })
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(rootNav: NavController) {
     val tabNav = rememberNavController()
     val navBackStackEntry by tabNav.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Scaffold(
+    TrainlyScaffold(
+        topBarStyle = TopBarStyle.NONE,
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = currentRoute == tab.route,
-                        onClick = {
-                            if (currentRoute != tab.route) {
-                                tabNav.navigate(tab.route) {
-                                    popUpTo(tabNav.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
+            TrainlyBottomNav(
+                items = bottomNavItems,
+                currentRoute = currentRoute,
+                onItemClick = { route ->
+                    if (currentRoute != route) {
+                        tabNav.navigate(route) {
+                            popUpTo(tabNav.graph.startDestinationId) {
+                                saveState = true
                             }
-                        },
-                        icon = { Text(tab.icon, style = MaterialTheme.typography.titleMedium) },
-                        label = { Text(tab.label, fontWeight = if (currentRoute == tab.route) FontWeight.SemiBold else FontWeight.Normal) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        )
-                    )
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 }
-            }
-        }
+            )
+        },
+        snackbarHostState = snackbarHostState
     ) { padding ->
-        NavHost(tabNav, startDestination = "tab_home", Modifier.padding(padding)) {
+        NavHost(
+            navController = tabNav,
+            startDestination = "tab_home",
+            modifier = Modifier.padding(padding)
+        ) {
             composable("tab_home") {
                 HomeScreen(
+                    snackbarHostState = snackbarHostState,
                     onStats = { rootNav.navigate(Routes.Stats.route) },
                     onProfile = { rootNav.navigate(Routes.Profile.route) },
                     onTrain = { rootNav.navigate(Routes.TrainingSelection.route) },
                     onWorkoutHistory = { rootNav.navigate(Routes.WorkoutHistory.route) },
-                    onCommunity = { tabNav.navigate("tab_community") { popUpTo(tabNav.graph.startDestinationId) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                    onCommunity = {
+                        tabNav.navigate("tab_community") {
+                            popUpTo(tabNav.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
-            composable("tab_stats") { StatsScreen(onBack = {}) }
+
+            composable("tab_stats") {
+                StatsScreen(
+                    snackbarHostState = snackbarHostState,
+                    onBack = { rootNav.popBackStack() }
+                )
+            }
+
             composable("tab_community") {
                 CommunityFeedScreen(
-                    onNavigateBack = {},
+                    snackbarHostState = snackbarHostState,
                     onCreatePost = { rootNav.navigate(Routes.CreatePost.route) },
-                    onComment = { rootNav.navigate(Routes.Comments.createRoute(it)) },
-                    onUserClick = { rootNav.navigate(Routes.UserProfile.createRoute(it)) },
+                    onComment = { postId ->
+                        rootNav.navigate(Routes.Comments.createRoute(postId))
+                    },
+                    onUserClick = { userId ->
+                        rootNav.navigate(Routes.UserProfile.createRoute(userId))
+                    }
                 )
             }
-            composable("tab_profile") { ProfileScreen(onBack = {}, onSettings = { rootNav.navigate(Routes.Settings.route) }) }
+
+            composable("tab_profile") {
+                ProfileScreen(
+                    snackbarHostState = snackbarHostState,
+                    onSettings = { rootNav.navigate(Routes.Settings.route) },
+                    onWorkoutHistory = { rootNav.navigate(Routes.WorkoutHistory.route) },
+                    onAchievements = { rootNav.navigate(Routes.Achievements.route) },
+                    onStats = { rootNav.navigate(Routes.Stats.route) }
+                )
+            }
         }
     }
 }

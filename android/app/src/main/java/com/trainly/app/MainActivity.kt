@@ -8,7 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.trainly.app.data.local.SessionManager
 import com.trainly.app.ui.navigation.NavGraph
-import com.trainly.app.ui.theme.TrainlyTheme
+import com.trainly.app.ui.designsystem.theme.TrainlyTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
