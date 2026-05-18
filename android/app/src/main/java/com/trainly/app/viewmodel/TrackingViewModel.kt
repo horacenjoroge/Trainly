@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.trainly.app.data.remote.ApiService
 import com.trainly.app.data.remote.NetworkResult
 import com.trainly.app.data.remote.dto.WorkoutDto
-import com.trainly.app.ui.screens.training.*
+import com.trainly.app.ui.features.workouts.GpsCoordinate
+import com.trainly.app.ui.features.workouts.TrackingUiState
+import com.trainly.app.ui.features.workouts.calculateDistance
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

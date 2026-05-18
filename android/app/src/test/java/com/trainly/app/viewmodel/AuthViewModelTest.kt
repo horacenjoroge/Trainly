@@ -3,7 +3,7 @@ import com.trainly.app.data.local.SessionManager
 import com.trainly.app.domain.models.User
 import com.trainly.app.domain.models.UserStats
 import com.trainly.app.domain.repository.AuthRepository
-import com.trainly.app.ui.screens.auth.AuthUiState
+import com.trainly.app.ui.features.auth.AuthUiState
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers

@@ -2,7 +2,7 @@ package com.trainly.app.viewmodel
 import com.trainly.app.data.remote.ApiService
 import com.trainly.app.data.remote.NetworkResult
 import com.trainly.app.data.remote.dto.*
-import com.trainly.app.ui.screens.training.GpsCoordinate
+import com.trainly.app.ui.features.workouts.GpsCoordinate
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers

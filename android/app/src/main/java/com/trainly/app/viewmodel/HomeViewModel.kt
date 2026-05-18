@@ -6,7 +6,9 @@ import com.trainly.app.data.local.SessionManager
 import com.trainly.app.data.remote.NetworkResult
 import com.trainly.app.domain.models.ProgressStats
 import com.trainly.app.domain.repository.HomeRepository
-import com.trainly.app.ui.screens.home.HomeUiState
+import com.trainly.app.ui.features.home.HomeData
+import com.trainly.app.ui.features.home.HomeUiState
+import com.trainly.app.ui.designsystem.theme.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,8 +22,9 @@ class HomeViewModel @Inject constructor(
     private val sm: SessionManager
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
+    private val _uiState = MutableStateFlow<HomeUiState>(UiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
 
     private val _likedIds = MutableStateFlow<Set<String>>(emptySet())
     val likedPostIds: StateFlow<Set<String>> = _likedIds.asStateFlow()
@@ -30,16 +33,12 @@ class HomeViewModel @Inject constructor(
 
     fun loadData() {
         viewModelScope.launch {
-            _uiState.value = HomeUiState.Loading
+            _uiState.value = UiState.Loading
             loadAll()
         }
     }
 
     fun refresh() {
-        val current = _uiState.value
-        if (current is HomeUiState.Success) {
-            _uiState.value = current.copy(isRefreshing = true)
-        }
         viewModelScope.launch { loadAll() }
     }
 
@@ -54,7 +53,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadAll() {
-        val name = sm.authState.value.user?.name ?: "User"
         val pr = repo.getProgressStats()
         val po = repo.getPosts()
         val ps = (pr as? NetworkResult.Success)?.data ?: ProgressStats()
@@ -64,9 +62,9 @@ class HomeViewModel @Inject constructor(
         _uiState.value = if (hasErr && pp.isEmpty()) {
             val errMsg = (pr as? NetworkResult.Error)?.error?.message
                 ?: (po as? NetworkResult.Error)?.error?.message ?: ""
-            HomeUiState.Error(message = errMsg, progressStats = ps, userName = name)
+            UiState.Error(message = errMsg)
         } else {
-            HomeUiState.Success(posts = pp, progressStats = ps, userName = name)
+            UiState.Success(HomeData(progressStats = ps, posts = pp))
         }
     }
 }

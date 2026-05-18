@@ -4,8 +4,8 @@ import androidx.lifecycle.viewModelScope
 import com.trainly.app.data.local.SessionManager
 import com.trainly.app.data.remote.NetworkResult
 import com.trainly.app.domain.repository.AuthRepository
-import com.trainly.app.ui.screens.auth.AuthFormEvent
-import com.trainly.app.ui.screens.auth.AuthUiState
+import com.trainly.app.ui.features.auth.AuthFormEvent
+import com.trainly.app.ui.features.auth.AuthUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
