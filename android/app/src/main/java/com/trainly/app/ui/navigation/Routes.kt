@@ -38,5 +38,6 @@ sealed class Routes(val route: String) {
     data object FindFriends : Routes("find_friends")
     data object Followers : Routes("followers")
     data object Following : Routes("following")
+    data object Onboarding : Routes("onboarding")
     data object Achievements : Routes("achievements")
 }
