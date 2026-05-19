@@ -19,5 +19,7 @@ class TokenManager @Inject constructor(@ApplicationContext ctx: Context) {
     suspend fun saveUserData(j: String) { prefs.edit().putString("user_data", j).apply() }
     suspend fun getUserData(): String? = prefs.getString("user_data", null)
     suspend fun hasValidToken(): Boolean = getAccessToken() != null
+    suspend fun setOnboardingComplete() { prefs.edit().putBoolean("onboarding_done", true).apply() }
+    suspend fun isOnboardingComplete(): Boolean = prefs.getBoolean("onboarding_done", false)
     suspend fun clearAll() { prefs.edit().clear().apply() }
 }

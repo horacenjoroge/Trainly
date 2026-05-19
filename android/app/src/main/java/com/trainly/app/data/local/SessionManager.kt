@@ -17,4 +17,6 @@ class SessionManager @Inject constructor(private val tm: TokenManager) {
     suspend fun setError(m: String) { _as.value = AuthState(error = m) }
     suspend fun clearSession() { tm.clearAll(); _as.value = AuthState() }
     suspend fun isAuthenticated(): Boolean = tm.hasValidToken()
+    suspend fun setOnboardingComplete() { tm.setOnboardingComplete() }
+    suspend fun isOnboardingComplete(): Boolean = tm.isOnboardingComplete()
 }
