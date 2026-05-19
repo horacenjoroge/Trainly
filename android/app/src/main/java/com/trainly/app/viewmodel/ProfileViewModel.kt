@@ -19,5 +19,34 @@ class ProfileViewModel @Inject constructor(
     private val _s = MutableStateFlow<ProfileUiState>(UiState.Loading); val uiState: StateFlow<ProfileUiState> = _s.asStateFlow()
     init { loadProfile() }
     fun loadProfile() { viewModelScope.launch { _s.value = UiState.Loading; loadAll() } }
-    private suspend fun loadAll() { val name=sm.authState.value.user?.name?:"User"; when(val r=api.getUserProfile()){ is NetworkResult.Success -> { val d=r.data; val fc=(api.getFollowers().let{if(it is NetworkResult.Success)it.data.size else 0}); val fg=(api.getFollowing().let{if(it is NetworkResult.Success)it.data.size else 0}); _s.value=UiState.Success(ProfileData(avatar=d.avatar ?: "", userName=d.name?:name, userBio=d.bio?:"Fitness enthusiast", followers=fc, following=fg)) }; is NetworkResult.Error -> _s.value=UiState.Error(r.error.message); else -> {} } }
+    private suspend fun loadAll() {
+        val name = sm.authState.value.user?.name ?: "User"
+        when (val r = api.getUserProfile()) {
+            is NetworkResult.Success -> {
+                val d = r.data
+                val stats = d.stats
+                val workouts = stats?.totalWorkouts ?: 0
+                val cals = stats?.totalCalories ?: 0
+                val durMin = stats?.totalDuration ?: 0
+                val hours = durMin / 60
+                val fc = (api.getFollowers().let { if (it is NetworkResult.Success) it.data.size else 0 })
+                val fg = (api.getFollowing().let { if (it is NetworkResult.Success) it.data.size else 0 })
+                _s.value = UiState.Success(
+                    ProfileData(
+                        userName = d.name ?: name,
+                        userBio = d.bio ?: "Fitness enthusiast",
+                        followers = fc,
+                        following = fg,
+                        workouts = workouts,
+                        calories = cals,
+                        hours = hours,
+                        bestRun = "",
+                        memberSince = ""
+                    )
+                )
+            }
+            is NetworkResult.Error -> _s.value = UiState.Error(r.error.message)
+            else -> {}
+        }
+    }
 }
