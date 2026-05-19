@@ -26,6 +26,9 @@ class FindFriendsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(FindFriendsUiState())
     val uiState: StateFlow<FindFriendsUiState> = _uiState.asStateFlow()
 
+    private val _followedIds = MutableStateFlow<Set<String>>(emptySet())
+    val followedIds: StateFlow<Set<String>> = _followedIds.asStateFlow()
+
     fun search(query: String) {
         _uiState.value = _uiState.value.copy(q = query)
         viewModelScope.launch {
@@ -45,7 +48,9 @@ class FindFriendsViewModel @Inject constructor(
         }
     }
 
-    fun followUser(userId: String) {
+    fun toggleFollow(userId: String) {
+        val current = _followedIds.value
+        _followedIds.value = if (userId in current) current - userId else current + userId
         viewModelScope.launch {
             api.followUser(userId)
         }
