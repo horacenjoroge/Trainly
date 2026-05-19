@@ -106,7 +106,9 @@ fun MainScreen(rootNav: NavController) {
                     onSettings = { rootNav.navigate(Routes.Settings.route) },
                     onWorkoutHistory = { rootNav.navigate(Routes.WorkoutHistory.route) },
                     onAchievements = { rootNav.navigate(Routes.Achievements.route) },
-                    onStats = { rootNav.navigate(Routes.Stats.route) }
+                    onStats = { rootNav.navigate(Routes.Stats.route) },
+                    onFollowers = { rootNav.navigate(Routes.Followers.route) },
+                    onFollowing = { rootNav.navigate(Routes.Following.route) }
                 )
             }
         }
