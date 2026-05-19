@@ -17,6 +17,7 @@ data class ContactsUiState(
     val showDialog: Boolean = false,
     val name: String = "",
     val phone: String = "",
+    val relationship: String = "",
     val isLoading: Boolean = false
 )
 
@@ -28,9 +29,7 @@ class ContactsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ContactsUiState())
     val uiState: StateFlow<ContactsUiState> = _uiState.asStateFlow()
 
-    init {
-        load()
-    }
+    init { load() }
 
     private fun load() {
         viewModelScope.launch {
@@ -44,25 +43,26 @@ class ContactsViewModel @Inject constructor(
     }
 
     fun showAddDialog() {
-        _uiState.value = _uiState.value.copy(showDialog = true, name = "", phone = "")
+        _uiState.value = _uiState.value.copy(showDialog = true, name = "", phone = "", relationship = "")
     }
 
     fun dismissDialog() {
         _uiState.value = _uiState.value.copy(showDialog = false)
     }
 
-    fun updateName(value: String) {
-        _uiState.value = _uiState.value.copy(name = value)
-    }
-
-    fun updatePhone(value: String) {
-        _uiState.value = _uiState.value.copy(phone = value)
-    }
+    fun updateName(value: String) { _uiState.value = _uiState.value.copy(name = value) }
+    fun updatePhone(value: String) { _uiState.value = _uiState.value.copy(phone = value) }
+    fun updateRelationship(value: String) { _uiState.value = _uiState.value.copy(relationship = value) }
 
     fun saveContact() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val contact = ContactDto(name = _uiState.value.name, phone = _uiState.value.phone)
+            val s = _uiState.value
+            val contact = ContactDto(
+                name = s.name,
+                phone = s.phone,
+                relationship = s.relationship.ifBlank { null }
+            )
             when (api.addContact(contact)) {
                 is NetworkResult.Success -> {
                     _uiState.value = _uiState.value.copy(showDialog = false, isLoading = false)
