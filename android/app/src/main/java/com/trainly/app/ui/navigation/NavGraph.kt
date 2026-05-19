@@ -4,12 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import com.trainly.app.data.local.SessionManager
 import com.trainly.app.ui.features.emergency.ContactScreen
 import com.trainly.app.ui.features.emergency.EmergencyServicesScreen
+import com.trainly.app.ui.features.onboarding.OnboardingScreen
 import com.trainly.app.ui.features.profile.EditStatsScreen
 import com.trainly.app.ui.features.profile.PersonalInfoScreen
 import com.trainly.app.ui.features.profile.SettingsScreen
@@ -29,18 +32,39 @@ fun NavGraph(sm: SessionManager) {
 
     LaunchedEffect(authState.isLoading) {
         if (!authState.isLoading) {
-            val dest = if (authState.isAuthenticated) Routes.Main.route else Routes.Login.route
+            val onboardingDone = sm.isOnboardingComplete()
+            val dest = when {
+                !onboardingDone -> Routes.Onboarding.route
+                authState.isAuthenticated -> Routes.Main.route
+                else -> Routes.Login.route
+            }
             nav.navigate(dest) {
                 popUpTo(Routes.Splash.route) { inclusive = true }
             }
         }
     }
 
+    val scope = rememberCoroutineScope()
+
     NavHost(
         navController = nav,
         startDestination = Routes.Splash.route
     ) {
         authGraph(nav)
+
+        composable(Routes.Onboarding.route) {
+            OnboardingScreen(
+                onComplete = {
+                    scope.launch {
+                        sm.setOnboardingComplete()
+                    }
+                    val dest = if (authState.isAuthenticated) Routes.Main.route else Routes.Login.route
+                    nav.navigate(dest) {
+                        popUpTo(Routes.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         composable(Routes.Main.route) {
             MainScreen(rootNav = nav)
@@ -53,7 +77,10 @@ fun NavGraph(sm: SessionManager) {
                     nav.navigate(Routes.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                onPersonalInfo = { nav.navigate(Routes.PersonalInfo.route) },
+                onEditStats = { nav.navigate(Routes.EditStats.route) },
+                onEmergencyContacts = { nav.navigate(Routes.EmergencyContacts.route) }
             )
         }
 
