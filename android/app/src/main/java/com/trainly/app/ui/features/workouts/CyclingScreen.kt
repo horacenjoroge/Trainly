@@ -111,12 +111,13 @@ fun CyclingScreen(
                         else if (state.isPaused) vm.resumeTracking()
                         else vm.pauseTracking()
                     },
+                    enabled = !state.isFinishing,
                     modifier = Modifier.weight(2f)
                 )
                 TrackingCtaButton(
                     text = "Finish", bg = TrackFg, textColor = Color(0xFF1C293C),
                     onClick = { showSaveDialog = true },
-                    enabled = state.isActive,
+                    enabled = state.isActive && !state.isFinishing,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -128,12 +129,16 @@ fun CyclingScreen(
             TrackingSaveDialog(
                 summaryLine = "%.1f km in %s at %s km/h. Save this ride to your history?"
                     .format(distanceKm, formatDuration(state.durationSeconds), speedToDisplay(speedKmh)),
-                onDiscard = { showSaveDialog = false },
+                isSaving = state.isFinishing,
+                onDiscard = { if (!state.isFinishing) showSaveDialog = false },
                 onSave = {
                     vm.saveWorkout(onSuccess = onBack, onError = {})
-                    showSaveDialog = false
                 }
             )
+        }
+
+        state.error?.let { message ->
+            TrackingErrorDialog(message = message, onDismiss = vm::clearError)
         }
     }
 }

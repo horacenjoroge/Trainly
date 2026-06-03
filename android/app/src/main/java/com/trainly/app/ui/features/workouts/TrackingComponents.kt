@@ -268,6 +268,7 @@ fun TrackingCtaButton(
 @Composable
 fun TrackingSaveDialog(
     summaryLine: String,
+    isSaving: Boolean = false,
     onDiscard: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -287,7 +288,7 @@ fun TrackingSaveDialog(
                 .padding(Spacing.xl)
         ) {
             Text(
-                text = "Save Workout?",
+                text = if (isSaving) "Saving Workout..." else "Save Workout?",
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Black,
                 color = Color(0xFF1C293C)
@@ -304,9 +305,53 @@ fun TrackingSaveDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
-                DialogButton(text = "Discard", bg = Color(0xFFFBFBF9), onClick = onDiscard, Modifier.weight(1f))
-                DialogButton(text = "Save", bg = TrackAccent, onClick = onSave, Modifier.weight(1f))
+                DialogButton(text = "Discard", bg = Color(0xFFFBFBF9), onClick = onDiscard, modifier = Modifier.weight(1f), enabled = !isSaving)
+                DialogButton(text = if (isSaving) "Saving..." else "Save", bg = TrackAccent, onClick = onSave, modifier = Modifier.weight(1f), enabled = !isSaving)
             }
+        }
+    }
+}
+
+@Composable
+fun TrackingErrorDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0x99000000))
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.xl)
+                .border(4.dp, Color(0xFF1C293C))
+                .background(Color(0xFFFBFBF9))
+                .padding(Spacing.xl)
+        ) {
+            Text(
+                text = "Couldn’t Save Workout",
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0xFF1C293C)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                color = Color(0xFF5A6B7E)
+            )
+            Spacer(Modifier.height(Spacing.lg))
+            DialogButton(
+                text = "OK",
+                bg = TrackAccent,
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -316,9 +361,10 @@ private fun DialogButton(
     text: String,
     bg: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
-    Box(modifier = modifier.clickable { onClick() }) {
+    Box(modifier = modifier.let { if (enabled) it.clickable { onClick() } else it }) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -328,8 +374,8 @@ private fun DialogButton(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(bg)
-                .border(3.dp, Color(0xFF1C293C))
+                .background(if (enabled) bg else bg.copy(alpha = 0.5f))
+                .border(3.dp, Color(0xFF1C293C).copy(alpha = if (enabled) 1f else 0.5f))
                 .padding(vertical = Spacing.md),
             contentAlignment = Alignment.Center
         ) {
@@ -337,7 +383,7 @@ private fun DialogButton(
                 text = text,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
-                color = Color(0xFF1C293C)
+                color = Color(0xFF1C293C).copy(alpha = if (enabled) 1f else 0.5f)
             )
         }
     }

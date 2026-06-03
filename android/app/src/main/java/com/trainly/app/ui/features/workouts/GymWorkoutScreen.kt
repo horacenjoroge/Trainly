@@ -157,19 +157,25 @@ fun GymWorkoutScreen(
                     textColor = Color.White,
                     borderColor = GymDanger,
                     onClick = { showEndConfirm = true },
+                    enabled = !state.isFinishing,
                     modifier = Modifier.weight(1f)
                 )
                 GymCtaButton(
-                    text = "Finish Workout",
+                    text = if (state.isFinishing) "Saving..." else "Finish Workout",
                     bg = GymAccent,
                     textColor = GymFg,
                     onClick = {
                         vm.stopTracking()
                         vm.saveWorkout(onSuccess = onBack, onError = {})
                     },
+                    enabled = !state.isFinishing,
                     modifier = Modifier.weight(2f)
                 )
             }
+        }
+
+        state.error?.let { message ->
+            TrackingErrorDialog(message = message, onDismiss = vm::clearError)
         }
     }
 
@@ -391,9 +397,10 @@ private fun GymCtaButton(
     textColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    borderColor: Color = GymFg
+    borderColor: Color = GymFg,
+    enabled: Boolean = true
 ) {
-    Box(modifier = modifier.clickable { onClick() }) {
+    Box(modifier = modifier.let { if (enabled) it.clickable { onClick() } else it }) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -403,8 +410,8 @@ private fun GymCtaButton(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(bg)
-                .border(GymBorderW, borderColor)
+                .background(if (enabled) bg else bg.copy(alpha = 0.5f))
+                .border(GymBorderW, borderColor.copy(alpha = if (enabled) 1f else 0.5f))
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -412,7 +419,7 @@ private fun GymCtaButton(
                 text = text,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Black,
-                color = textColor
+                color = textColor.copy(alpha = if (enabled) 1f else 0.5f)
             )
         }
     }

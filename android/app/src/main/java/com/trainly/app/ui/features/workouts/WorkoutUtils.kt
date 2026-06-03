@@ -1,5 +1,7 @@
 package com.trainly.app.ui.features.workouts
 
+import com.trainly.app.data.remote.dto.WorkoutDto
+
 data class GpsCoordinate(
     val latitude: Double,
     val longitude: Double,
@@ -34,4 +36,32 @@ fun calculateDistance(p1: GpsCoordinate, p2: GpsCoordinate): Double {
     val cos2 = Math.cos(Math.toRadians(p2.latitude))
     val a = sin1 * sin1 + cos1 * cos2 * Math.sin(dLon / 2.0) * Math.sin(dLon / 2.0)
     return R * 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a))
+}
+
+fun WorkoutDto.distanceMeters(): Double {
+    return distance
+        ?: running?.distance
+        ?: cycling?.distance
+        ?: swimming?.distance
+        ?: 0.0
+}
+
+fun WorkoutDto.averagePaceSeconds(): Int? {
+    val actualPace = running?.pace?.average
+    if (actualPace != null && actualPace > 0) return actualPace.toInt()
+    val km = distanceMeters() / 1000.0
+    val totalSeconds = duration ?: 0
+    return if (km > 0 && totalSeconds > 0) (totalSeconds / km).toInt() else null
+}
+
+fun WorkoutDto.averageSpeedKmh(): Double? {
+    val actualSpeed = cycling?.speed?.average ?: running?.speed?.average
+    if (actualSpeed != null && actualSpeed > 0) return actualSpeed
+    val km = distanceMeters() / 1000.0
+    val totalSeconds = duration ?: 0
+    return if (km > 0 && totalSeconds > 0) (km / (totalSeconds / 3600.0)) else null
+}
+
+fun WorkoutDto.hasRouteData(): Boolean {
+    return running?.route?.gpsPoints?.isNotEmpty() == true || cycling?.route?.gpsPoints?.isNotEmpty() == true
 }

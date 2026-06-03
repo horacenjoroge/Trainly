@@ -40,7 +40,7 @@ fun SwimmingScreen(
     LaunchedEffect(Unit) { vm.initialize("Swimming") }
 
     val totalDist = lapCount * poolLength
-    val distanceKm = state.distance / 1000.0
+    LaunchedEffect(totalDist) { vm.updateDistanceMeters(totalDist.toDouble()) }
 
     Box(
         modifier = Modifier
@@ -110,12 +110,13 @@ fun SwimmingScreen(
                         else if (state.isPaused) vm.resumeTracking()
                         else vm.pauseTracking()
                     },
+                    enabled = !state.isFinishing,
                     modifier = Modifier.weight(2f)
                 )
                 TrackingCtaButton(
                     text = "Finish", bg = TrackFg, textColor = Color(0xFF1C293C),
                     onClick = { showSaveDialog = true },
-                    enabled = state.isActive,
+                    enabled = state.isActive && !state.isFinishing,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -124,12 +125,16 @@ fun SwimmingScreen(
         if (showSaveDialog) {
             TrackingSaveDialog(
                 summaryLine = "$lapCount laps, $totalDist m in ${formatDuration(state.durationSeconds)}. Save this swim to your history?",
-                onDiscard = { showSaveDialog = false },
+                isSaving = state.isFinishing,
+                onDiscard = { if (!state.isFinishing) showSaveDialog = false },
                 onSave = {
                     vm.saveWorkout(onSuccess = onBack, onError = {})
-                    showSaveDialog = false
                 }
             )
+        }
+
+        state.error?.let { message ->
+            TrackingErrorDialog(message = message, onDismiss = vm::clearError)
         }
     }
 }
