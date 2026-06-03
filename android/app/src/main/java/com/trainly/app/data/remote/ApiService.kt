@@ -35,16 +35,26 @@ class ApiService @Inject constructor(private val ac: ApiClient) {
         }
     }
 
+    private fun <T, R> NetworkResult<T>.mapData(transform: (T) -> R?): NetworkResult<R> = when (this) {
+        is NetworkResult.Success -> {
+            val mapped = transform(data)
+            if (mapped != null) NetworkResult.Success(mapped)
+            else NetworkResult.Error(ApiError("Empty body"))
+        }
+        is NetworkResult.Error -> this
+        is NetworkResult.Loading -> NetworkResult.Loading
+    }
+
     suspend fun login(r: LoginRequest) = call { ac.authApi.login(r) }
     suspend fun register(r: RegisterRequest) = call { ac.authApi.register(r) }
     suspend fun refreshToken(r: RefreshTokenRequest) = call { ac.authApi.refreshToken(r) }
     suspend fun getCurrentUser() = call { ac.authApi.getCurrentUser() }
-    suspend fun getWorkouts(p: Map<String, String> = emptyMap()) = call { ac.workoutApi.getWorkouts(p) }
-    suspend fun getWorkout(id: String) = call { ac.workoutApi.getWorkout(id) }
+    suspend fun getWorkouts(p: Map<String, String> = emptyMap()) = call { ac.workoutApi.getWorkouts(p) }.mapData { it.data }
+    suspend fun getWorkout(id: String) = call { ac.workoutApi.getWorkout(id) }.mapData { it.data }
     suspend fun createWorkout(d: WorkoutDto) = call { ac.workoutApi.createWorkout(d) }
-    suspend fun getWorkoutStats(p: String = "month") = call { ac.workoutApi.getWorkoutStats(p) }
-    suspend fun getPublicWorkouts(p: Map<String, String> = emptyMap()) = call { ac.workoutApi.getPublicWorkouts(p) }
-    suspend fun toggleWorkoutLike(id: String) = call { ac.workoutApi.toggleLike(id) }
+    suspend fun getWorkoutStats(p: String = "month") = call { ac.workoutApi.getWorkoutStats(p) }.mapData { it.data }
+    suspend fun getPublicWorkouts(p: Map<String, String> = emptyMap()) = call { ac.workoutApi.getPublicWorkouts(p) }.mapData { it.data }
+    suspend fun toggleWorkoutLike(id: String) = call { ac.workoutApi.toggleLike(id) }.mapData { it.data }
     suspend fun getPosts() = call { ac.postApi.getPosts() }
     suspend fun createPost(r: CreatePostRequest) = call { ac.postApi.createPost(r) }
     suspend fun likePost(id: String) = call { ac.postApi.likePost(id) }

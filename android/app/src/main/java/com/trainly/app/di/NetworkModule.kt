@@ -6,6 +6,7 @@ import com.trainly.app.data.local.TokenManager
 import com.trainly.app.data.remote.ApiClient
 import com.trainly.app.data.remote.ApiService
 import com.trainly.app.data.remote.AuthInterceptor
+import com.trainly.app.data.remote.TokenRefreshInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,8 +33,17 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideApiClient(ai: AuthInterceptor): ApiClient {
-        return ApiClient(ai)
+    fun provideTokenRefreshInterceptor(
+        tm: TokenManager,
+        ac: dagger.Lazy<ApiClient>,
+    ): TokenRefreshInterceptor {
+        return TokenRefreshInterceptor(tm, ac)
+    }
+
+    @Provides
+    @Singleton
+    fun provideApiClient(ai: AuthInterceptor, tri: TokenRefreshInterceptor): ApiClient {
+        return ApiClient(ai, tri)
     }
 
     @Provides

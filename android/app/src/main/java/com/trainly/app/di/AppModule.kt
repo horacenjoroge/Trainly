@@ -1,6 +1,7 @@
 package com.trainly.app.di
 
 import android.content.Context
+import com.google.gson.Gson
 import com.trainly.app.data.local.SessionManager
 import com.trainly.app.data.local.TokenManager
 import dagger.Module
@@ -21,7 +22,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideSessionManager(tm: TokenManager): SessionManager {
-        return SessionManager(tm)
+    fun provideSessionManager(tm: TokenManager, gson: Gson): SessionManager {
+        return SessionManager(tm, gson)
     }
 }

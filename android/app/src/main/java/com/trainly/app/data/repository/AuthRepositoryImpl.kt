@@ -20,7 +20,12 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun register(n: String, e: String, p: String): NetworkResult<User> = mapResult(api.register(RegisterRequest(n, e, p)))
     override suspend fun logout() { sm.clearSession() }
     override suspend fun getCurrentUser(): NetworkResult<User> = when (val r = api.getCurrentUser()) {
-        is NetworkResult.Success -> { val u = r.data.let { User(it.id?:return NetworkResult.Error(ApiError("Missing id")), it.name?:"", it.email?:"", it.avatar, it.bio, it.location) }; tm.saveUserData(gson.toJson(r.data)); sm.setAuthenticated(u); NetworkResult.Success(u) }
+        is NetworkResult.Success -> {
+            val u = r.data.toDomainUser() ?: return NetworkResult.Error(ApiError("Missing user"))
+            tm.saveUserData(gson.toJson(r.data))
+            sm.setAuthenticated(u)
+            NetworkResult.Success(u)
+        }
         is NetworkResult.Error -> NetworkResult.Error(r.error); is NetworkResult.Loading -> NetworkResult.Loading
     }
     override suspend fun isAuthenticated(): Boolean = sm.isAuthenticated()
@@ -29,7 +34,35 @@ class AuthRepositoryImpl @Inject constructor(
         else -> { tm.clearAll(); false }
     }
     private suspend fun mapResult(r: NetworkResult<com.trainly.app.data.remote.dto.AuthResponse>): NetworkResult<User> = when (r) {
-        is NetworkResult.Success -> { val d = r.data; d.token?.let { tm.saveAccessToken(it) }; d.refreshToken?.let { tm.saveRefreshToken(it) }; val u = d.user?.let { User(it.id?:return NetworkResult.Error(ApiError("Missing id")), it.name?:"", it.email?:"", it.avatar, it.bio, it.location, it.stats?.let { s-> UserStats(s.totalWorkouts?:0, s.totalDistance?:0.0, s.totalDuration?:0, s.totalCalories?:0) }) }; u?.let { sm.setAuthenticated(it) }; NetworkResult.Success(u!!) }
+        is NetworkResult.Success -> {
+            val d = r.data
+            d.token?.let { tm.saveAccessToken(it) }
+            d.refreshToken?.let { tm.saveRefreshToken(it) }
+            val u = d.user?.toDomainUser() ?: return NetworkResult.Error(ApiError("Missing user"))
+            tm.saveUserData(gson.toJson(d.user))
+            sm.setAuthenticated(u)
+            NetworkResult.Success(u)
+        }
         is NetworkResult.Error -> NetworkResult.Error(r.error); is NetworkResult.Loading -> NetworkResult.Loading
+    }
+
+    private fun com.trainly.app.data.remote.dto.UserDto.toDomainUser(): User? {
+        val userId = id ?: return null
+        return User(
+            id = userId,
+            name = name.orEmpty(),
+            email = email.orEmpty(),
+            avatar = avatar,
+            bio = bio,
+            location = location,
+            stats = stats?.let { s ->
+                UserStats(
+                    s.totalWorkouts ?: 0,
+                    s.totalDistance ?: 0.0,
+                    s.totalDuration ?: 0,
+                    s.totalCalories ?: 0
+                )
+            }
+        )
     }
 }
