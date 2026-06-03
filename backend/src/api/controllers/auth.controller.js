@@ -3,22 +3,22 @@ const asyncHandler = require('../../middleware/asyncHandler');
 
 const authController = {
   register: asyncHandler(async (req, res) => {
-    const result = await authService.register(req.validated);
+    const result = await authService.register(req.validated.body);
     res.status(201).json(result);
   }),
 
   login: asyncHandler(async (req, res) => {
-    const result = await authService.login(req.validated);
+    const result = await authService.login(req.validated.body);
     res.json(result);
   }),
 
   refreshToken: asyncHandler(async (req, res) => {
-    const result = await authService.refreshToken(req.body.refreshToken);
+    const result = await authService.refreshToken(req.validated.body.refreshToken);
     res.json(result);
   }),
 
   logout: asyncHandler(async (req, res) => {
-    await authService.logout(req.user?.id, req.body.tokenJti);
+    await authService.logout(req.user?.id, req.validated.body.tokenJti);
     res.json({ message: 'Logged out successfully' });
   }),
 

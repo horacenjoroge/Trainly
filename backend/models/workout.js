@@ -47,6 +47,31 @@ const WorkoutSchema = new mongoose.Schema({
     type: String, 
     maxlength: [1000, 'Notes cannot exceed 1000 characters'],
   },
+  privacy: {
+    type: String,
+    enum: ['public', 'friends', 'private'],
+    default: 'friends',
+  },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  comments: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    text: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
   location: {
     city: String,
     country: String,

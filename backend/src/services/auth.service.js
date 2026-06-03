@@ -1,18 +1,16 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('../core/config');
 const userRepository = require('../repositories/users/user.repository');
 const cache = require('../infrastructure/cache');
-const { AuthError, ConflictError, ValidationError } = require('../core/errors/AppError');
+const bcrypt = require('bcryptjs');
+const { AuthError, ConflictError } = require('../core/errors/AppError');
 const logger = require('../core/logger');
 
 const authService = {
   async register({ name, email, password }) {
     const existing = await userRepository.findOne({ email });
     if (existing) throw new ConflictError('User already exists');
-    const salt = await bcrypt.genSalt(10);
-    const hashed = await bcrypt.hash(password, salt);
-    const user = await userRepository.create({ name, email, password: hashed });
+    const user = await userRepository.create({ name, email, password });
     const tokens = generateTokens(user.id);
     logger.info({ userId: user.id }, 'User registered');
     return { user: { id: user.id, name: user.name, email: user.email }, ...tokens };

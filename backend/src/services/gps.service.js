@@ -3,7 +3,13 @@ const logger = require('../core/logger');
 const gpsService = {
   validateRoute(gpsPoints) {
     if (!gpsPoints || !Array.isArray(gpsPoints)) return { valid: true };
-    const invalid = gpsPoints.filter(p => !p.latitude || !p.longitude || !p.timestamp);
+    const invalid = gpsPoints.filter((p) => (
+      typeof p.latitude !== 'number' ||
+      Number.isNaN(p.latitude) ||
+      typeof p.longitude !== 'number' ||
+      Number.isNaN(p.longitude) ||
+      !p.timestamp
+    ));
     if (invalid.length > 0) return { valid: false, message: `${invalid.length} invalid GPS points` };
     return { valid: true, totalPoints: gpsPoints.length };
   },

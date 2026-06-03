@@ -1,19 +1,21 @@
 const cache = require('../infrastructure/cache');
 const messaging = require('../infrastructure/messaging/twilio');
 const userRepository = require('../repositories/users/user.repository');
+const contactRepository = require('../repositories/contacts/contact.repository');
+const sosEventRepository = require('../repositories/sos-events/sos-event.repository');
+const config = require('../core/config');
 const { RateLimitError, NotFoundError } = require('../core/errors/AppError');
 const logger = require('../core/logger');
 
 const sosService = {
   async sendSOS(userId, location, message) {
     const count = await cache.increment(`sos:${userId}`, 3600);
-    if (count > 5) throw new RateLimitError('Too many SOS requests. Please try again later.');
+    if (count > config.SOS_RATE_LIMIT_MAX) throw new RateLimitError('Too many SOS requests. Please try again later.');
 
     const user = await userRepository.findById(userId);
     if (!user) throw new NotFoundError('User not found');
 
-    const Contact = require('../../models/contact');
-    const contacts = await Contact.find({ userId });
+    const contacts = await contactRepository.findByUserId(userId);
     if (!contacts || contacts.length === 0) throw new NotFoundError('No emergency contacts found');
 
     const results = [];
@@ -29,8 +31,7 @@ const sosService = {
 
     // Store SOS event
     try {
-      const Session = require('mongoose').model('SosEvent') || require('../../models/sosEvent');
-      await new Session({ userId, location, message, contacts: contacts.map(c => c.phoneNumber), results, createdAt: new Date() }).save();
+      await sosEventRepository.create({ userId, location, message, contacts: contacts.map((contact) => contact.phoneNumber), results, createdAt: new Date() });
     } catch (_) {}
 
     logger.info({ userId, contactCount: contacts.length }, 'SOS sent');

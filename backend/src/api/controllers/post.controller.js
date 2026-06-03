@@ -1,44 +1,65 @@
-const postRepository = require('../../repositories/posts/post.repository');
 const asyncHandler = require('../../middleware/asyncHandler');
-const { NotFoundError } = require('../../core/errors/AppError');
+const postService = require('../../services/post.service');
+
+function serializeComment(comment) {
+  return {
+    _id: comment._id,
+    userId: comment.user ? {
+      _id: comment.user._id,
+      id: comment.user._id,
+      name: comment.user.name,
+      avatar: comment.user.avatar,
+    } : null,
+    text: comment.text,
+    createdAt: comment.date || comment.createdAt || null,
+  };
+}
+
+function serializePost(post, currentUserId = null) {
+  return {
+    _id: post._id,
+    userId: post.user ? {
+      _id: post.user._id,
+      id: post.user._id,
+      name: post.user.name,
+      avatar: post.user.avatar,
+    } : null,
+    content: post.content,
+    image: post.image,
+    privacy: post.privacy || 'public',
+    workoutDetails: post.workoutDetails || null,
+    likes: (post.likes || []).map((like) => like.toString()),
+    comments: (post.comments || []).map(serializeComment),
+    createdAt: post.createdAt,
+    isLiked: currentUserId ? (post.likes || []).some((like) => like.toString() === currentUserId.toString()) : false,
+  };
+}
 
 const postController = {
   list: asyncHandler(async (req, res) => {
-    const posts = await postRepository.findAll(req.query.page, req.query.limit);
-    const formatted = posts.map(p => ({
-      id: p._id, user: { id: p.user?._id, name: p.user?.name, avatar: p.user?.avatar },
-      content: p.content, image: p.image, workoutDetails: p.workoutDetails || null,
-      likes: p.likes?.length || 0, comments: p.comments?.length || 0, createdAt: p.createdAt,
-      isLiked: req.user ? p.likes?.some(l => l.toString() === req.user.id) : false,
-    }));
+    const posts = await postService.listPosts(req.validated.query);
+    const formatted = posts.map((post) => serializePost(post, req.user?.id));
     res.json(formatted);
   }),
 
   create: asyncHandler(async (req, res) => {
-    const { content, image, workoutDetails, privacy } = req.body;
-    const post = await postRepository.create({ user: req.user.id, content, image, workoutDetails, privacy });
-    res.status(201).json(post);
+    const post = await postService.createPost(req.user.id, req.validated.body);
+    res.status(201).json(serializePost(post, req.user.id));
   }),
 
   like: asyncHandler(async (req, res) => {
-    const post = await postRepository.findById(req.params.id);
-    if (!post) throw new NotFoundError('Post not found');
-    const isLiked = post.likes.some(l => l.toString() === req.user.id);
-    const updated = isLiked ? await postRepository.removeLike(req.params.id, req.user.id) : await postRepository.addLike(req.params.id, req.user.id);
-    res.json(updated);
+    const updated = await postService.toggleLike(req.validated.params.id, req.user.id);
+    res.json(serializePost(updated, req.user.id));
   }),
 
   addComment: asyncHandler(async (req, res) => {
-    const comment = { user: req.user.id, text: req.body.text, date: new Date() };
-    const updated = await postRepository.addComment(req.params.id, comment);
-    if (!updated) throw new NotFoundError('Post not found');
-    res.json(updated);
+    const comment = await postService.addComment(req.validated.params.id, req.user.id, req.validated.body.text);
+    res.json(serializeComment(comment));
   }),
 
   getComments: asyncHandler(async (req, res) => {
-    const post = await postRepository.findById(req.params.id);
-    if (!post) throw new NotFoundError('Post not found');
-    res.json(post.comments || []);
+    const comments = await postService.getComments(req.validated.params.id);
+    res.json(comments.map(serializeComment));
   }),
 };
 

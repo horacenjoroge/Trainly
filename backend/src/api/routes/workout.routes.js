@@ -1,18 +1,27 @@
 const { Router } = require('express');
 const workoutController = require('../controllers/workout.controller');
 const { authMiddleware } = require('../../middleware/auth');
+const { validateRequest } = require('../validators');
+const {
+  commentSchema,
+  createWorkoutSchema,
+  idParamSchema,
+  paginationQuery,
+  publicFeedQuery,
+  statsQuery,
+  updateWorkoutSchema,
+} = require('../validators/workout.validator');
 
 const router = Router();
-router.use(authMiddleware);
 
-router.post('/', workoutController.create);
-router.get('/', workoutController.list);
-router.get('/stats/summary', workoutController.stats);
-router.get('/public/feed', workoutController.publicFeed);
-router.get('/:id', workoutController.get);
-router.patch('/:id', workoutController.update);
-router.delete('/:id', workoutController.delete);
-router.post('/:id/like', workoutController.toggleLike);
-router.post('/:id/comments', workoutController.addComment);
+router.get('/public/feed', validateRequest({ query: publicFeedQuery }), workoutController.publicFeed);
+router.post('/', authMiddleware, validateRequest({ body: createWorkoutSchema }), workoutController.create);
+router.get('/', authMiddleware, validateRequest({ query: paginationQuery }), workoutController.list);
+router.get('/stats/summary', authMiddleware, validateRequest({ query: statsQuery }), workoutController.stats);
+router.get('/:id', authMiddleware, validateRequest({ params: idParamSchema }), workoutController.get);
+router.patch('/:id', authMiddleware, validateRequest({ params: idParamSchema, body: updateWorkoutSchema }), workoutController.update);
+router.delete('/:id', authMiddleware, validateRequest({ params: idParamSchema }), workoutController.delete);
+router.post('/:id/like', authMiddleware, validateRequest({ params: idParamSchema }), workoutController.toggleLike);
+router.post('/:id/comments', authMiddleware, validateRequest({ params: idParamSchema, body: commentSchema }), workoutController.addComment);
 
 module.exports = router;

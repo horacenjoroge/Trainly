@@ -7,7 +7,7 @@ const logger = require('../core/logger');
 
 const workoutService = {
   async create(userId, data) {
-    const workoutData = { ...data, userId };
+    const workoutData = normalizeWorkoutData(userId, data);
     const workout = await workoutRepository.create(workoutData);
     const user = await userRepository.findById(userId);
     logger.info({ userId, workoutId: workout._id }, 'Workout created');
@@ -46,7 +46,29 @@ const workoutService = {
 
   async getPublicFeed(page = 1, limit = 20) {
     return workoutRepository.findPublic(parseInt(page), parseInt(limit));
-  }
+  },
+
+  async toggleLike(id, userId) {
+    const workout = await this.getWorkout(id);
+    if (!workout.likes) workout.likes = [];
+    const index = workout.likes.findIndex((like) => like.toString() === userId.toString());
+
+    if (index > -1) workout.likes.splice(index, 1);
+    else workout.likes.push(userId);
+
+    await workout.save();
+    logger.info({ userId, workoutId: id, liked: index === -1 }, 'Workout like toggled');
+    return workout;
+  },
+
+  async addComment(id, userId, text) {
+    const workout = await this.getWorkout(id);
+    if (!workout.comments) workout.comments = [];
+    workout.comments.push({ user: userId, text, date: new Date() });
+    await workout.save();
+    logger.info({ userId, workoutId: id }, 'Workout comment added');
+    return workout;
+  },
 };
 
 function getUserId(req) {
@@ -56,4 +78,39 @@ function getUserId(req) {
   return req.user;
 }
 
-module.exports = { workoutService, getUserId };
+function normalizeWorkoutData(userId, data = {}) {
+  const duration = Number(data.duration || 0);
+  const endTime = data.endTime ? new Date(data.endTime) : new Date();
+  const startTime = data.startTime ? new Date(data.startTime) : new Date(endTime.getTime() - (duration * 1000));
+  const workoutData = {
+    ...data,
+    userId,
+    duration,
+    calories: Number(data.calories || 0),
+    startTime,
+    endTime,
+  };
+
+  if (!workoutData.sessionId) {
+    workoutData.sessionId = `${String(data.type || 'workout').toLowerCase()}_${Date.now()}`;
+  }
+
+  const distance = Number(data.distance || 0);
+  switch (data.type) {
+    case 'Running':
+      workoutData.running = { ...(data.running || {}), distance: data.running?.distance ?? distance };
+      break;
+    case 'Cycling':
+      workoutData.cycling = { ...(data.cycling || {}), distance: data.cycling?.distance ?? distance };
+      break;
+    case 'Swimming':
+      workoutData.swimming = { ...(data.swimming || {}), distance: data.swimming?.distance ?? distance };
+      break;
+    default:
+      break;
+  }
+
+  return workoutData;
+}
+
+module.exports = { workoutService, getUserId, normalizeWorkoutData };

@@ -1,7 +1,7 @@
 const Workout = require('../../../models/workout');
 
 const workoutRepository = {
-  findById: (id) => Workout.findById(id),
+  findById: (id) => Workout.findById(id).populate('userId', 'name avatar').populate('comments.user', 'name avatar'),
   findByUserId: (userId, query = {}, page = 1, limit = 20) => {
     const filter = { userId };
     if (query.type) filter.type = query.type;
@@ -17,10 +17,26 @@ const workoutRepository = {
   delete: (id) => Workout.findByIdAndDelete(id),
   countByUser: (userId) => Workout.countDocuments({ userId }),
   aggregate: (pipeline) => Workout.aggregate(pipeline),
-  findPublic: (page = 1, limit = 20) => Workout.find({ privacy: 'public' }).populate('userId', 'name avatar').sort({ createdAt: -1 }).limit(limit).skip((page - 1) * limit),
+  findPublic: (page = 1, limit = 20) => Workout.find({ privacy: 'public' }).populate('userId', 'name avatar').populate('comments.user', 'name avatar').sort({ createdAt: -1 }).limit(limit).skip((page - 1) * limit),
   getStats: (userId, period = 'month') => Workout.aggregate([
     { $match: { userId: userId } },
-    { $group: { _id: null, totalWorkouts: { $sum: 1 }, totalDuration: { $sum: '$duration' }, totalDistance: { $sum: { $add: ['$running.distance', '$cycling.distance', '$swimming.distance'] } }, totalCalories: { $sum: '$calories' } } }
+    {
+      $group: {
+        _id: null,
+        totalWorkouts: { $sum: 1 },
+        totalDuration: { $sum: '$duration' },
+        totalDistance: {
+          $sum: {
+            $add: [
+              { $ifNull: ['$running.distance', 0] },
+              { $ifNull: ['$cycling.distance', 0] },
+              { $ifNull: ['$swimming.distance', 0] },
+            ],
+          },
+        },
+        totalCalories: { $sum: '$calories' },
+      },
+    },
   ]),
 };
 module.exports = workoutRepository;

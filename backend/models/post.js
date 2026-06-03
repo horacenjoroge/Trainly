@@ -16,6 +16,11 @@ const postSchema = new Schema({
     type: String,
     default: null
   },
+  privacy: {
+    type: String,
+    enum: ['public', 'friends', 'private'],
+    default: 'public'
+  },
   workoutDetails: {
     type: {
       type: String

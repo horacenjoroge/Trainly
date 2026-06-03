@@ -12,20 +12,8 @@ const loginSchema = z.object({
 });
 
 const refreshSchema = z.object({ refreshToken: z.string().min(1, 'Refresh token required') });
+const logoutSchema = z.object({
+  tokenJti: z.string().min(1).optional(),
+}).passthrough();
 
-function validate(schema) {
-  return (req, res, next) => {
-    const result = schema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({
-        status: 'error', code: 'VALIDATION_ERROR',
-        message: 'Validation failed',
-        errors: result.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-      });
-    }
-    req.validated = result.data;
-    next();
-  };
-}
-
-module.exports = { registerSchema, loginSchema, refreshSchema, validate };
+module.exports = { registerSchema, loginSchema, refreshSchema, logoutSchema };
