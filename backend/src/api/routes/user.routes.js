@@ -1,37 +1,35 @@
 const { Router } = require('express');
-const asyncHandler = require('../../middleware/asyncHandler');
 const { authMiddleware } = require('../../middleware/auth');
-const userRepository = require('../../repositories/users/user.repository');
+const userController = require('../controllers/user.controller');
+const uploadController = require('../controllers/upload.controller');
+const { validateRequest } = require('../validators');
+const { imageUpload } = require('../../middleware/upload');
+const {
+  followUserParamSchema,
+  socialUserQuerySchema,
+  updateProfileSchema,
+  updateStatsSchema,
+  userIdParamSchema,
+  userSearchParamSchema,
+  userSearchQuerySchema,
+} = require('../validators/user.validator');
+const { achievementListQuerySchema } = require('../validators/achievement.validator');
 
 const router = Router();
 router.use(authMiddleware);
 
-router.get('/profile', asyncHandler(async (req, res) => {
-  const user = await userRepository.findById(req.user.id, '-password');
-  res.json(user);
-}));
-
-router.put('/profile', asyncHandler(async (req, res) => {
-  const allowed = ['name', 'bio', 'location'];
-  const updates = {};
-  allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = k === 'bio' || k === 'location' ? { $set: { [`profile.${k}`]: req.body[k] } } : { $set: { [k]: req.body[k] } }; });
-  const user = await userRepository.updateById(req.user.id, Object.assign({}, ...Object.values(updates)));
-  res.json(user);
-}));
-
-router.put('/stats', asyncHandler(async (req, res) => {
-  const user = await userRepository.updateById(req.user.id, { $set: { stats: req.body } });
-  res.json(user);
-}));
-
-router.get('/search', asyncHandler(async (req, res) => {
-  const users = req.query.q ? await userRepository.search(req.query.q) : [];
-  res.json(users);
-}));
-
-router.get('/:id', asyncHandler(async (req, res) => {
-  const user = await userRepository.findById(req.params.id, '-password -email');
-  res.json(user);
-}));
+router.get('/profile', userController.getProfile);
+router.put('/profile', validateRequest({ body: updateProfileSchema }), userController.updateProfile);
+router.put('/stats', validateRequest({ body: updateStatsSchema }), userController.updateStats);
+router.get('/fullprofile', userController.getFullProfile);
+router.post('/avatar', imageUpload.single('image'), uploadController.uploadAvatar);
+router.get('/followers', validateRequest({ query: socialUserQuerySchema }), userController.getFollowers);
+router.get('/following', validateRequest({ query: socialUserQuerySchema }), userController.getFollowing);
+router.post('/follow/:userId', validateRequest({ params: followUserParamSchema }), userController.followUser);
+router.delete('/follow/:userId', validateRequest({ params: followUserParamSchema }), userController.unfollowUser);
+router.get('/achievements', validateRequest({ query: achievementListQuerySchema }), userController.getAchievements);
+router.get('/search', validateRequest({ query: userSearchQuerySchema }), userController.search);
+router.get('/search/:query', validateRequest({ params: userSearchParamSchema }), userController.search);
+router.get('/:id', validateRequest({ params: userIdParamSchema }), userController.getById);
 
 module.exports = router;

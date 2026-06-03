@@ -1,1 +1,4 @@
-module.exports = { sosService: require('../../services/sos.service') };
+module.exports = {
+  contactService: require('../../services/contact.service'),
+  sosService: require('../../services/sos.service'),
+};

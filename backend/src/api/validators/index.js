@@ -1,21 +1,19 @@
+const { validateRequest } = require('./shared');
 const authValidator = require('./auth.validator');
 const workoutValidator = require('./workout.validator');
+const userValidator = require('./user.validator');
+const contactValidator = require('./contact.validator');
+const postValidator = require('./post.validator');
+const followValidator = require('./follow.validator');
+const achievementValidator = require('./achievement.validator');
 
-function validate(schema) {
-  return (req, res, next) => {
-    const target = req.method === 'GET' ? req.query : req.body;
-    const result = schema.safeParse(target);
-    if (!result.success) {
-      return res.status(400).json({
-        status: 'error', code: 'VALIDATION_ERROR',
-        message: 'Validation failed',
-        errors: result.error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
-      });
-    }
-    if (req.method === 'GET') req.validated = result.data;
-    else req.validated = result.data;
-    next();
-  };
-}
-
-module.exports = { validate, authValidator, workoutValidator };
+module.exports = {
+  validateRequest,
+  authValidator,
+  workoutValidator,
+  userValidator,
+  contactValidator,
+  postValidator,
+  followValidator,
+  achievementValidator,
+};

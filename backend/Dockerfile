@@ -8,9 +8,9 @@ COPY public/ ./public/
 ENV NODE_ENV=production
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD node -e "require('http').get('http://localhost:3000/api/health', r => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
-CMD ["node", "src/app.js"]
+CMD ["node", "src/server.js"]
 
 FROM base AS development
 RUN npm install nodemon --global
 COPY --from=base /app /app
-CMD ["nodemon", "src/app.js"]
+CMD ["nodemon", "src/server.js"]

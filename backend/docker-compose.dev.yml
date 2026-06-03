@@ -15,7 +15,7 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-    command: npx nodemon src/app.js
+    command: npx nodemon src/server.js
 
   mongodb:
     image: mongo:7
