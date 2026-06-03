@@ -12,11 +12,23 @@ const logger = pino({
 module.exports = new Proxy(logger, {
   get(target, prop) {
     if (['trace', 'debug', 'info', 'warn', 'error', 'fatal'].includes(prop)) {
-      return (msg, ...args) => {
+      return (...args) => {
         const store = ALS.getStore();
-        const traceId = store?.traceId;
-        const userId = store?.userId;
-        target[prop]({ traceId, userId }, msg, ...args);
+        const context = {};
+        if (store?.traceId) context.traceId = store.traceId;
+        if (store?.userId) context.userId = store.userId;
+
+        if (args[0] && typeof args[0] === 'object' && !(args[0] instanceof Error)) {
+          target[prop]({ ...context, ...args[0] }, ...args.slice(1));
+          return;
+        }
+
+        if (Object.keys(context).length > 0) {
+          target[prop](context, ...args);
+          return;
+        }
+
+        target[prop](...args);
       };
     }
     return target[prop];
