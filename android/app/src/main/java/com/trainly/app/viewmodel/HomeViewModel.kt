@@ -44,10 +44,15 @@ class HomeViewModel @Inject constructor(
 
     fun likePost(id: String) {
         viewModelScope.launch {
-            if (repo.likePost(id) is NetworkResult.Success) {
-                val s = _likedIds.value.toMutableSet()
-                if (s.contains(id)) s.remove(id) else s.add(id)
-                _likedIds.value = s
+            when (val result = repo.likePost(id)) {
+                is NetworkResult.Success -> {
+                    val currentUserId = sm.authState.value.user?.id
+                    val updated = _likedIds.value.toMutableSet()
+                    if (currentUserId != null && result.data.likes.contains(currentUserId)) updated.add(id)
+                    else updated.remove(id)
+                    _likedIds.value = updated
+                }
+                else -> {}
             }
         }
     }
@@ -58,6 +63,13 @@ class HomeViewModel @Inject constructor(
         val ps = (pr as? NetworkResult.Success)?.data ?: ProgressStats()
         val pp = (po as? NetworkResult.Success)?.data ?: emptyList()
         val hasErr = pr is NetworkResult.Error || po is NetworkResult.Error
+        val currentUserId = sm.authState.value.user?.id
+
+        _likedIds.value = if (currentUserId != null) {
+            pp.filter { it.likes.contains(currentUserId) }.mapTo(mutableSetOf()) { it.id }
+        } else {
+            emptySet()
+        }
 
         _uiState.value = if (hasErr && pp.isEmpty()) {
             val errMsg = (pr as? NetworkResult.Error)?.error?.message

@@ -1,6 +1,7 @@
 package com.trainly.app.data.remote
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import com.trainly.app.data.repository.toDomainPost
 import com.trainly.app.data.remote.dto.WorkoutDto
 import com.trainly.app.domain.models.Post
 
@@ -9,7 +10,7 @@ class FeedPagingSource(private val api: ApiService) : PagingSource<Int, Post>() 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Post> = try {
         val page = params.key ?: 1
         when (val r = api.getPosts()) {
-            is NetworkResult.Success -> LoadResult.Page(r.data.mapNotNull { Post(id=it.id?:return@mapNotNull null, userId=it.userId?.id?:"", userName=it.userId?.name?:"User", userAvatar=it.userId?.avatar, content=it.content, image=it.image, likes=it.likes?:emptyList(), comments=emptyList(), createdAt=it.createdAt?:"") }, prevKey=if(page==1)null else page-1, nextKey=if(r.data.isEmpty())null else page+1)
+            is NetworkResult.Success -> LoadResult.Page(r.data.mapNotNull { it.toDomainPost() }, prevKey=if(page==1)null else page-1, nextKey=if(r.data.isEmpty())null else page+1)
             is NetworkResult.Error -> LoadResult.Error(Exception(r.error.message))
             is NetworkResult.Loading -> LoadResult.Page(emptyList(), null, null)
         }
