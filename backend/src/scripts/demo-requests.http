@@ -1,0 +1,98 @@
+@baseUrl = http://localhost:3000
+@contentType = application/json
+@demoPassword = Password123
+
+### Health check
+GET {{baseUrl}}/api/health
+
+### Swagger UI
+GET {{baseUrl}}/docs
+
+### Login as Horace
+# @name loginHorace
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "horace.demo@trainly.dev",
+  "password": "{{demoPassword}}"
+}
+
+###
+@horaceToken = {{loginHorace.response.body.token}}
+
+### Current user
+GET {{baseUrl}}/api/auth/user
+x-auth-token: {{horaceToken}}
+
+### List workouts
+GET {{baseUrl}}/api/workouts?page=1&limit=10
+x-auth-token: {{horaceToken}}
+
+### Public workout feed
+GET {{baseUrl}}/api/workouts/public/feed?page=1&limit=10
+
+### Workout stats summary
+GET {{baseUrl}}/api/workouts/stats/summary?period=month
+x-auth-token: {{horaceToken}}
+
+### Create a new demo workout
+POST {{baseUrl}}/api/workouts
+Content-Type: {{contentType}}
+x-auth-token: {{horaceToken}}
+
+{
+  "type": "Running",
+  "name": "Reviewer Shakeout",
+  "duration": 1800,
+  "calories": 280,
+  "distance": 4200,
+  "privacy": "public",
+  "running": {
+    "distance": 4200
+  }
+}
+
+### Social posts feed
+GET {{baseUrl}}/api/posts?page=1&limit=10
+x-auth-token: {{horaceToken}}
+
+### Create a social post
+POST {{baseUrl}}/api/posts
+Content-Type: {{contentType}}
+x-auth-token: {{horaceToken}}
+
+{
+  "content": "Seeded demo accounts make it easy to review the backend quickly.",
+  "privacy": "public",
+  "workoutDetails": {
+    "type": "Running",
+    "duration": 1800,
+    "calories": 280
+  }
+}
+
+### Followers
+GET {{baseUrl}}/api/follow/followers
+x-auth-token: {{horaceToken}}
+
+### Achievements
+GET {{baseUrl}}/api/achievements?page=1&limit=10
+x-auth-token: {{horaceToken}}
+
+### Contacts
+GET {{baseUrl}}/api/contacts
+x-auth-token: {{horaceToken}}
+
+### Trigger a demo SOS
+POST {{baseUrl}}/api/contacts/send-sos
+Content-Type: {{contentType}}
+x-auth-token: {{horaceToken}}
+
+{
+  "location": {
+    "latitude": -1.286389,
+    "longitude": 36.817223
+  },
+  "message": "Reviewer-triggered demo SOS."
+}
