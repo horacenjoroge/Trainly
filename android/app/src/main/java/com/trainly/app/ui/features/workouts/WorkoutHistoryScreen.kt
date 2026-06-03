@@ -50,6 +50,8 @@ private val HistAccent = Color(0xFFFDC800)
 private val HistBorderW = 3.dp
 private val HistShadow = 4.dp
 
+private data class WorkoutFilter(val value: String?, val label: String)
+
 @Composable
 fun WorkoutHistoryScreen(
     onNavigateBack: () -> Unit,
@@ -58,9 +60,15 @@ fun WorkoutHistoryScreen(
     viewModel: WorkoutHistoryViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedFilter by remember { mutableStateOf("All") }
+    var selectedFilter by remember { mutableStateOf<String?>(null) }
 
-    val filters = listOf("All", "\uD83C\uDFC3 Running", "\uD83D\uDEB2 Cycling", "\uD83C\uDFCA Swimming", "\uD83C\uDFCB Gym")
+    val filters = listOf(
+        WorkoutFilter(null, "All"),
+        WorkoutFilter("Running", "\uD83C\uDFC3 Running"),
+        WorkoutFilter("Cycling", "\uD83D\uDEB2 Cycling"),
+        WorkoutFilter("Swimming", "\uD83C\uDFCA Swimming"),
+        WorkoutFilter("Gym", "\uD83C\uDFCB Gym")
+    )
 
     Box(modifier = Modifier.fillMaxSize().background(HistBg)) {
         when (val st = state) {
@@ -88,8 +96,7 @@ fun WorkoutHistoryScreen(
                 }
             }
             is UiState.Success -> {
-                val filtered = if (selectedFilter == "All") st.data
-                else st.data.filter { it.type == selectedFilter }
+                val filtered = selectedFilter?.let { type -> st.data.filter { it.type == type } } ?: st.data
 
                 val totalCount = filtered.size
                 val totalDurationSec = filtered.sumOf { it.duration ?: 0 }
@@ -165,20 +172,18 @@ fun WorkoutHistoryScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             filters.forEach { filter ->
-                                val isActive = if (filter == "All") selectedFilter == "All"
-                                    else selectedFilter == filter.drop(2)
-                                val chipLabel = if (filter == "All") filter else filter
+                                val isActive = selectedFilter == filter.value
                                 Box(
                                     modifier = Modifier
                                         .border(2.dp, HistFg)
                                         .background(if (isActive) HistAccent else HistBg)
                                         .clickable {
-                                            selectedFilter = if (filter == "All") "All" else filter.drop(2)
+                                            selectedFilter = filter.value
                                         }
                                         .padding(horizontal = Spacing.lg, vertical = 6.dp)
                                 ) {
                                     Text(
-                                        text = chipLabel,
+                                        text = filter.label,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = HistFg
@@ -303,7 +308,7 @@ private fun HistoryCard(
         else -> HistFg
     }
 
-    val dateStr = workout.createdAt?.let { DateUtils.formatTimeAgo(it) } ?: ""
+    val dateStr = (workout.startTime ?: workout.createdAt)?.let { DateUtils.formatTimeAgo(it) } ?: ""
     val durationStr = workout.duration?.let { DateUtils.formatDurationSeconds(it) } ?: "--"
 
     Box(modifier = Modifier.fillMaxWidth().clickable { onClick() }) {
@@ -358,21 +363,19 @@ private fun HistoryCard(
             }
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                val distKm = workout.distance?.let { it / 1000.0 }
-                val pace = if (distKm != null && distKm > 0 && workout.duration != null && workout.duration > 0)
-                    (workout.duration / distKm).toInt() else null
-                val speed = if (distKm != null && workout.duration != null && workout.duration > 0)
-                    (distKm / (workout.duration / 3600.0)) else null
+                val distKm = workout.distanceMeters() / 1000.0
+                val pace = workout.averagePaceSeconds()
+                val speed = workout.averageSpeedKmh()
 
                 val stats = when (type) {
                     "Running" -> listOf(
-                        "${"%.1f".format(distKm ?: 0.0)}" to "km",
+                        "${"%.1f".format(distKm)}" to "km",
                         durationStr to "min",
                         paceToDisplay(pace) to "/km",
                         "${workout.calories ?: 0}" to "kcal"
                     )
                     "Cycling" -> listOf(
-                        "${"%.1f".format(distKm ?: 0.0)}" to "km",
+                        "${"%.1f".format(distKm)}" to "km",
                         durationStr to "min",
                         speedToDisplay(speed ?: 0.0) to "km/h",
                         "${workout.calories ?: 0}" to "kcal"
@@ -380,7 +383,7 @@ private fun HistoryCard(
                     "Swimming" -> listOf(
                         "--" to "laps",
                         durationStr to "min",
-                        "${workout.distance?.toInt() ?: 0}" to "m",
+                        "${workout.distanceMeters().toInt()}" to "m",
                         "${workout.calories ?: 0}" to "kcal"
                     )
                     "Gym" -> listOf(
@@ -390,7 +393,7 @@ private fun HistoryCard(
                         "${workout.calories ?: 0}" to "kcal"
                     )
                     else -> listOf(
-                        "${"%.1f".format(distKm ?: 0.0)}" to "km",
+                        "${"%.1f".format(distKm)}" to "km",
                         durationStr to "min",
                         "${workout.calories ?: 0}" to "kcal",
                         "" to ""

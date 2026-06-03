@@ -67,6 +67,15 @@ fun WorkoutDetailScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(st.message, fontSize = 15.sp, color = DtlMuted)
+                    Spacer(Modifier.height(Spacing.md))
+                    Box(
+                        modifier = Modifier
+                            .border(2.dp, DtlFg)
+                            .clickable { viewModel.reload() }
+                            .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+                    ) {
+                        Text("Retry", fontWeight = FontWeight.Bold, color = DtlFg)
+                    }
                 }
             }
             is UiState.Success -> {
@@ -91,32 +100,19 @@ private fun WorkoutDetailContent(
         else -> "\uD83C\uDFC3"
     }
 
-    val distKm = workout.distance?.let { it / 1000.0 }
-    val paceSec = if (distKm != null && distKm > 0 && workout.duration != null && workout.duration > 0)
-        (workout.duration / distKm).toInt() else null
-    val speedKmh = if (distKm != null && workout.duration != null && workout.duration > 0)
-        (distKm / (workout.duration / 3600.0)) else null
+    val distanceMeters = workout.distanceMeters()
+    val distKm = distanceMeters / 1000.0
+    val paceSec = workout.averagePaceSeconds()
+    val speedKmh = workout.averageSpeedKmh()
 
     val dateLine = buildString {
-        append(DateUtils.formatTimeAgo(workout.createdAt))
-        if (distKm != null && distKm > 0) {
+        append(DateUtils.formatTimeAgo(workout.startTime ?: workout.createdAt))
+        if (distKm > 0) {
             append(" · ${"%.1f".format(distKm)} km")
         }
     }
 
-    val mockSplits = if (distKm != null && distKm > 0 && workout.duration != null && workout.duration > 0) {
-        val totalKm = distKm.toInt().coerceAtLeast(1)
-        val avgPaceSec = workout.duration / totalKm
-        (1..totalKm).map { km ->
-            val variation = ((-15..15).random() * 3)
-            val splitSec = (avgPaceSec + variation).coerceAtLeast(240)
-            Triple("KM $km", splitSec, splitSec)
-        } + if (distKm > totalKm) {
-            val rem = "%.1f".format(distKm - totalKm)
-            val remSec = ((distKm - totalKm) * avgPaceSec).toInt()
-            listOf(Triple("+$rem", remSec, 0))
-        } else emptyList()
-    } else emptyList()
+    val actualSplits = workout.running?.splits.orEmpty()
 
     Column(
         modifier = Modifier
@@ -212,7 +208,7 @@ private fun WorkoutDetailContent(
                     modifier = Modifier.weight(1f)
                 )
                 MetricCard(
-                    value = "${"%.1f".format(distKm ?: 0.0)}",
+                    value = "${"%.1f".format(distKm)}",
                     unit = "km",
                     label = "Distance",
                     modifier = Modifier.weight(1f)
@@ -292,7 +288,7 @@ private fun WorkoutDetailContent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "\uD83D\uDCCD GPS Route",
+                        text = if (workout.hasRouteData()) "\uD83D\uDCCD GPS Route Available" else "\uD83D\uDCCD Route not available",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = DtlMuted
@@ -345,15 +341,18 @@ private fun WorkoutDetailContent(
 
             Spacer(Modifier.height(Spacing.sm))
 
-            if (mockSplits.isNotEmpty()) {
+            if (actualSplits.isNotEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = Spacing.lg),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    mockSplits.forEach { (label, timeSec, paceSecVal) ->
-                        val timeStr = "${timeSec / 60}:${"%02d".format(timeSec % 60)}"
+                    actualSplits.forEach { split ->
+                        val label = split.number?.let { "KM $it" } ?: "Split"
+                        val timeSec = split.time ?: 0
+                        val paceSecVal = split.pace?.toInt() ?: 0
+                        val timeStr = if (timeSec > 0) "${timeSec / 60}:${"%02d".format(timeSec % 60)}" else "\u2014"
                         val paceStr = if (paceSecVal > 0) "${paceSecVal / 60}:${"%02d".format(paceSecVal % 60)}" else "\u2014"
                         Row(
                             modifier = Modifier
@@ -386,6 +385,21 @@ private fun WorkoutDetailContent(
                             )
                         }
                     }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.lg)
+                        .border(2.dp, DtlFg)
+                        .background(DtlBg)
+                        .padding(Spacing.md)
+                ) {
+                    Text(
+                        text = "No split data recorded for this workout.",
+                        fontSize = 13.sp,
+                        color = DtlMuted
+                    )
                 }
             }
 

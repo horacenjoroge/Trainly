@@ -20,7 +20,7 @@ class WorkoutDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val workoutId: String = checkNotNull(savedStateHandle["workoutId"])
+    private val workoutId: String? = savedStateHandle["workoutId"]
 
     private val _uiState = MutableStateFlow<UiState<WorkoutDto>>(UiState.Loading)
     val uiState: StateFlow<UiState<WorkoutDto>> = _uiState.asStateFlow()
@@ -29,10 +29,19 @@ class WorkoutDetailViewModel @Inject constructor(
         load()
     }
 
+    fun reload() {
+        load()
+    }
+
     private fun load() {
+        val id = workoutId
+        if (id.isNullOrBlank()) {
+            _uiState.value = UiState.Error("Workout not found")
+            return
+        }
         viewModelScope.launch {
             _uiState.value = UiState.Loading
-            when (val r = api.getWorkout(workoutId)) {
+            when (val r = api.getWorkout(id)) {
                 is NetworkResult.Success -> {
                     _uiState.value = UiState.Success(r.data)
                 }
